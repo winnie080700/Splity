@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, #ffffff 0%, #dff3ff 50%, #ccf7de 100%);
+}
+
+input,
+select,
+button,
+textarea {
+  font: inherit;
+}
+
+.card {
+  @apply rounded-2xl border border-ink/10 bg-white/80 shadow-sm;
+}

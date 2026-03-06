@@ -1,0 +1,19 @@
+# Dotnet
+**/bin/
+**/obj/
+
+# Node
+**/node_modules/
+**/dist/
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# IDE
+.vs/
+.vscode/
+
+# Tooling
+.dotnet/

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Splity.Api/Splity.Api.csproj" />
+    <Project Path="src/Splity.Application/Splity.Application.csproj" />
+    <Project Path="src/Splity.Domain/Splity.Domain.csproj" />
+    <Project Path="src/Splity.Infrastructure/Splity.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Splity.IntegrationTests/Splity.IntegrationTests.csproj" />
+    <Project Path="tests/Splity.UnitTests/Splity.UnitTests.csproj" />
+  </Folder>
+</Solution>
