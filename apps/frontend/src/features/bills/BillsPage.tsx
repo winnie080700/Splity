@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type BillParticipantInput, type FeeType, type SplitMode } from "@api-client";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useI18n } from "@/shared/i18n/I18nProvider";
 
 export function BillsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const [storeName, setStoreName] = useState("GrocerX");
   const [transactionDateUtc, setTransactionDateUtc] = useState(() => new Date().toISOString().slice(0, 10));
@@ -65,25 +67,25 @@ export function BillsPage() {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr,1.2fr]">
       <section className="card p-5">
-        <h2 className="text-lg font-semibold">Create Bill</h2>
+        <h2 className="text-lg font-semibold">{t("bills.create")}</h2>
         <div className="mt-4 space-y-3">
-          <input className="w-full rounded-xl border border-ink/20 px-3 py-2" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Store" />
+          <input className="w-full rounded-xl border border-ink/20 px-3 py-2" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder={t("bills.store")} />
           <input className="w-full rounded-xl border border-ink/20 px-3 py-2" type="date" value={transactionDateUtc} onChange={(e) => setTransactionDateUtc(e.target.value)} />
           <select className="w-full rounded-xl border border-ink/20 px-3 py-2" value={splitMode} onChange={(e) => setSplitMode(Number(e.target.value) as SplitMode)}>
-            <option value={1}>Equal Split</option>
-            <option value={2}>Weighted Split</option>
+            <option value={1}>{t("bills.equal")}</option>
+            <option value={2}>{t("bills.weighted")}</option>
           </select>
           <div className="grid grid-cols-2 gap-2">
-            <input className="rounded-xl border border-ink/20 px-3 py-2" value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} placeholder="Item" />
-            <input className="rounded-xl border border-ink/20 px-3 py-2" type="number" min="0" step="0.01" value={itemAmount} onChange={(e) => setItemAmount(e.target.value)} placeholder="Amount" />
+            <input className="rounded-xl border border-ink/20 px-3 py-2" value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} placeholder={t("bills.item")} />
+            <input className="rounded-xl border border-ink/20 px-3 py-2" type="number" min="0" step="0.01" value={itemAmount} onChange={(e) => setItemAmount(e.target.value)} placeholder={t("bills.amount")} />
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <input className="rounded-xl border border-ink/20 px-3 py-2" value={feeName} onChange={(e) => setFeeName(e.target.value)} placeholder="Fee name" />
+            <input className="rounded-xl border border-ink/20 px-3 py-2" value={feeName} onChange={(e) => setFeeName(e.target.value)} placeholder={t("bills.feeName")} />
             <select className="rounded-xl border border-ink/20 px-3 py-2" value={feeType} onChange={(e) => setFeeType(Number(e.target.value) as FeeType)}>
-              <option value={1}>Percentage</option>
-              <option value={2}>Fixed</option>
+              <option value={1}>{t("bills.percentage")}</option>
+              <option value={2}>{t("bills.fixed")}</option>
             </select>
-            <input className="rounded-xl border border-ink/20 px-3 py-2" type="number" min="0" step="0.01" value={feeValue} onChange={(e) => setFeeValue(e.target.value)} placeholder="Fee value" />
+            <input className="rounded-xl border border-ink/20 px-3 py-2" type="number" min="0" step="0.01" value={feeValue} onChange={(e) => setFeeValue(e.target.value)} placeholder={t("bills.feeValue")} />
           </div>
           <select className="w-full rounded-xl border border-ink/20 px-3 py-2" value={primaryPayer} onChange={(e) => setPrimaryPayerParticipantId(e.target.value)}>
             {participants.map((participant) => (
@@ -115,13 +117,13 @@ export function BillsPage() {
             type="button"
             onClick={() => createBillMutation.mutate()}
           >
-            Save Bill
+            {t("bills.save")}
           </button>
         </div>
       </section>
 
       <section className="card p-5">
-        <h2 className="text-lg font-semibold">Bills</h2>
+        <h2 className="text-lg font-semibold">{t("bills.title")}</h2>
         <div className="mt-4 space-y-2">
           {billsQuery.data?.map((bill) => (
             <div key={bill.id} className="rounded-xl border border-ink/10 bg-white p-3">
@@ -129,12 +131,12 @@ export function BillsPage() {
                 <span className="font-medium">{bill.storeName}</span>
                 <span className="text-sm">{new Date(bill.transactionDateUtc).toLocaleDateString()}</span>
               </div>
-              <div className="mt-2 text-sm text-ink/70">Subtotal: RM {bill.subtotalAmount.toFixed(2)}</div>
-              <div className="text-sm text-ink/70">Fees: RM {bill.totalFeeAmount.toFixed(2)}</div>
-              <div className="font-semibold">Total: RM {bill.grandTotalAmount.toFixed(2)}</div>
+              <div className="mt-2 text-sm text-ink/70">{t("bills.subtotal")}: RM {bill.subtotalAmount.toFixed(2)}</div>
+              <div className="text-sm text-ink/70">{t("bills.fees")}: RM {bill.totalFeeAmount.toFixed(2)}</div>
+              <div className="font-semibold">{t("bills.total")}: RM {bill.grandTotalAmount.toFixed(2)}</div>
             </div>
           ))}
-          {(billsQuery.data?.length ?? 0) === 0 && <p className="text-sm text-ink/70">No bills yet.</p>}
+          {(billsQuery.data?.length ?? 0) === 0 && <p className="text-sm text-ink/70">{t("bills.empty")}</p>}
         </div>
       </section>
     </div>

@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { apiClient } from "@api-client";
 import { useState } from "react";
+import { useI18n } from "@/shared/i18n/I18nProvider";
 
 export function ParticipantsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const [name, setName] = useState("");
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const participantsQuery = useQuery({
     queryKey: ["participants", groupId],
@@ -24,7 +26,7 @@ export function ParticipantsPage() {
 
   return (
     <section className="card p-5">
-      <h2 className="text-lg font-semibold">Participants</h2>
+      <h2 className="text-lg font-semibold">{t("participants.title")}</h2>
       <form
         className="mt-4 flex gap-2"
         onSubmit={(event) => {
@@ -37,11 +39,11 @@ export function ParticipantsPage() {
       >
         <input
           className="w-full rounded-xl border border-ink/20 px-3 py-2"
-          placeholder="Add participant"
+          placeholder={t("participants.placeholder")}
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
-        <button className="rounded-xl bg-ink px-4 py-2 text-white" type="submit">Add</button>
+        <button className="rounded-xl bg-ink px-4 py-2 text-white" type="submit">{t("participants.add")}</button>
       </form>
 
       <ul className="mt-4 space-y-2">
