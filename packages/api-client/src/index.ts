@@ -1,3 +1,5 @@
+import { request } from "./http";
+
 export type FeeType = 1 | 2;
 export type SplitMode = 1 | 2;
 
@@ -90,28 +92,8 @@ export type SettlementResultDto = {
   transfers: SettlementTransferDto[];
 };
 
-const API_BASE_URL = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://localhost:5204";
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    }
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Request failed: ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
-}
+export { ApiError, getApiErrorMessage, type ApiProblemDetails } from "./errors";
+export { getApiBaseUrl } from "./config";
 
 export const apiClient = {
   createGroup: (name: string) => request<GroupDto>("/api/groups", {
@@ -135,6 +117,7 @@ export const apiClient = {
     const suffix = params.toString().length > 0 ? `?${params.toString()}` : "";
     return request<BillSummaryDto[]>(`/api/groups/${groupId}/bills${suffix}`);
   },
+  getBill: (groupId: string, billId: string) => request<BillDetailDto>(`/api/groups/${groupId}/bills/${billId}`),
   getSettlements: (groupId: string, query?: { fromDate?: string; toDate?: string }) => {
     const params = new URLSearchParams();
     if (query?.fromDate) params.set("fromDate", query.fromDate);

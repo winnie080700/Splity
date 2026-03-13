@@ -1,0 +1,13 @@
+{
+  "name": "splity",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "node scripts/dev.js frontend",
+    "dev:backend": "node scripts/dev.js backend",
+    "install:frontend": "npm install --prefix apps/frontend",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "npm run build --prefix apps/frontend",
+    "build:backend": "node scripts/backend.js build"
+  }
+}
