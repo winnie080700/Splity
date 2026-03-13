@@ -1,15 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color-scheme: light;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #f3f7fb;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 0%, #ffffff 0%, #dff3ff 50%, #ccf7de 100%);
+  color: #0f172a;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #f3f7fb 42%, #edf3fa 100%);
 }
 
 input,
@@ -19,6 +34,85 @@ textarea {
   font: inherit;
 }
 
-.card {
-  @apply rounded-2xl border border-ink/10 bg-white/80 shadow-sm;
+button,
+a {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+@layer base {
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-[28px] border border-white/80 bg-white/90 shadow-soft backdrop-blur;
+  }
+
+  .surface-muted {
+    @apply rounded-[24px] border border-slate-200/80 bg-slate-50/80;
+  }
+
+  .eyebrow {
+    @apply inline-flex w-fit items-center gap-2 rounded-full border border-brand/10 bg-brand/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand;
+  }
+
+  .page-title {
+    @apply text-3xl font-semibold tracking-tight text-ink md:text-[2.5rem];
+  }
+
+  .section-title {
+    @apply text-xl font-semibold tracking-tight text-ink;
+  }
+
+  .section-copy {
+    @apply text-sm leading-6 text-slate;
+  }
+
+  .input-base {
+    @apply min-h-[48px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink outline-none ring-0 placeholder:text-slate/60 hover:border-slate-300 focus:border-brand focus:ring-4 focus:ring-brand/10;
+  }
+
+  .button-primary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white shadow-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+
+  .button-secondary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-soft hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+
+  .button-pill {
+    @apply inline-flex min-h-[40px] items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-sm font-medium text-slate hover:border-slate-300 hover:bg-white hover:text-ink;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .stat-card {
+    @apply rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-soft;
+  }
+
+  .list-card {
+    @apply rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-soft hover:-translate-y-0.5 hover:shadow-lift;
+  }
+
+  .empty-state {
+    @apply flex min-h-[220px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-10 text-center;
+  }
 }
