@@ -5,10 +5,13 @@ const path = require("node:path");
 const mode = process.argv[2] ?? "full";
 const workspaceRoot = path.resolve(__dirname, "..");
 const frontendDir = path.join(workspaceRoot, "apps", "frontend");
+const backendDir = path.join(workspaceRoot, "apps", "backend", "src", "Splity.Api");
+const dotnetCliHome = path.join(workspaceRoot, ".dotnet");
 
 const isWindows = process.platform === "win32";
-const npmCommand = isWindows ? "npm.cmd" : "npm";
-const nodeCommand = isWindows ? "node.exe" : "node";
+const dotnetCommand = isWindows ? "dotnet.exe" : "dotnet";
+const frontendCommand = isWindows ? "powershell.exe" : "npm";
+const frontendArgs = isWindows ? ["-Command", "npm run dev"] : ["run", "dev"];
 
 const processes = [];
 let shuttingDown = false;
@@ -50,15 +53,18 @@ function stopOthers(exitingChild) {
 }
 
 function launch(label, command, args, options) {
+  const stdio = options.prefixed === false ? "inherit" : ["ignore", "pipe", "pipe"];
   const child = spawn(command, args, {
     cwd: options.cwd,
     env: options.env,
-    stdio: ["inherit", "pipe", "pipe"]
+    stdio
   });
 
   processes.push(child);
-  prefixStream(child.stdout, label);
-  prefixStream(child.stderr, `${label}:err`);
+  if (options.prefixed !== false) {
+    prefixStream(child.stdout, label);
+    prefixStream(child.stderr, `${label}:err`);
+  }
 
   child.on("exit", (code, signal) => {
     const status = signal ? `signal ${signal}` : `code ${code ?? 0}`;
@@ -73,10 +79,16 @@ function launch(label, command, args, options) {
     }
   });
 
+  child.on("error", (error) => {
+    process.stderr.write(`[${label}:err] ${error.message}\n`);
+    stopOthers(child);
+    process.exitCode = 1;
+  });
+
   return child;
 }
 
-function launchFrontend() {
+function ensureFrontendDependencies() {
   const frontendNodeModules = path.join(frontendDir, "node_modules");
 
   if (!fs.existsSync(frontendNodeModules)) {
@@ -85,17 +97,26 @@ function launchFrontend() {
     );
     process.exit(1);
   }
+}
 
-  return launch("frontend", npmCommand, ["run", "dev"], {
+function launchFrontend() {
+  ensureFrontendDependencies();
+  return launch("frontend", frontendCommand, frontendArgs, {
     cwd: frontendDir,
-    env: process.env
+    env: process.env,
+    prefixed: false
   });
 }
 
 function launchBackend() {
-  return launch("backend", nodeCommand, [path.join("scripts", "backend.js"), "run"], {
-    cwd: workspaceRoot,
-    env: process.env
+  return launch("backend", dotnetCommand, ["watch", "run", "--launch-profile", "http"], {
+    cwd: backendDir,
+    env: {
+      ...process.env,
+      DOTNET_CLI_HOME: dotnetCliHome,
+      ASPNETCORE_ENVIRONMENT: process.env.ASPNETCORE_ENVIRONMENT ?? "Development"
+    },
+    prefixed: false
   });
 }
 
@@ -112,6 +133,7 @@ if (mode === "frontend") {
 } else if (mode === "backend") {
   launchBackend();
 } else if (mode === "full") {
+  ensureFrontendDependencies();
   launchBackend();
   launchFrontend();
 } else {
