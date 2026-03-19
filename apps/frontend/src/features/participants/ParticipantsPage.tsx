@@ -4,14 +4,20 @@ import { apiClient } from "@api-client";
 import { useRef, useState, type FormEvent } from "react";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { getErrorMessage, getInitials } from "@/shared/utils/format";
-import { EmptyState, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
-import { PlusIcon, UsersIcon } from "@/shared/ui/icons";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { EditNameDialog } from "@/shared/ui/EditNameDialog";
+import { EmptyState, IconActionButton, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
+import { PencilIcon, PlusIcon, TrashIcon, UsersIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 
 export function ParticipantsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -20,6 +26,12 @@ export function ParticipantsPage() {
   const participantsQuery = useQuery({
     queryKey: ["participants", groupId],
     queryFn: () => apiClient.listParticipants(groupId!),
+    enabled: Boolean(groupId)
+  });
+
+  const groupQuery = useQuery({
+    queryKey: ["group", groupId],
+    queryFn: () => apiClient.getGroup(groupId!),
     enabled: Boolean(groupId)
   });
 
@@ -40,6 +52,82 @@ export function ParticipantsPage() {
       showToast({
         title: t("feedback.requestFailed"),
         description: getErrorMessage(error),
+        tone: "error"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (nextName: string) => {
+      if (!groupId || !editingParticipantId) {
+        throw new Error(t("participants.editMissing"));
+      }
+
+      const duplicate = (participantsQuery.data ?? []).some(
+        (participant) =>
+          participant.id !== editingParticipantId &&
+          participant.name.trim().toLocaleLowerCase() === nextName.toLocaleLowerCase()
+      );
+
+      if (duplicate) {
+        throw new Error(t("participants.nameDuplicate"));
+      }
+
+      return apiClient.updateParticipant(groupId, editingParticipantId, { name: nextName });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["participants", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setEditError(null);
+      setEditingParticipantId(null);
+      showToast({
+        title: t("participants.editTitle"),
+        description: t("feedback.saved"),
+        tone: "success"
+      });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : getErrorMessage(error);
+      setEditError(message);
+      showToast({
+        title: t("feedback.requestFailed"),
+        description: message,
+        tone: "error"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!groupId || !deletingParticipantId) {
+        throw new Error(t("participants.deleteMissing"));
+      }
+
+      return apiClient.deleteParticipant(groupId, deletingParticipantId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["participants", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setDeleteError(null);
+      setDeletingParticipantId(null);
+      showToast({
+        title: t("participants.deleteTitle"),
+        description: t("feedback.deleted"),
+        tone: "success"
+      });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : getErrorMessage(error);
+      setDeleteError(message);
+      showToast({
+        title: t("feedback.requestFailed"),
+        description: message,
         tone: "error"
       });
     }
@@ -75,10 +163,10 @@ export function ParticipantsPage() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
-      <SectionCard className="p-6">
+      <SectionCard id="add-participant" className="p-6">
         <PageHeading
-          eyebrow={t("nav.participants")}
-          title={t("participants.title")}
+          eyebrow={groupQuery.data?.name ?? t("nav.participants")}
+          title={groupQuery.data ? `${groupQuery.data.name} · ${t("participants.title")}` : t("participants.title")}
           description={t("participants.subtitle")}
         />
 
@@ -90,13 +178,14 @@ export function ParticipantsPage() {
             tone="brand"
           />
           <div className="surface-muted p-4">
-            <div className="text-sm font-semibold text-ink">{t("home.tip")}</div>
-            <p className="mt-2 text-sm leading-6 text-slate">{t("home.quickStart2")}</p>
+            <div className="text-sm font-semibold text-ink">{t("participants.groupLabel")}</div>
+            <p className="mt-2 text-base font-semibold tracking-tight text-ink">{groupQuery.data?.name ?? "..."}</p>
+            <p className="mt-2 text-sm leading-6 text-muted">{t("participants.groupBody")}</p>
           </div>
         </div>
 
         <form
-          className="mt-6 flex flex-col gap-3 sm:flex-row"
+          className="mt-6 flex items-start gap-3"
           onSubmit={handleSubmit}
         >
           <input
@@ -115,10 +204,13 @@ export function ParticipantsPage() {
               }
             }}
           />
-          <button className="button-primary min-w-[132px]" disabled={createMutation.isPending || !name.trim()} type="submit">
-            {createMutation.isPending ? <LoadingSpinner /> : <PlusIcon className="h-4 w-4" />}
-            {createMutation.isPending ? `${t("participants.add")}...` : t("participants.add")}
-          </button>
+          <IconActionButton
+            disabled={createMutation.isPending || !name.trim()}
+            icon={createMutation.isPending ? <LoadingSpinner /> : <PlusIcon className="h-4 w-4" />}
+            label={createMutation.isPending ? `${t("participants.add")}...` : t("participants.add")}
+            type="submit"
+            variant="primary"
+          />
         </form>
 
         {formError ? (
@@ -128,7 +220,7 @@ export function ParticipantsPage() {
         ) : null}
       </SectionCard>
 
-      <SectionCard className="p-6">
+      <SectionCard id="participant-list" className="p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="section-title">{t("participants.title")}</h2>
@@ -140,7 +232,19 @@ export function ParticipantsPage() {
         </div>
 
         <div className="mt-5">
-          {participantsQuery.isError ? (
+          {groupQuery.isError ? (
+            <InlineMessage
+              tone="error"
+              title={t("feedback.loadFailed")}
+              action={(
+                <button className="button-secondary" onClick={() => groupQuery.refetch()} type="button">
+                  {t("common.retry")}
+                </button>
+              )}
+            >
+              {getErrorMessage(groupQuery.error)}
+            </InlineMessage>
+          ) : participantsQuery.isError ? (
             <InlineMessage
               tone="error"
               title={t("feedback.loadFailed")}
@@ -175,9 +279,28 @@ export function ParticipantsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-base font-semibold tracking-tight text-ink">{participant.name}</div>
-                      <div className="mt-1 text-sm text-slate">#{String(index + 1).padStart(2, "0")}</div>
+                      <div className="mt-1 text-sm text-muted">#{String(index + 1).padStart(2, "0")}</div>
                     </div>
-                    <span className="tag bg-slate-100 text-slate">#{participant.id.slice(0, 4)}</span>
+                    <IconActionButton
+                      icon={<PencilIcon className="h-4 w-4" />}
+                      label={t("participants.editAction")}
+                      onClick={() => {
+                        setEditError(null);
+                        setEditingParticipantId(participant.id);
+                      }}
+                      size="sm"
+                    />
+                    <IconActionButton
+                      className="text-danger hover:border-rose-200 hover:bg-rose-50 hover:text-danger"
+                      icon={<TrashIcon className="h-4 w-4" />}
+                      label={t("participants.deleteAction")}
+                      onClick={() => {
+                        setDeleteError(null);
+                        setDeletingParticipantId(participant.id);
+                      }}
+                      size="sm"
+                    />
+                    <span className="tag bg-slate-100 text-muted">#{participant.id.slice(0, 4)}</span>
                   </div>
                 </article>
               ))}
@@ -185,6 +308,39 @@ export function ParticipantsPage() {
           )}
         </div>
       </SectionCard>
+
+      <EditNameDialog
+        open={Boolean(editingParticipantId)}
+        title={t("participants.editTitle")}
+        description={t("participants.editBody")}
+        initialValue={(participantsQuery.data ?? []).find((participant) => participant.id === editingParticipantId)?.name ?? ""}
+        placeholder={t("participants.placeholder")}
+        cancelLabel={t("common.cancel")}
+        submitLabel={t("common.saveChanges")}
+        validationMessage={t("participants.nameRequired")}
+        error={editError}
+        isBusy={updateMutation.isPending}
+        onClose={() => {
+          setEditError(null);
+          setEditingParticipantId(null);
+        }}
+        onSubmit={(value) => updateMutation.mutate(value)}
+      />
+      <ConfirmDialog
+        open={Boolean(deletingParticipantId)}
+        title={t("participants.deleteTitle")}
+        description={t("participants.deleteBody")}
+        details={(participantsQuery.data ?? []).find((participant) => participant.id === deletingParticipantId)?.name ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("common.delete")}
+        error={deleteError}
+        isBusy={deleteMutation.isPending}
+        onClose={() => {
+          setDeleteError(null);
+          setDeletingParticipantId(null);
+        }}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </div>
   );
 }
