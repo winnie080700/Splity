@@ -150,7 +150,6 @@ export function AuthPage() {
 
             <div className="mt-6 space-y-3 text-center text-sm">
               <button className="text-slate-400 transition hover:text-brand" type="button">{t("auth.forgotPassword")}</button>
-              <div className="text-brand">{mode === "register" ? t("auth.switchToLogin") : t("auth.switchToRegister")}</div>
             </div>
           </section>
         </div>

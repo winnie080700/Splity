@@ -88,7 +88,7 @@ export function SettlementsPage() {
         <PageHeading
           eyebrow={t("nav.settlement")}
           title={t("settlement.transferPlan")}
-          description={t("settlement.subtitle")}
+          description={t("settlement.subtitle") + t("settlement.shareHint")}
           actions={
             groupId ? (
               <button className="button-secondary" onClick={() => setIsShareDialogOpen(true)} type="button">
@@ -97,9 +97,6 @@ export function SettlementsPage() {
             ) : undefined
           }
         />
-        <div className="mt-4 rounded-[22px] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-muted">
-          {t("settlement.shareHint")}
-        </div>
         <div className="mt-6 grid gap-3 xl:grid-cols-[1.36fr,0.78fr,0.78fr,0.78fr]">
           <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-soft">
             <div className="flex items-center gap-2 text-sm font-semibold text-ink"><CalendarIcon className="h-4 w-4 text-brand" />{t("settlement.filters")}</div>
@@ -109,14 +106,14 @@ export function SettlementsPage() {
                 <input className={["input-base", hasInvalidDateRange ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                 <input className={["input-base", hasInvalidDateRange ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
               </div>
-              <div>
+              {/* <div>
                 <div className="text-sm font-semibold text-ink">{t("settlement.actingAs")}</div>
                 <p className="mt-1 text-sm leading-6 text-muted">{t("settlement.actingAsHint")}</p>
                 <select className="input-base mt-3" value={actingParticipantId} onChange={(e) => setActingParticipantId(e.target.value)}>
                   {balances.length === 0 ? <option value="">{t("settlement.selectParticipant")}</option> : null}
                   {balances.map((balance) => <option key={balance.participantId} value={balance.participantId}>{balance.participantName}</option>)}
                 </select>
-              </div>
+              </div> */}
             </div>
             {hasInvalidDateRange ? <p className="mt-3 text-sm font-medium text-danger">{t("settlement.dateRangeInvalid")}</p> : null}
           </div>

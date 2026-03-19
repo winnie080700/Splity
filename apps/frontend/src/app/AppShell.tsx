@@ -170,7 +170,7 @@ export function AppShell() {
                 <span className={buildUtilityIconClass(location.pathname === "/")}>
                   <HomeIcon className="h-4 w-4" />
                 </span>
-                <span className="truncate">{t("nav.home")}</span>
+                <span className="truncate">{t("nav.dashboard")}</span>
               </NavLink>
             </div>
 
