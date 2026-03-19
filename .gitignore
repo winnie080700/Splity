@@ -17,3 +17,5 @@
 
 # Tooling
 .dotnet/
+.codex-temp/
+.tmp/
