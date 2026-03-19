@@ -12,6 +12,19 @@ public sealed class ParticipantRepository(SplityDbContext dbContext) : IParticip
         return dbContext.Participants.AddAsync(participant, cancellationToken).AsTask();
     }
 
+    public Task<Participant?> GetAsync(Guid groupId, Guid participantId, CancellationToken cancellationToken)
+    {
+        return dbContext.Participants
+            .FirstOrDefaultAsync(x => x.GroupId == groupId && x.Id == participantId, cancellationToken);
+    }
+
+    public async Task<bool> HasBillReferencesAsync(Guid participantId, CancellationToken cancellationToken)
+    {
+        return await dbContext.BillItemResponsibilities.AnyAsync(x => x.ParticipantId == participantId, cancellationToken)
+            || await dbContext.BillShares.AnyAsync(x => x.ParticipantId == participantId, cancellationToken)
+            || await dbContext.PaymentContributions.AnyAsync(x => x.ParticipantId == participantId, cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Participant>> ListByGroupAsync(Guid groupId, CancellationToken cancellationToken)
     {
         return await dbContext.Participants
@@ -35,5 +48,10 @@ public sealed class ParticipantRepository(SplityDbContext dbContext) : IParticip
             .AsNoTracking()
             .Where(x => x.GroupId == groupId && participantIds.Contains(x.Id))
             .ToArrayAsync(cancellationToken);
+    }
+
+    public void Remove(Participant participant)
+    {
+        dbContext.Participants.Remove(participant);
     }
 }

@@ -4,7 +4,7 @@ namespace Splity.Application.Calculations;
 
 public sealed record ParticipantSplitInput(Guid ParticipantId, decimal Weight);
 
-public sealed record BillCalculationItemInput(string Description, decimal Amount);
+public sealed record BillCalculationItemInput(string Description, decimal Amount, IReadOnlyCollection<Guid> ResponsibleParticipantIds);
 
 public sealed record BillCalculationFeeInput(string Name, FeeType FeeType, decimal Value);
 

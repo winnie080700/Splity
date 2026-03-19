@@ -57,6 +57,7 @@ public sealed class BillRepository(SplityDbContext dbContext) : IBillRepository
     {
         return dbContext.Bills
             .Include(x => x.Items)
+            .ThenInclude(x => x.Responsibilities)
             .Include(x => x.Fees)
             .Include(x => x.Shares)
             .Include(x => x.Contributions);

@@ -12,9 +12,11 @@ public static class DependencyInjection
         services.AddScoped<ISettlementCalculator, SettlementCalculator>();
 
         services.AddScoped<IGroupsService, GroupsService>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IParticipantsService, ParticipantsService>();
         services.AddScoped<IBillsService, BillsService>();
         services.AddScoped<ISettlementsService, SettlementsService>();
+        services.AddScoped<ISettlementSharesService, SettlementSharesService>();
 
         return services;
     }

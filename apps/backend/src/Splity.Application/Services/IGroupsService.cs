@@ -4,5 +4,8 @@ namespace Splity.Application.Services;
 
 public interface IGroupsService
 {
-    Task<GroupDto> CreateAsync(CreateGroupInput input, CancellationToken cancellationToken);
+    Task<GroupDto> CreateAsync(CreateGroupInput input, Guid? creatorUserId, CancellationToken cancellationToken);
+    Task<GroupDto> GetAsync(Guid groupId, CancellationToken cancellationToken);
+    Task<GroupDto> UpdateAsync(Guid groupId, UpdateGroupInput input, CancellationToken cancellationToken);
+    Task DeleteAsync(Guid groupId, CancellationToken cancellationToken);
 }

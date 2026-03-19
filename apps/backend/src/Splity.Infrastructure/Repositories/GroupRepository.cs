@@ -16,4 +16,24 @@ public sealed class GroupRepository(SplityDbContext dbContext) : IGroupRepositor
     {
         return dbContext.Groups.AnyAsync(x => x.Id == groupId, cancellationToken);
     }
+
+    public Task<Group?> GetAsync(Guid groupId, CancellationToken cancellationToken)
+    {
+        return dbContext.Groups
+            .AsNoTracking()
+            .Include(x => x.CreatedByUser)
+            .FirstOrDefaultAsync(x => x.Id == groupId, cancellationToken);
+    }
+
+    public Task<Group?> GetForUpdateAsync(Guid groupId, CancellationToken cancellationToken)
+    {
+        return dbContext.Groups
+            .Include(x => x.CreatedByUser)
+            .FirstOrDefaultAsync(x => x.Id == groupId, cancellationToken);
+    }
+
+    public void Remove(Group group)
+    {
+        dbContext.Groups.Remove(group);
+    }
 }

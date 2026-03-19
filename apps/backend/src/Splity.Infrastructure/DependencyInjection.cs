@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Splity.Application.Abstractions;
 using Splity.Infrastructure.Persistence;
 using Splity.Infrastructure.Repositories;
+using Splity.Infrastructure.Security;
 
 namespace Splity.Infrastructure;
 
@@ -30,8 +31,13 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<IParticipantRepository, ParticipantRepository>();
         services.AddScoped<IBillRepository, BillRepository>();
+        services.AddScoped<ISettlementTransferConfirmationRepository, SettlementTransferConfirmationRepository>();
+        services.AddScoped<ISettlementShareLinkRepository, SettlementShareLinkRepository>();
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ITokenProvider, JwtTokenProvider>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<SplityDbContext>());
 
         return services;

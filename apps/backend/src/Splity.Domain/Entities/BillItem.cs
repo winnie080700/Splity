@@ -8,4 +8,5 @@ public sealed class BillItem
     public decimal Amount { get; set; }
 
     public Bill? Bill { get; set; }
+    public ICollection<BillItemResponsibility> Responsibilities { get; set; } = new List<BillItemResponsibility>();
 }

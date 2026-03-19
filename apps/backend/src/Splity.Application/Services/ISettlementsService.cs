@@ -9,4 +9,12 @@ public interface ISettlementsService
         DateTime? fromDateUtc,
         DateTime? toDateUtc,
         CancellationToken cancellationToken);
+    Task<SettlementTransferDto> MarkPaidAsync(
+        Guid groupId,
+        UpdateSettlementTransferStatusInput input,
+        CancellationToken cancellationToken);
+    Task<SettlementTransferDto> MarkReceivedAsync(
+        Guid groupId,
+        UpdateSettlementTransferStatusInput input,
+        CancellationToken cancellationToken);
 }

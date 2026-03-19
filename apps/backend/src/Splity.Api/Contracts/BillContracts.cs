@@ -2,7 +2,7 @@ using Splity.Domain.Enums;
 
 namespace Splity.Api.Contracts;
 
-public sealed record BillItemRequest(string Description, decimal Amount);
+public sealed record BillItemRequest(string Description, decimal Amount, IReadOnlyCollection<Guid> ResponsibleParticipantIds);
 
 public sealed record BillFeeRequest(string Name, FeeType FeeType, decimal Value);
 

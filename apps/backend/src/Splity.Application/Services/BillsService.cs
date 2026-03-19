@@ -11,6 +11,7 @@ public sealed class BillsService(
     IGroupRepository groupRepository,
     IParticipantRepository participantRepository,
     IBillRepository billRepository,
+    ISettlementTransferConfirmationRepository confirmationRepository,
     IBillCalculator billCalculator,
     IUnitOfWork unitOfWork) : IBillsService
 {
@@ -61,6 +62,7 @@ public sealed class BillsService(
 
         var participantIds = bill.Shares.Select(x => x.ParticipantId)
             .Concat(bill.Contributions.Select(x => x.ParticipantId))
+            .Concat(bill.Items.SelectMany(x => x.Responsibilities.Select(responsibility => responsibility.ParticipantId)))
             .Distinct()
             .ToArray();
 
@@ -94,6 +96,7 @@ public sealed class BillsService(
         await EnsureGroupExists(groupId, cancellationToken);
         var bill = await GetBillEntity(groupId, billId, cancellationToken);
 
+        await confirmationRepository.DeleteByGroupAsync(groupId, cancellationToken);
         billRepository.Remove(bill);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
@@ -109,7 +112,7 @@ public sealed class BillsService(
         var splitInputs = BuildSplitInputs(splitMode, participants);
         return billCalculator.CalculateBillShares(new BillCalculationInput(
             splitInputs,
-            items.Select(x => new BillCalculationItemInput(x.Description, x.Amount)).ToArray(),
+            items.Select(x => new BillCalculationItemInput(x.Description, x.Amount, x.ResponsibleParticipantIds)).ToArray(),
             fees.Select(x => new BillCalculationFeeInput(x.Name, x.FeeType, x.Value)).ToArray(),
             primaryPayerParticipantId,
             extraContributions.Select(x => new BillCalculationContributionInput(x.ParticipantId, x.Amount)).ToArray()));
@@ -207,12 +210,23 @@ public sealed class BillsService(
     {
         foreach (var item in items)
         {
+            var billItemId = Guid.NewGuid();
             bill.Items.Add(new BillItem
             {
-                Id = Guid.NewGuid(),
+                Id = billItemId,
                 BillId = bill.Id,
                 Description = item.Description.Trim(),
-                Amount = RoundToCurrency(item.Amount)
+                Amount = RoundToCurrency(item.Amount),
+                Responsibilities = item.ResponsibleParticipantIds
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .Select(participantId => new BillItemResponsibility
+                    {
+                        Id = Guid.NewGuid(),
+                        BillItemId = billItemId,
+                        ParticipantId = participantId
+                    })
+                    .ToArray()
             });
         }
 
@@ -336,7 +350,20 @@ public sealed class BillsService(
             computed.GrandTotalAmount,
             bill.Items
                 .OrderBy(x => x.Description)
-                .Select(x => new BillItemDto(x.Id, x.Description, x.Amount))
+                .Select(x => new BillItemDto(
+                    x.Id,
+                    x.Description,
+                    x.Amount,
+                    x.Responsibilities
+                        .OrderBy(responsibility => participantLookup.TryGetValue(responsibility.ParticipantId, out var participant)
+                            ? participant.Name
+                            : responsibility.ParticipantId.ToString())
+                        .Select(responsibility => new BillItemAssigneeDto(
+                            responsibility.ParticipantId,
+                            participantLookup.TryGetValue(responsibility.ParticipantId, out var participant)
+                                ? participant.Name
+                                : "Unknown"))
+                        .ToArray()))
                 .ToArray(),
             bill.Fees
                 .Select((x, index) => new BillFeeDto(

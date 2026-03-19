@@ -10,4 +10,5 @@ public sealed class Participant
     public Group? Group { get; set; }
     public ICollection<BillShare> BillShares { get; set; } = new List<BillShare>();
     public ICollection<PaymentContribution> PaymentContributions { get; set; } = new List<PaymentContribution>();
+    public ICollection<BillItemResponsibility> BillItemResponsibilities { get; set; } = new List<BillItemResponsibility>();
 }

@@ -35,6 +35,25 @@ public sealed class BillCalculator : IBillCalculator
             {
                 throw new DomainValidationException("Bill item amount must be greater than zero.");
             }
+
+            var responsibleParticipantIds = item.ResponsibleParticipantIds
+                .Distinct()
+                .ToArray();
+
+            if (responsibleParticipantIds.Length == 0)
+            {
+                throw new DomainValidationException("Each bill item must have at least one responsible participant.");
+            }
+
+            if (responsibleParticipantIds.Length != item.ResponsibleParticipantIds.Count)
+            {
+                throw new DomainValidationException("Duplicate responsible participants are not allowed for a bill item.");
+            }
+
+            if (responsibleParticipantIds.Any(participantId => input.ParticipantSplits.All(x => x.ParticipantId != participantId)))
+            {
+                throw new DomainValidationException("Responsible item participants must be part of bill participants.");
+            }
         }
 
         foreach (var split in input.ParticipantSplits)
@@ -63,9 +82,20 @@ public sealed class BillCalculator : IBillCalculator
         var totalFee = RoundToCurrency(appliedFees.Sum(x => x.AppliedAmount));
         var grandTotal = RoundToCurrency(subtotal + totalFee);
 
-        var preFeeAllocations = AllocateByWeight(
-            subtotal,
-            input.ParticipantSplits.ToDictionary(x => x.ParticipantId, x => x.Weight));
+        var participantWeights = input.ParticipantSplits.ToDictionary(x => x.ParticipantId, x => x.Weight);
+        var preFeeAllocations = input.ParticipantSplits.ToDictionary(x => x.ParticipantId, _ => 0m);
+
+        foreach (var item in input.Items)
+        {
+            var responsibleWeights = item.ResponsibleParticipantIds
+                .Distinct()
+                .ToDictionary(participantId => participantId, participantId => participantWeights[participantId]);
+
+            foreach (var allocation in AllocateByWeight(item.Amount, responsibleWeights))
+            {
+                preFeeAllocations[allocation.Key] = RoundToCurrency(preFeeAllocations[allocation.Key] + allocation.Value);
+            }
+        }
 
         Dictionary<Guid, decimal> feeAllocations;
         if (totalFee == 0)

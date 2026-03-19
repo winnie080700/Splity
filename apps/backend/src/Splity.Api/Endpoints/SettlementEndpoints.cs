@@ -1,3 +1,5 @@
+using Splity.Api.Contracts;
+using Splity.Application.Models;
 using Splity.Application.Services;
 
 namespace Splity.Api.Endpoints;
@@ -20,6 +22,42 @@ public static class SettlementEndpoints
             })
             .WithName("GetSettlements")
             .WithSummary("Get aggregated net balances and transfer plan.");
+
+        group.MapPost("/mark-paid", async (
+                Guid groupId,
+                UpdateSettlementTransferStatusRequest request,
+                ISettlementsService service,
+                CancellationToken ct) =>
+            {
+                var result = await service.MarkPaidAsync(groupId, ToUpdateInput(request), ct);
+                return Results.Ok(result);
+            })
+            .WithName("MarkSettlementPaid")
+            .WithSummary("Mark a settlement transfer as paid.");
+
+        group.MapPost("/mark-received", async (
+                Guid groupId,
+                UpdateSettlementTransferStatusRequest request,
+                ISettlementsService service,
+                CancellationToken ct) =>
+            {
+                var result = await service.MarkReceivedAsync(groupId, ToUpdateInput(request), ct);
+                return Results.Ok(result);
+            })
+            .WithName("MarkSettlementReceived")
+            .WithSummary("Mark a settlement transfer as received.");
+    }
+
+    private static UpdateSettlementTransferStatusInput ToUpdateInput(UpdateSettlementTransferStatusRequest request)
+    {
+        return new UpdateSettlementTransferStatusInput(
+            request.FromParticipantId,
+            request.ToParticipantId,
+            request.Amount,
+            NormalizeDate(request.FromDateUtc),
+            NormalizeDate(request.ToDateUtc),
+            request.ActorParticipantId,
+            request.ProofScreenshotDataUrl);
     }
 
     private static DateTime? NormalizeDate(DateTime? value)

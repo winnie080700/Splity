@@ -64,7 +64,7 @@ public static class BillEndpoints
             request.TransactionDateUtc,
             request.SplitMode,
             request.PrimaryPayerParticipantId,
-            (request.Items ?? Array.Empty<BillItemRequest>()).Select(x => new BillItemInput(x.Description, x.Amount)).ToArray(),
+            (request.Items ?? Array.Empty<BillItemRequest>()).Select(x => new BillItemInput(x.Description, x.Amount, x.ResponsibleParticipantIds ?? Array.Empty<Guid>())).ToArray(),
             (request.Fees ?? Array.Empty<BillFeeRequest>()).Select(x => new BillFeeInput(x.Name, x.FeeType, x.Value)).ToArray(),
             (request.Participants ?? Array.Empty<BillParticipantRequest>()).Select(x => new BillParticipantInput(x.ParticipantId, x.Weight)).ToArray(),
             (request.ExtraContributions ?? Array.Empty<BillContributionRequest>()).Select(x => new BillContributionInput(x.ParticipantId, x.Amount)).ToArray());
@@ -77,7 +77,7 @@ public static class BillEndpoints
             request.TransactionDateUtc,
             request.SplitMode,
             request.PrimaryPayerParticipantId,
-            (request.Items ?? Array.Empty<BillItemRequest>()).Select(x => new BillItemInput(x.Description, x.Amount)).ToArray(),
+            (request.Items ?? Array.Empty<BillItemRequest>()).Select(x => new BillItemInput(x.Description, x.Amount, x.ResponsibleParticipantIds ?? Array.Empty<Guid>())).ToArray(),
             (request.Fees ?? Array.Empty<BillFeeRequest>()).Select(x => new BillFeeInput(x.Name, x.FeeType, x.Value)).ToArray(),
             (request.Participants ?? Array.Empty<BillParticipantRequest>()).Select(x => new BillParticipantInput(x.ParticipantId, x.Weight)).ToArray(),
             (request.ExtraContributions ?? Array.Empty<BillContributionRequest>()).Select(x => new BillContributionInput(x.ParticipantId, x.Amount)).ToArray());

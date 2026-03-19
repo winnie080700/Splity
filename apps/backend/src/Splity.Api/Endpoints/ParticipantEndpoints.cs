@@ -25,5 +25,21 @@ public static class ParticipantEndpoints
             })
             .WithName("ListParticipants")
             .WithSummary("List participants by group.");
+
+        group.MapPut("/{participantId:guid}", async (Guid groupId, Guid participantId, UpdateParticipantRequest request, IParticipantsService service, CancellationToken ct) =>
+            {
+                var result = await service.UpdateAsync(groupId, participantId, new UpdateParticipantInput(request.Name), ct);
+                return Results.Ok(result);
+            })
+            .WithName("UpdateParticipant")
+            .WithSummary("Update a participant name.");
+
+        group.MapDelete("/{participantId:guid}", async (Guid groupId, Guid participantId, IParticipantsService service, CancellationToken ct) =>
+            {
+                await service.DeleteAsync(groupId, participantId, ct);
+                return Results.NoContent();
+            })
+            .WithName("DeleteParticipant")
+            .WithSummary("Delete a participant when no bill references remain.");
     }
 }

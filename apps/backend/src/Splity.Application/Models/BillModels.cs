@@ -2,7 +2,7 @@ using Splity.Domain.Enums;
 
 namespace Splity.Application.Models;
 
-public sealed record BillItemInput(string Description, decimal Amount);
+public sealed record BillItemInput(string Description, decimal Amount, IReadOnlyCollection<Guid> ResponsibleParticipantIds);
 
 public sealed record BillFeeInput(string Name, FeeType FeeType, decimal Value);
 
@@ -40,7 +40,13 @@ public sealed record BillShareDto(
 
 public sealed record BillContributionDto(Guid ParticipantId, string ParticipantName, decimal Amount);
 
-public sealed record BillItemDto(Guid Id, string Description, decimal Amount);
+public sealed record BillItemAssigneeDto(Guid ParticipantId, string ParticipantName);
+
+public sealed record BillItemDto(
+    Guid Id,
+    string Description,
+    decimal Amount,
+    IReadOnlyCollection<BillItemAssigneeDto> ResponsibleParticipants);
 
 public sealed record BillFeeDto(Guid Id, string Name, FeeType FeeType, decimal Value, decimal AppliedAmount);
 
