@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Link, type LinkProps } from "react-router-dom";
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -33,12 +34,14 @@ export function PageHeading({
 
 export function SectionCard({
   children,
-  className
+  className,
+  id
 }: {
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
-  return <section className={cn("card p-5 md:p-6", className)}>{children}</section>;
+  return <section id={id} className={cn("card p-5 md:p-6", className)}>{children}</section>;
 }
 
 export function StatTile({
@@ -65,7 +68,7 @@ export function StatTile({
     <div className={cn("stat-card", toneClasses, className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-medium text-slate">{label}</div>
+          <div className="text-sm font-medium text-muted">{label}</div>
           <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
         </div>
         {icon ? (
@@ -97,7 +100,7 @@ export function EmptyState({
         </span>
       ) : null}
       <h3 className="mt-4 text-lg font-semibold tracking-tight text-ink">{title}</h3>
-      <p className="mt-2 max-w-md text-sm leading-6 text-slate">{description}</p>
+      <p className="mt-2 max-w-md text-sm leading-6 text-muted">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
@@ -151,5 +154,71 @@ export function LoadingState({ lines = 4 }: { lines?: number }) {
         />
       ))}
     </div>
+  );
+}
+
+type IconActionVariant = "primary" | "secondary";
+type IconActionSize = "sm" | "md";
+
+function getIconActionClassName(variant: IconActionVariant, size: IconActionSize, className?: string) {
+  return cn(
+    "icon-action",
+    variant === "primary" ? "icon-action-primary" : "icon-action-secondary",
+    size === "sm" ? "icon-action-sm" : "icon-action-md",
+    className
+  );
+}
+
+export function IconActionButton({
+  label,
+  icon,
+  variant = "secondary",
+  size = "md",
+  className,
+  type = "button",
+  ...props
+}: {
+  label: string;
+  icon: ReactNode;
+  variant?: IconActionVariant;
+  size?: IconActionSize;
+  className?: string;
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      aria-label={label}
+      title={label}
+      className={getIconActionClassName(variant, size, className)}
+      type={type}
+      {...props}
+    >
+      {icon}
+    </button>
+  );
+}
+
+export function IconActionLink({
+  label,
+  icon,
+  variant = "secondary",
+  size = "md",
+  className,
+  ...props
+}: {
+  label: string;
+  icon: ReactNode;
+  variant?: IconActionVariant;
+  size?: IconActionSize;
+  className?: string;
+} & LinkProps) {
+  return (
+    <Link
+      aria-label={label}
+      title={label}
+      className={getIconActionClassName(variant, size, className)}
+      {...props}
+    >
+      {icon}
+    </Link>
   );
 }

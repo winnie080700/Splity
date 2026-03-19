@@ -3,7 +3,20 @@ type SavedGroup = {
   name: string;
 };
 
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+type AuthSession = {
+  accessToken: string;
+  user: AuthUser;
+};
+
 const KEY = "splity.savedGroups";
+const AUTH_KEY = "splity.auth";
+const GROUPS_CHANGED_EVENT = "splity:groups-changed";
 
 export function readSavedGroups(): SavedGroup[] {
   const raw = localStorage.getItem(KEY);
@@ -23,4 +36,51 @@ export function saveGroup(group: SavedGroup) {
   const groups = readSavedGroups();
   const deduped = [group, ...groups.filter((x) => x.id !== group.id)].slice(0, 10);
   localStorage.setItem(KEY, JSON.stringify(deduped));
+  window.dispatchEvent(new Event(GROUPS_CHANGED_EVENT));
+}
+
+export function syncSavedGroup(group: SavedGroup) {
+  const groups = readSavedGroups();
+  const existingIndex = groups.findIndex((entry) => entry.id === group.id);
+  const nextGroups = existingIndex === -1
+    ? [group, ...groups].slice(0, 10)
+    : groups.map((entry) => entry.id === group.id ? group : entry);
+  localStorage.setItem(KEY, JSON.stringify(nextGroups));
+  window.dispatchEvent(new Event(GROUPS_CHANGED_EVENT));
+}
+
+export function removeSavedGroup(groupId: string) {
+  const nextGroups = readSavedGroups().filter((group) => group.id !== groupId);
+  localStorage.setItem(KEY, JSON.stringify(nextGroups));
+  window.dispatchEvent(new Event(GROUPS_CHANGED_EVENT));
+}
+
+export function readAuthSession(): AuthSession | null {
+  const raw = localStorage.getItem(AUTH_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as AuthSession;
+    if (!parsed?.accessToken || !parsed?.user?.id) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveAuthSession(session: AuthSession) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(AUTH_KEY);
+}
+
+export function getGroupsChangedEventName() {
+  return GROUPS_CHANGED_EVENT;
 }

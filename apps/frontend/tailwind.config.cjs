@@ -5,7 +5,7 @@ module.exports = {
     extend: {
       colors: {
         ink: "#0f172a",
-        slate: "#475569",
+        muted: "#475569",
         line: "#d9e2ec",
         sky: "#dbeafe",
         mint: "#dcfce7",

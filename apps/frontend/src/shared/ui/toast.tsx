@@ -63,10 +63,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <div className="flex items-start justify-between gap-4 px-4 py-4">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold">{toast.title}</div>
-                    <div className="mt-1 text-sm leading-6 text-slate">{toast.description}</div>
+                    <div className="mt-1 text-sm leading-6 text-muted">{toast.description}</div>
                   </div>
                   <button
-                    className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate hover:border-slate-300 hover:text-ink"
+                    className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-muted hover:border-slate-300 hover:text-ink"
                     onClick={() => dismissToast(toast.id)}
                     type="button"
                   >

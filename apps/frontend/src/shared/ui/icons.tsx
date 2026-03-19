@@ -76,6 +76,32 @@ export function GlobeIcon(props: IconProps) {
   );
 }
 
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </IconBase>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 13.5 8.5 15a3 3 0 1 1-4.25-4.25L7 8" />
+      <path d="m14 10.5 1.5-1.5a3 3 0 1 1 4.25 4.25L17 16" />
+      <path d="M8.5 15.5 15.5 8.5" />
+    </IconBase>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m5 12 4 4L19 6" />
+    </IconBase>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -112,6 +138,27 @@ export function SparklesIcon(props: IconProps) {
       <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" />
       <path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
       <path d="m5 14 .9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9L5 14Z" />
+    </IconBase>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20Z" />
+      <path d="m12.5 7 4.5 4.5" />
+    </IconBase>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 7h16" />
+      <path d="M9.5 3h5" />
+      <path d="M6.5 7 7.5 20a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9L17.5 7" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
     </IconBase>
   );
 }

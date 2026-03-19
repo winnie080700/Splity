@@ -1,6 +1,27 @@
 import { getApiBaseUrl } from "./config";
 import { ApiError, isProblemDetails, type ApiProblemDetails } from "./errors";
 
+function getStoredAccessToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem("splity.auth");
+  if (!raw) {
+    return null;
+  }
+
+  try
+  {
+    const parsed = JSON.parse(raw) as { accessToken?: string };
+    return parsed.accessToken ?? null;
+  }
+  catch
+  {
+    return null;
+  }
+}
+
 async function tryParseResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type") ?? "";
 
@@ -30,10 +51,12 @@ function buildError(response: Response, body: unknown) {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = getStoredAccessToken();
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init?.headers ?? {})
     }
   });

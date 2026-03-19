@@ -1,12 +1,13 @@
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { apiClient, type BillDetailDto, type BillSummaryDto } from "@api-client";
-import { saveGroup, readSavedGroups } from "@/shared/utils/storage";
+import { readSavedGroups, removeSavedGroup, saveGroup } from "@/shared/utils/storage";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
-import { EmptyState, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
-import { ArrowsIcon, PlusIcon, ReceiptIcon, SparklesIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { EmptyState, IconActionButton, IconActionLink, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
+import { ArrowsIcon, PlusIcon, ReceiptIcon, SparklesIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 
 function getPrimaryPayerName(detail: BillDetailDto) {
@@ -25,7 +26,10 @@ export function HomePage() {
   const [name, setName] = useState("");
   const [savedVersion, setSavedVersion] = useState(0);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
 
@@ -107,6 +111,48 @@ export function HomePage() {
     }
   });
 
+  const deleteGroupMutation = useMutation({
+    mutationFn: async () => {
+      if (!deletingGroupId) {
+        throw new Error(t("groups.editMissingGroup"));
+      }
+
+      return apiClient.deleteGroup(deletingGroupId);
+    },
+    onSuccess: async () => {
+      if (!deletingGroupId) {
+        return;
+      }
+
+      const deletedGroupId = deletingGroupId;
+      removeSavedGroup(deletedGroupId);
+      setSavedVersion((value) => value + 1);
+      await Promise.all([
+        queryClient.removeQueries({ queryKey: ["group", deletedGroupId] }),
+        queryClient.removeQueries({ queryKey: ["participants", deletedGroupId] }),
+        queryClient.removeQueries({ queryKey: ["bills", deletedGroupId] }),
+        queryClient.removeQueries({ queryKey: ["bill", deletedGroupId] }),
+        queryClient.removeQueries({ queryKey: ["settlements", deletedGroupId] })
+      ]);
+      setDeleteGroupError(null);
+      setDeletingGroupId(null);
+      showToast({
+        title: t("groups.deleteTitle"),
+        description: t("feedback.deleted"),
+        tone: "success"
+      });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : getErrorMessage(error);
+      setDeleteGroupError(message);
+      showToast({
+        title: t("feedback.requestFailed"),
+        description: message,
+        tone: "error"
+      });
+    }
+  });
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -138,7 +184,7 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.28fr,0.72fr]">
         <SectionCard className="overflow-hidden p-6 md:p-7">
           <PageHeading
             eyebrow={t("home.productEyebrow")}
@@ -146,7 +192,7 @@ export function HomePage() {
             description={t("home.productBody")}
           />
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1.18fr,0.82fr]">
             <div className="rounded-[28px] border border-brand/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.09),rgba(255,255,255,0.98))] p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-brand">
                 <WalletIcon className="h-4 w-4" />
@@ -155,31 +201,36 @@ export function HomePage() {
               <div className="mt-3 text-2xl font-semibold tracking-tight text-ink">
                 {activeGroup?.name ?? t("home.noActiveWorkspace")}
               </div>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
                 {activeGroup ? t("home.currentWorkspaceBody") : t("home.noActiveWorkspaceBody")}
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
                 {activeGroup ? (
                   <>
-                    <Link className="button-primary" to={`/groups/${activeGroup.id}/bills`}>
-                      <ReceiptIcon className="h-4 w-4" />
-                      {t("home.primaryAction")}
-                    </Link>
-                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/participants`}>
-                      <UsersIcon className="h-4 w-4" />
-                      {t("home.secondaryAction")}
-                    </Link>
-                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/settlements`}>
+                    <IconActionLink
+                      icon={<ReceiptIcon className="h-4 w-4" />}
+                      label={t("home.primaryAction")}
+                      to={`/groups/${activeGroup.id}/bills#create-bill`}
+                      variant="primary"
+                    />
+                    <IconActionLink
+                      icon={<UsersIcon className="h-4 w-4" />}
+                      label={t("home.secondaryAction")}
+                      to={`/groups/${activeGroup.id}/participants#add-participant`}
+                    />
+                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/settlements#transfer-plan`}>
                       <ArrowsIcon className="h-4 w-4" />
                       {t("home.settlementAction")}
                     </Link>
                   </>
                 ) : (
-                  <button className="button-primary" onClick={() => inputRef.current?.focus()} type="button">
-                    <PlusIcon className="h-4 w-4" />
-                    {t("home.createGroup")}
-                  </button>
+                  <IconActionButton
+                    icon={<PlusIcon className="h-4 w-4" />}
+                    label={t("home.createGroup")}
+                    onClick={() => inputRef.current?.focus()}
+                    variant="primary"
+                  />
                 )}
               </div>
             </div>
@@ -200,7 +251,7 @@ export function HomePage() {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white">
                       {index + 1}
                     </span>
-                    <p className="pt-1 text-sm leading-6 text-slate">{step}</p>
+                    <p className="pt-1 text-sm leading-6 text-muted">{step}</p>
                   </div>
                 ))}
               </div>
@@ -208,14 +259,14 @@ export function HomePage() {
           </div>
         </SectionCard>
 
-        <SectionCard className="p-6">
+        <SectionCard id="create-group" className="p-6">
           <PageHeading
             eyebrow={t("home.createGroup")}
             title={t("home.ctaTitle")}
             description={t("home.ctaBody")}
           />
 
-          <form className="mt-6 flex flex-col gap-3" onSubmit={handleSubmit}>
+          <form className="mt-6 flex items-start gap-3" onSubmit={handleSubmit}>
             <input
               ref={inputRef}
               className={[
@@ -232,10 +283,13 @@ export function HomePage() {
                 }
               }}
             />
-            <button className="button-primary w-full" disabled={createGroup.isPending || !name.trim()} type="submit">
-              {createGroup.isPending ? <LoadingSpinner /> : <PlusIcon className="h-4 w-4" />}
-              {createGroup.isPending ? `${t("home.create")}...` : t("home.create")}
-            </button>
+            <IconActionButton
+              disabled={createGroup.isPending || !name.trim()}
+              icon={createGroup.isPending ? <LoadingSpinner /> : <PlusIcon className="h-4 w-4" />}
+              label={createGroup.isPending ? `${t("home.create")}...` : t("home.create")}
+              type="submit"
+              variant="primary"
+            />
           </form>
 
           {formError ? (
@@ -253,7 +307,7 @@ export function HomePage() {
             />
             <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-soft">
               <div className="text-sm font-semibold text-ink">{t("home.defaultInfo")}</div>
-              <p className="mt-2 text-sm leading-6 text-slate">{t("home.defaultInfoBody")}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{t("home.defaultInfoBody")}</p>
             </div>
           </div>
         </SectionCard>
@@ -267,10 +321,11 @@ export function HomePage() {
             <p className="mt-2 section-copy">{t("home.overviewBody")}</p>
           </div>
           {activeGroup ? (
-            <Link className="button-secondary" to={`/groups/${activeGroup.id}/bills`}>
-              <ReceiptIcon className="h-4 w-4" />
-              {t("home.primaryAction")}
-            </Link>
+            <IconActionLink
+              icon={<ReceiptIcon className="h-4 w-4" />}
+              label={t("home.primaryAction")}
+              to={`/groups/${activeGroup.id}/bills#create-bill`}
+            />
           ) : null}
         </div>
 
@@ -299,12 +354,12 @@ export function HomePage() {
           />
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+        <div className="mt-6 grid gap-4 xl:grid-cols-[1.12fr,0.88fr]">
           <article className="rounded-[24px] border border-slate-200/80 bg-white/92 p-5 shadow-soft">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight text-ink">{t("home.currentBillOverview")}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate">{t("home.currentBillOverviewBody")}</p>
+                <p className="mt-2 text-sm leading-6 text-muted">{t("home.currentBillOverviewBody")}</p>
               </div>
               <span className="tag bg-sky text-brand">{billCount}</span>
             </div>
@@ -316,9 +371,11 @@ export function HomePage() {
                   title={t("home.noActiveWorkspace")}
                   description={t("home.noActiveWorkspaceBody")}
                   action={(
-                    <button className="button-secondary" onClick={() => inputRef.current?.focus()} type="button">
-                      {t("home.createGroup")}
-                    </button>
+                    <IconActionButton
+                      icon={<PlusIcon className="h-4 w-4" />}
+                      label={t("home.createGroup")}
+                      onClick={() => inputRef.current?.focus()}
+                    />
                   )}
                 />
               ) : hasOverviewError ? (
@@ -338,9 +395,11 @@ export function HomePage() {
                   title={t("bills.empty")}
                   description={t("home.currentBillEmpty")}
                   action={activeGroup ? (
-                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/bills`}>
-                      {t("home.primaryAction")}
-                    </Link>
+                    <IconActionLink
+                      icon={<ReceiptIcon className="h-4 w-4" />}
+                      label={t("home.primaryAction")}
+                      to={`/groups/${activeGroup.id}/bills#create-bill`}
+                    />
                   ) : undefined}
                 />
               ) : (
@@ -349,12 +408,12 @@ export function HomePage() {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-base font-semibold tracking-tight text-ink">{summary.storeName}</div>
-                        <p className="mt-1 text-sm text-slate">
+                        <p className="mt-1 text-sm text-muted">
                           {t("home.paidBy")} {getPrimaryPayerName(detail)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-slate">{formatDate(summary.transactionDateUtc)}</div>
+                        <div className="text-sm text-muted">{formatDate(summary.transactionDateUtc)}</div>
                         <div className="mt-1 text-lg font-semibold tracking-tight text-ink">
                           {formatCurrency(summary.grandTotalAmount)}
                         </div>
@@ -370,7 +429,7 @@ export function HomePage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight text-ink">{t("home.settlementPreviewTitle")}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate">{t("home.settlementPreviewBody")}</p>
+                <p className="mt-2 text-sm leading-6 text-muted">{t("home.settlementPreviewBody")}</p>
               </div>
               <span className="tag bg-mint text-success">{transferCount}</span>
             </div>
@@ -398,11 +457,11 @@ export function HomePage() {
                   <div key={`${transfer.fromParticipantId}-${transfer.toParticipantId}-${index}`} className="rounded-[22px] border border-slate-200/80 bg-slate-50/90 p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="text-sm font-semibold uppercase tracking-[0.14em] text-slate">{t("home.nextTransfer")}</div>
+                        <div className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">{t("home.nextTransfer")}</div>
                         <div className="mt-2 text-base font-semibold tracking-tight text-ink">
                           {balanceNameById[transfer.fromParticipantId] ?? transfer.fromParticipantId.slice(0, 8)}
                         </div>
-                        <div className="mt-1 text-sm text-slate">
+                        <div className="mt-1 text-sm text-muted">
                           {balanceNameById[transfer.fromParticipantId] ?? transfer.fromParticipantId.slice(0, 8)} {t("settlement.pays")}{" "}
                           {balanceNameById[transfer.toParticipantId] ?? transfer.toParticipantId.slice(0, 8)}
                         </div>
@@ -419,7 +478,7 @@ export function HomePage() {
                   title={t("settlement.empty")}
                   description={t("home.settlementEmpty")}
                   action={activeGroup ? (
-                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/settlements`}>
+                    <Link className="button-secondary" to={`/groups/${activeGroup.id}/settlements#transfer-plan`}>
                       {t("home.settlementAction")}
                     </Link>
                   ) : undefined}
@@ -452,27 +511,37 @@ export function HomePage() {
               )}
             />
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-3">
               {groups.map((group) => (
                 <article key={group.id} className="list-card">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="text-lg font-semibold tracking-tight text-ink">{group.name}</div>
-                      <p className="mt-1 text-sm text-slate">{t("home.resumeGroup")}</p>
+                      <p className="mt-1 text-sm text-muted">{t("home.resumeGroup")}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Link className="button-pill" to={`/groups/${group.id}/participants`}>
+                      <Link className="button-pill" to={`/groups/${group.id}/participants#add-participant`}>
                         <UsersIcon className="h-4 w-4" />
                         {t("home.participants")}
                       </Link>
-                      <Link className="button-pill" to={`/groups/${group.id}/bills`}>
+                      <Link className="button-pill" to={`/groups/${group.id}/bills#create-bill`}>
                         <ReceiptIcon className="h-4 w-4" />
                         {t("home.bills")}
                       </Link>
-                      <Link className="button-pill" to={`/groups/${group.id}/settlements`}>
+                      <Link className="button-pill" to={`/groups/${group.id}/settlements#transfer-plan`}>
                         <ArrowsIcon className="h-4 w-4" />
                         {t("home.settlement")}
                       </Link>
+                      <IconActionButton
+                        className="text-danger hover:border-rose-200 hover:bg-rose-50 hover:text-danger"
+                        icon={<TrashIcon className="h-4 w-4" />}
+                        label={t("groups.deleteAction")}
+                        onClick={() => {
+                          setDeleteGroupError(null);
+                          setDeletingGroupId(group.id);
+                        }}
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </article>
@@ -481,6 +550,22 @@ export function HomePage() {
           )}
         </div>
       </SectionCard>
+
+      <ConfirmDialog
+        open={Boolean(deletingGroupId)}
+        title={t("groups.deleteTitle")}
+        description={t("groups.deleteBody")}
+        details={(groups.find((group) => group.id === deletingGroupId)?.name) ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("common.delete")}
+        error={deleteGroupError}
+        isBusy={deleteGroupMutation.isPending}
+        onClose={() => {
+          setDeleteGroupError(null);
+          setDeletingGroupId(null);
+        }}
+        onConfirm={() => deleteGroupMutation.mutate()}
+      />
     </div>
   );
 }
