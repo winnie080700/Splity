@@ -47,14 +47,14 @@ export function ModalDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <button
         aria-label="Close dialog"
-        className="absolute inset-0 bg-slate-950/32 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-slate-950/36 backdrop-blur-[3px]"
         onClick={onClose}
         type="button"
       />
-      <div className={cn("relative z-[71] max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[30px] border border-slate-200 bg-white shadow-[0_32px_80px_rgba(15,23,42,0.24)]", className)}>
+      <div className={cn("panel-surface scroll-panel relative z-[81] max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto", className)}>
         <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 px-6 py-5 backdrop-blur sm:px-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
