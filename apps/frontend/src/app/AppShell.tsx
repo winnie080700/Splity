@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@api-client";
+import { apiClient, type GroupSummaryDto } from "@api-client";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "@/shared/auth/AuthProvider";
+import { splitGroupsByStatus, GroupStatusBadge, formatGroupCreatedAt } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
-import { ArrowsIcon, HomeIcon, PencilIcon, PlusIcon, ReceiptIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
+import { ArrowsIcon, HomeIcon, PencilIcon, PlusIcon, ReceiptIcon, SettingsIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
 import { AppFooter } from "@/shared/ui/AppFooter";
 import { BrandLogo } from "@/shared/ui/BrandLogo";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { EditNameDialog } from "@/shared/ui/EditNameDialog";
-import { IconActionButton, IconActionLink } from "@/shared/ui/primitives";
+import { IconActionButton, LoadingState } from "@/shared/ui/primitives";
 import { useToast } from "@/shared/ui/toast";
 import { getErrorMessage } from "@/shared/utils/format";
-import { getGroupsChangedEventName, readSavedGroups, removeSavedGroup, syncSavedGroup } from "@/shared/utils/storage";
 
-type GroupModuleKey = "participants" | "bills" | "settlements";
+type GroupModuleKey = "overview" | "participants" | "bills" | "settlements";
 
 type GroupTab = {
   key: GroupModuleKey;
@@ -23,15 +23,23 @@ type GroupTab = {
 };
 
 const SIDEBAR_EXPANDED_WIDTH = 296;
+const DASHBOARD_STEPS = [
+  { icon: WalletIcon, titleKey: "dashboard.stepCreateGroupTitle", bodyKey: "dashboard.stepCreateGroupBody" },
+  { icon: UsersIcon, titleKey: "dashboard.stepAddParticipantsTitle", bodyKey: "dashboard.stepAddParticipantsBody" },
+  { icon: ReceiptIcon, titleKey: "dashboard.stepAddBillsTitle", bodyKey: "dashboard.stepAddBillsBody" },
+  { icon: ArrowsIcon, titleKey: "dashboard.stepOpenSettlementTitle", bodyKey: "dashboard.stepOpenSettlementBody" },
+  { icon: WalletIcon, titleKey: "dashboard.stepWaitPaymentsTitle", bodyKey: "dashboard.stepWaitPaymentsBody" }
+] as const;
 
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useI18n();
-  const { user, signOut } = useAuth();
+  const { t, language } = useI18n();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [groupsVersion, setGroupsVersion] = useState(0);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [createGroupError, setCreateGroupError] = useState<string | null>(null);
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [editGroupError, setEditGroupError] = useState<string | null>(null);
   const [isDeleteGroupOpen, setIsDeleteGroupOpen] = useState(false);
@@ -39,7 +47,14 @@ export function AppShell() {
 
   const routeGroupId = location.pathname.match(/^\/groups\/([^/]+)/)?.[1] ?? null;
   const currentModule = getCurrentModule(location.pathname);
-  const savedGroups = useMemo(() => readSavedGroups(), [groupsVersion]);
+
+  const groupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: () => apiClient.listGroups()
+  });
+
+  const groups = groupsQuery.data ?? [];
+  const { currentGroups, settledGroups } = splitGroupsByStatus(groups);
 
   const currentGroupQuery = useQuery({
     queryKey: ["group", routeGroupId],
@@ -47,24 +62,21 @@ export function AppShell() {
     enabled: Boolean(routeGroupId)
   });
 
-  useEffect(() => {
-    const groupsChangedEvent = getGroupsChangedEventName();
-    const syncGroups = () => setGroupsVersion((value) => value + 1);
-    window.addEventListener(groupsChangedEvent, syncGroups);
-    window.addEventListener("storage", syncGroups);
-    return () => {
-      window.removeEventListener(groupsChangedEvent, syncGroups);
-      window.removeEventListener("storage", syncGroups);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!currentGroupQuery.data) {
-      return;
+  const createGroupMutation = useMutation({
+    mutationFn: async (name: string) => apiClient.createGroup(name),
+    onSuccess: async (group) => {
+      await queryClient.invalidateQueries({ queryKey: ["groups"] });
+      setCreateGroupError(null);
+      setIsCreateGroupOpen(false);
+      navigate(buildGroupModulePath(group.id, "overview"));
+      showToast({ title: t("sidebar.newGroup"), description: t("feedback.created"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : getErrorMessage(error);
+      setCreateGroupError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
     }
-
-    syncSavedGroup({ id: currentGroupQuery.data.id, name: currentGroupQuery.data.name });
-  }, [currentGroupQuery.data]);
+  });
 
   const updateGroupMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -74,9 +86,11 @@ export function AppShell() {
 
       return apiClient.updateGroup(routeGroupId, { name });
     },
-    onSuccess: async (group) => {
-      syncSavedGroup({ id: group.id, name: group.name });
-      await queryClient.invalidateQueries({ queryKey: ["group", routeGroupId] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["group", routeGroupId] }),
+        queryClient.invalidateQueries({ queryKey: ["groups"] })
+      ]);
       setEditGroupError(null);
       setIsEditGroupOpen(false);
       showToast({ title: t("groups.editTitle"), description: t("feedback.saved"), tone: "success" });
@@ -101,9 +115,9 @@ export function AppShell() {
         return;
       }
 
-      const fallbackGroup = savedGroups.find((group) => group.id !== routeGroupId) ?? null;
-      removeSavedGroup(routeGroupId);
+      const fallbackGroup = groups.find((group) => group.id !== routeGroupId) ?? null;
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["groups"] }),
         queryClient.removeQueries({ queryKey: ["group", routeGroupId] }),
         queryClient.removeQueries({ queryKey: ["participants", routeGroupId] }),
         queryClient.removeQueries({ queryKey: ["bills", routeGroupId] }),
@@ -113,7 +127,7 @@ export function AppShell() {
       setDeleteGroupError(null);
       setIsDeleteGroupOpen(false);
       setIsEditGroupOpen(false);
-      navigate(fallbackGroup ? buildGroupModulePath(fallbackGroup.id, currentModule ?? "participants") : "/");
+      navigate(fallbackGroup ? buildGroupModulePath(fallbackGroup.id, currentModule ?? "participants") : "/dashboard");
       showToast({ title: t("groups.deleteTitle"), description: t("feedback.deleted"), tone: "success" });
     },
     onError: (error) => {
@@ -123,14 +137,21 @@ export function AppShell() {
     }
   });
 
-  const currentGroup = routeGroupId
-    ? savedGroups.find((group) => group.id === routeGroupId) ?? (currentGroupQuery.data ? {
+  const currentGroupFallback = currentGroupQuery.data
+    ? ({
         id: currentGroupQuery.data.id,
-        name: currentGroupQuery.data.name
-      } : null)
+        name: currentGroupQuery.data.name,
+        createdAtUtc: currentGroupQuery.data.createdAtUtc,
+        status: currentGroupQuery.data.status
+      } as GroupSummaryDto)
+    : null;
+
+  const currentGroup = routeGroupId
+    ? groups.find((group) => group.id === routeGroupId) ?? currentGroupFallback
     : null;
 
   const groupTabs: GroupTab[] = [
+    { key: "overview", label: t("nav.overview"), icon: <HomeIcon className="h-4 w-4" /> },
     { key: "participants", label: t("nav.participants"), icon: <UsersIcon className="h-4 w-4" /> },
     { key: "bills", label: t("nav.bills"), icon: <ReceiptIcon className="h-4 w-4" /> },
     { key: "settlements", label: t("nav.settlement"), icon: <ArrowsIcon className="h-4 w-4" /> }
@@ -150,7 +171,7 @@ export function AppShell() {
         >
           <div className="card flex h-full flex-col p-3">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
-              <Link to="/" className="min-w-0">
+              <Link to="/dashboard" className="min-w-0">
                 <div className="flex items-center gap-3">
                   <BrandLogo className="h-10 w-10 shrink-0" />
                   <div className="min-w-0">
@@ -164,10 +185,10 @@ export function AppShell() {
             <div className="mt-3">
               <NavLink
                 className={({ isActive }) => buildUtilityNavClass(isActive)}
-                to="/"
+                to="/dashboard"
                 end
               >
-                <span className={buildUtilityIconClass(location.pathname === "/")}>
+                <span className={buildUtilityIconClass(location.pathname === "/dashboard")}>
                   <HomeIcon className="h-4 w-4" />
                 </span>
                 <span className="truncate">{t("nav.dashboard")}</span>
@@ -178,17 +199,29 @@ export function AppShell() {
               <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
                 {t("sidebar.groups")}
               </div>
-              <IconActionLink
-                className="ml-auto"
+              <IconActionButton
+                className="h-9 w-9 rounded-[14px] border border-slate-200/80 bg-white text-brand shadow-sm hover:border-brand/20 hover:bg-sky/60"
                 icon={<PlusIcon className="h-4 w-4" />}
                 label={t("sidebar.newGroup")}
+                onClick={() => {
+                  setCreateGroupError(null);
+                  setIsCreateGroupOpen(true);
+                }}
                 size="sm"
-                to="/#create-group"
               />
             </div>
 
-            <div className="mt-3 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {savedGroups.length === 0 ? (
+            <div className="scroll-panel mt-3 flex-1 overflow-y-auto pr-1">
+              {groupsQuery.isPending ? (
+                <LoadingState lines={4} />
+              ) : groupsQuery.isError ? (
+                <InlineSidebarError
+                  actionLabel={t("common.retry")}
+                  message={getErrorMessage(groupsQuery.error)}
+                  onRetry={() => groupsQuery.refetch()}
+                  title={t("feedback.loadFailed")}
+                />
+              ) : groups.length === 0 ? (
                 <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 p-4">
                   <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                     <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
@@ -201,48 +234,47 @@ export function AppShell() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {savedGroups.map((group) => {
-                    const isActiveGroup = group.id === routeGroupId;
-                    const targetModule = currentModule ?? "participants";
-                    return (
-                      <Link
-                        key={group.id}
-                        to={buildGroupModulePath(group.id, targetModule)}
-                        className={buildGroupLinkClass(isActiveGroup)}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className={buildGroupAvatarClass(isActiveGroup)}>
-                            {getGroupInitial(group.name)}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-semibold tracking-tight">
-                              {group.name}
-                            </div>
-                            <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em]">
-                              <span className={isActiveGroup ? "text-white/72" : "text-muted"}>
-                                {isActiveGroup ? t("sidebar.currentGroup") : t("sidebar.openGroup")}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                <div className="space-y-5">
+                  <SidebarGroupSection
+                    currentModule={currentModule}
+                    emptyLabel={t("sidebar.currentGroupsEmpty")}
+                    groups={currentGroups}
+                    language={language}
+                    routeGroupId={routeGroupId}
+                    t={t}
+                    title={t("sidebar.currentGroups")}
+                  />
+                  <SidebarGroupSection
+                    currentModule={currentModule}
+                    emptyLabel={t("sidebar.settledGroupsEmpty")}
+                    groups={settledGroups}
+                    language={language}
+                    routeGroupId={routeGroupId}
+                    t={t}
+                    title={t("sidebar.settledGroups")}
+                  />
                 </div>
               )}
             </div>
 
             <div className="mt-3 border-t border-slate-200/80 pt-3">
               {user ? (
-                <div className="mb-3 rounded-[20px] border border-slate-200/80 bg-white/90 px-4 py-3">
-                  <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
-                  <div className="mt-1 truncate text-xs text-muted">{user.email}</div>
+                <div className="rounded-[20px] border border-slate-200/80 bg-white/90 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
+                      <div className="mt-1 truncate text-xs text-muted">{user.email}</div>
+                    </div>
+                    <IconActionButton
+                      className="h-9 w-9 rounded-[14px]"
+                      icon={<SettingsIcon className="h-4 w-4" />}
+                      label={t("settings.title")}
+                      onClick={() => navigate("/settings")}
+                      size="sm"
+                    />
+                  </div>
                 </div>
               ) : null}
-              <button className="button-secondary min-h-[44px] w-full" onClick={signOut} type="button">
-                {t("auth.logout")}
-              </button>
             </div>
           </div>
         </div>
@@ -256,22 +288,60 @@ export function AppShell() {
                 <div className="max-w-3xl space-y-3">
                   <span className="eyebrow">{routeGroupId ? t("sidebar.currentGroup") : t("app.kicker")}</span>
                   <div className="space-y-2">
-                    <Link to="/" className="block text-3xl font-semibold tracking-tight text-ink md:text-4xl">
-                      {routeGroupId ? (currentGroup?.name ?? currentGroupQuery.data?.name ?? t("sidebar.loadingGroup")) : t("app.title")}
-                    </Link>
+                    {routeGroupId ? (
+                      <div className="block text-3xl font-semibold tracking-tight text-ink md:text-4xl">
+                        {currentGroup?.name ?? currentGroupQuery.data?.name ?? t("sidebar.loadingGroup")}
+                      </div>
+                    ) : (
+                      <Link to="/dashboard" className="block text-3xl font-semibold tracking-tight text-ink md:text-4xl">
+                        {t("app.title")}
+                      </Link>
+                    )}
                     <p className="max-w-2xl text-sm leading-6 text-muted">
-                      {routeGroupId ? t("app.groupSummary") : t("app.workspaceSummary")}
+                      {routeGroupId ? t("app.groupSummary") : 
+<div className="flex items-center gap-3">
+  {DASHBOARD_STEPS.map((step, index) => {
+    const StepIcon = step.icon;
+
+    return (
+      <div key={step.titleKey} className="flex items-center gap-3">
+        {/* Step */}
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/92 px-3 py-2 shadow-soft">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink text-xs font-semibold text-white">
+            {index + 1}
+          </span>
+
+          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky text-brand">
+            <StepIcon className="h-4 w-4" />
+          </span>
+
+          <span className="text-sm font-medium text-ink whitespace-nowrap">
+            {t(step.titleKey)}
+          </span>
+        </div>
+
+        {/* Arrow */}
+        {index < DASHBOARD_STEPS.length - 1 && (
+          <span className="text-slate-400">{'>'}</span>
+        )}
+      </div>
+    );
+  })}
+</div>                        
+                      }
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {routeGroupId ? (
                     <>
-                      <IconActionButton
-                        icon={<PencilIcon className="h-4 w-4" />}
-                        label={t("groups.editAction")}
-                        onClick={() => setIsEditGroupOpen(true)}
-                      />
+                      {currentGroup?.status === "unresolved" ? (
+                        <IconActionButton
+                          icon={<PencilIcon className="h-4 w-4" />}
+                          label={t("groups.editAction")}
+                          onClick={() => setIsEditGroupOpen(true)}
+                        />
+                      ) : null}
                       <IconActionButton
                         className="text-danger hover:border-rose-200 hover:bg-rose-50 hover:text-danger"
                         icon={<TrashIcon className="h-4 w-4" />}
@@ -283,18 +353,14 @@ export function AppShell() {
                       />
                     </>
                   ) : null}
-                  <IconActionLink
-                    icon={<PlusIcon className="h-4 w-4" />}
-                    label={t("sidebar.newGroup")}
-                    to="/#create-group"
-                  />
                 </div>
               </div>
 
               <div className="xl:hidden">
                 <MobileGroupsRail
                   currentModule={currentModule}
-                  groups={savedGroups}
+                  groups={groups}
+                  language={language}
                   routeGroupId={routeGroupId}
                   t={t}
                 />
@@ -327,6 +393,23 @@ export function AppShell() {
         </div>
       </div>
 
+      <EditNameDialog
+        open={isCreateGroupOpen}
+        title={t("groups.createTitle")}
+        description={t("groups.createBody")}
+        initialValue=""
+        placeholder={t("home.groupPlaceholder")}
+        cancelLabel={t("common.cancel")}
+        submitLabel={t("groups.createAction")}
+        validationMessage={t("groups.nameRequired")}
+        error={createGroupError}
+        isBusy={createGroupMutation.isPending}
+        onClose={() => {
+          setCreateGroupError(null);
+          setIsCreateGroupOpen(false);
+        }}
+        onSubmit={(value) => createGroupMutation.mutate(value)}
+      />
       <EditNameDialog
         open={isEditGroupOpen}
         title={t("groups.editTitle")}
@@ -363,16 +446,83 @@ export function AppShell() {
   );
 }
 
+function SidebarGroupSection({
+  groups,
+  routeGroupId,
+  currentModule,
+  t,
+  language,
+  title,
+  emptyLabel
+}: {
+  groups: GroupSummaryDto[];
+  routeGroupId: string | null;
+  currentModule: GroupModuleKey | null;
+  t: (key: any) => string;
+  language: "en" | "zh";
+  title: string;
+  emptyLabel: string;
+}) {
+  const targetModule = currentModule ?? "overview";
+
+  return (
+    <section>
+      <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
+        {title}
+      </div>
+      {groups.length === 0 ? (
+        <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/75 px-3 py-3 text-xs leading-5 text-muted">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {groups.map((group) => {
+            const isActiveGroup = group.id === routeGroupId;
+            return (
+              <Link
+                key={group.id}
+                to={buildGroupModulePath(group.id, targetModule)}
+                className={buildGroupLinkClass(isActiveGroup)}
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className={buildGroupAvatarClass(isActiveGroup)}>
+                    {getGroupInitial(group.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold tracking-tight">
+                          {group.name}
+                        </div>
+                        <div className={["mt-1 text-xs", isActiveGroup ? "text-slate-600" : "text-muted"].join(" ")}>
+                          {formatGroupCreatedAt(group.createdAtUtc, language)}
+                        </div>
+                      </div>
+                      <GroupStatusBadge status={group.status} t={t} className="shrink-0" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MobileGroupsRail({
   groups,
   routeGroupId,
   currentModule,
-  t
+  t,
+  language
 }: {
-  groups: Array<{ id: string; name: string }>;
+  groups: GroupSummaryDto[];
   routeGroupId: string | null;
   currentModule: GroupModuleKey | null;
   t: (key: any) => string;
+  language: "en" | "zh";
 }) {
   if (groups.length === 0) {
     return (
@@ -382,33 +532,108 @@ function MobileGroupsRail({
     );
   }
 
-  const targetModule = currentModule ?? "participants";
+  const { currentGroups, settledGroups } = splitGroupsByStatus(groups);
+  const targetModule = currentModule ?? "overview";
 
   return (
-    <div>
+    <div className="space-y-4">
+      <MobileGroupSection
+        emptyLabel={t("sidebar.currentGroupsEmpty")}
+        groups={currentGroups}
+        language={language}
+        routeGroupId={routeGroupId}
+        targetModule={targetModule}
+        t={t}
+        title={t("sidebar.currentGroups")}
+      />
+      <MobileGroupSection
+        emptyLabel={t("sidebar.settledGroupsEmpty")}
+        groups={settledGroups}
+        language={language}
+        routeGroupId={routeGroupId}
+        targetModule={targetModule}
+        t={t}
+        title={t("sidebar.settledGroups")}
+      />
+    </div>
+  );
+}
+
+function MobileGroupSection({
+  groups,
+  routeGroupId,
+  targetModule,
+  t,
+  language,
+  title,
+  emptyLabel
+}: {
+  groups: GroupSummaryDto[];
+  routeGroupId: string | null;
+  targetModule: GroupModuleKey;
+  t: (key: any) => string;
+  language: "en" | "zh";
+  title: string;
+  emptyLabel: string;
+}) {
+  return (
+    <section>
       <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-        {t("sidebar.groups")}
+        {title}
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {groups.map((group) => {
-          const active = group.id === routeGroupId;
-          return (
-            <Link
-              key={group.id}
-              to={buildGroupModulePath(group.id, targetModule)}
-              className={[
-                "inline-flex min-w-0 max-w-[14rem] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
-                active
-                  ? "border-ink/10 bg-ink text-white shadow-soft"
-                  : "border-slate-200 bg-white/90 text-ink hover:border-brand/20 hover:bg-white"
-              ].join(" ")}
-            >
-              <span className={active ? "text-white/70" : "text-brand"}>{getGroupInitial(group.name)}</span>
-              <span className="truncate">{group.name}</span>
-            </Link>
-          );
-        })}
-      </div>
+      {groups.length === 0 ? (
+        <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/75 px-4 py-3 text-sm text-muted">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="scroll-panel flex gap-3 overflow-x-auto pb-1">
+          {groups.map((group) => {
+            const active = group.id === routeGroupId;
+            return (
+              <Link
+                key={group.id}
+                to={buildGroupModulePath(group.id, targetModule)}
+                className={[
+                  "min-w-[16rem] max-w-[16rem] rounded-[22px] border px-4 py-3 shadow-soft transition",
+                  active
+                    ? "border-brand/20 bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.98))] text-ink"
+                    : "border-slate-200 bg-white/92 text-ink hover:border-brand/20 hover:bg-white"
+                ].join(" ")}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold tracking-tight">{group.name}</div>
+                    <div className="mt-1 text-xs text-muted">{formatGroupCreatedAt(group.createdAtUtc, language)}</div>
+                  </div>
+                  <GroupStatusBadge status={group.status} t={t} className="shrink-0" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function InlineSidebarError({
+  title,
+  message,
+  actionLabel,
+  onRetry
+}: {
+  title: string;
+  message: string;
+  actionLabel: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-3 py-3">
+      <div className="text-sm font-semibold text-danger">{title}</div>
+      <div className="mt-1 text-sm leading-6 text-danger/90">{message}</div>
+      <button className="button-secondary mt-3 min-h-[40px] px-3 py-2 text-sm" onClick={onRetry} type="button">
+        {actionLabel}
+      </button>
     </div>
   );
 }
@@ -418,6 +643,10 @@ function buildGroupModulePath(groupId: string, module: GroupModuleKey) {
 }
 
 function getCurrentModule(pathname: string): GroupModuleKey | null {
+  if (pathname.includes("/overview")) {
+    return "overview";
+  }
+
   if (pathname.includes("/participants")) {
     return "participants";
   }
@@ -453,7 +682,7 @@ function buildGroupLinkClass(isActive: boolean) {
   return [
     "block rounded-[22px] border px-3 py-3 transition",
     isActive
-      ? "border-ink/10 bg-ink text-white shadow-lift"
+      ? "border-brand/20 bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.98))] text-ink shadow-soft ring-1 ring-brand/10"
       : "border-slate-200/80 bg-white/88 text-ink hover:-translate-y-0.5 hover:border-brand/20 hover:bg-white"
   ].join(" ");
 }
@@ -461,7 +690,7 @@ function buildGroupLinkClass(isActive: boolean) {
 function buildGroupAvatarClass(isActive: boolean) {
   return [
     "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold",
-    isActive ? "bg-white/12 text-white" : "bg-slate-100 text-brand"
+    isActive ? "bg-brand text-white" : "bg-slate-100 text-brand"
   ].join(" ");
 }
 
