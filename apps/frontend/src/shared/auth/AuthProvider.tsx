@@ -8,6 +8,7 @@ type AuthContextValue = {
   user: AuthResultDto["user"] | null;
   isAuthenticated: boolean;
   signIn: (session: AuthResultDto) => void;
+  updateUser: (user: AuthResultDto["user"]) => void;
   signOut: () => void;
 };
 
@@ -21,6 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     isAuthenticated: Boolean(session?.accessToken),
     signIn: (nextSession) => {
+      saveAuthSession(nextSession);
+      setSession(nextSession);
+    },
+    updateUser: (user) => {
+      if (!session) {
+        return;
+      }
+
+      const nextSession = { ...session, user };
       saveAuthSession(nextSession);
       setSession(nextSession);
     },

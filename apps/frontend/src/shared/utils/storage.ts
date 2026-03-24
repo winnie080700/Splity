@@ -7,6 +7,9 @@ type AuthUser = {
   id: string;
   name: string;
   email: string;
+  isEmailVerified: boolean;
+  emailVerifiedAtUtc: string | null;
+  emailVerificationPendingUntilUtc: string | null;
 };
 
 type AuthSession = {
@@ -62,12 +65,32 @@ export function readAuthSession(): AuthSession | null {
   }
 
   try {
-    const parsed = JSON.parse(raw) as AuthSession;
-    if (!parsed?.accessToken || !parsed?.user?.id) {
+    const parsed = JSON.parse(raw) as {
+      accessToken?: string;
+      user?: {
+        id?: string;
+        name?: string;
+        email?: string;
+        isEmailVerified?: boolean;
+        emailVerifiedAtUtc?: string | null;
+        emailVerificationPendingUntilUtc?: string | null;
+      };
+    };
+    if (!parsed?.accessToken || !parsed?.user?.id || !parsed.user.name || !parsed.user.email) {
       return null;
     }
 
-    return parsed;
+    return {
+      accessToken: parsed.accessToken,
+      user: {
+        id: parsed.user.id,
+        name: parsed.user.name,
+        email: parsed.user.email,
+        isEmailVerified: parsed.user.isEmailVerified ?? false,
+        emailVerifiedAtUtc: parsed.user.emailVerifiedAtUtc ?? null,
+        emailVerificationPendingUntilUtc: parsed.user.emailVerificationPendingUntilUtc ?? null
+      }
+    };
   } catch {
     return null;
   }

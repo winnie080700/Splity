@@ -1,28 +1,69 @@
 import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@api-client";
-import { useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/shared/auth/AuthProvider";
+import { getAuthErrorMessage } from "@/shared/auth/authMessages";
 import { useI18n } from "@/shared/i18n/I18nProvider";
-import { getErrorMessage } from "@/shared/utils/format";
 import { BrandLogo } from "@/shared/ui/BrandLogo";
 import { AppFooter } from "@/shared/ui/AppFooter";
+import { ModalDialog } from "@/shared/ui/dialog";
 import { InlineMessage, LoadingSpinner } from "@/shared/ui/primitives";
 
 type Mode = "login" | "register";
+const FORGOT_PASSWORD_COOLDOWN_MS = 60_000;
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 export function AuthPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn } = useAuth();
-  const [mode, setMode] = useState<Mode>("login");
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated, signIn } = useAuth();
+  const requestedMode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
+  const [mode, setMode] = useState<Mode>(requestedMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const redirectTo = (location.state as { from?: string } | undefined)?.from ?? "/";
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
+  const [forgotPasswordSubmitted, setForgotPasswordSubmitted] = useState(false);
+  const [forgotPasswordCooldownUntil, setForgotPasswordCooldownUntil] = useState<number | null>(null);
+  const [forgotPasswordSecondsRemaining, setForgotPasswordSecondsRemaining] = useState(0);
+  const redirectTo = (location.state as { from?: string } | undefined)?.from ?? "/dashboard";
+
+  useEffect(() => {
+    setMode(requestedMode);
+  }, [requestedMode]);
+
+  useEffect(() => {
+    if (!forgotPasswordCooldownUntil) {
+      setForgotPasswordSecondsRemaining(0);
+      return;
+    }
+
+    const updateRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((forgotPasswordCooldownUntil - Date.now()) / 1000));
+      setForgotPasswordSecondsRemaining(remaining);
+      if (remaining === 0) {
+        setForgotPasswordCooldownUntil(null);
+      }
+    };
+
+    updateRemaining();
+    const timer = window.setInterval(updateRemaining, 250);
+    return () => window.clearInterval(timer);
+  }, [forgotPasswordCooldownUntil]);
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const authMutation = useMutation({
     mutationFn: async () => {
@@ -36,7 +77,17 @@ export function AuthPage() {
       signIn(session);
       navigate(redirectTo, { replace: true });
     },
-    onError: (error) => setFormError(getErrorMessage(error))
+    onError: (error) => setFormError(getAuthErrorMessage(error, t))
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: () => apiClient.forgotPassword({ email: forgotPasswordEmail.trim() }),
+    onSuccess: () => {
+      setForgotPasswordError(null);
+      setForgotPasswordSubmitted(true);
+      setForgotPasswordCooldownUntil(Date.now() + FORGOT_PASSWORD_COOLDOWN_MS);
+    },
+    onError: (error) => setForgotPasswordError(getAuthErrorMessage(error, t))
   });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -61,6 +112,33 @@ export function AuthPage() {
     setFormError(null);
     authMutation.mutate();
   }
+
+  function handleForgotPasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (forgotPasswordMutation.isPending || forgotPasswordSecondsRemaining > 0) {
+      return;
+    }
+
+    if (!forgotPasswordEmail.trim()) {
+      setForgotPasswordError(t("auth.emailRequired"));
+      return;
+    }
+
+    if (!isValidEmail(forgotPasswordEmail)) {
+      setForgotPasswordError(t("auth.errorEmailInvalid"));
+      return;
+    }
+
+    setForgotPasswordError(null);
+    forgotPasswordMutation.mutate();
+  }
+
+  const forgotPasswordActionLabel = forgotPasswordSubmitted
+    ? forgotPasswordSecondsRemaining > 0
+      ? t("auth.forgotPasswordResendIn").replace("{seconds}", String(forgotPasswordSecondsRemaining))
+      : t("auth.forgotPasswordResend")
+    : t("auth.forgotPasswordSend");
 
   return (
     <div className="flex min-h-screen flex-col bg-[linear-gradient(135deg,#12b886_0%,#39d0c9_58%,#74e0ff_100%)]">
@@ -115,24 +193,24 @@ export function AuthPage() {
             </div>
 
             <div className="mt-6 flex gap-2 rounded-full bg-slate-100 p-1">
-              <button className={["flex-1 rounded-full px-4 py-2 text-sm font-semibold transition", mode === "login" ? "bg-white text-ink shadow-soft" : "text-muted"].join(" ")} onClick={() => setMode("login")} type="button">{t("auth.login")}</button>
-              <button className={["flex-1 rounded-full px-4 py-2 text-sm font-semibold transition", mode === "register" ? "bg-white text-ink shadow-soft" : "text-muted"].join(" ")} onClick={() => setMode("register")} type="button">{t("auth.register")}</button>
+              <button className={["flex-1 rounded-full px-4 py-2 text-sm font-semibold transition", mode === "login" ? "bg-white text-ink shadow-soft" : "text-muted"].join(" ")} onClick={() => { setMode("login"); setFormError(null); }} type="button">{t("auth.login")}</button>
+              <button className={["flex-1 rounded-full px-4 py-2 text-sm font-semibold transition", mode === "register" ? "bg-white text-ink shadow-soft" : "text-muted"].join(" ")} onClick={() => { setMode("register"); setFormError(null); }} type="button">{t("auth.register")}</button>
             </div>
 
             <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
               {mode === "register" ? (
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-muted">{t("auth.name")}</span>
-                  <input className="input-base min-h-[46px] rounded-xl" value={name} onChange={(event) => setName(event.target.value)} />
+                  <input className="input-base min-h-[46px] rounded-xl" value={name} onChange={(event) => { setName(event.target.value); if (formError) { setFormError(null); } }} />
                 </label>
               ) : null}
               <label className="space-y-2">
                 <span className="text-sm font-medium text-muted">{t("auth.email")}</span>
-                <input className="input-base min-h-[46px] rounded-xl" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                <input className="input-base min-h-[46px] rounded-xl" type="email" value={email} onChange={(event) => { setEmail(event.target.value); if (formError) { setFormError(null); } }} />
               </label>
               <label className="space-y-2">
                 <span className="text-sm font-medium text-muted">{t("auth.password")}</span>
-                <input className="input-base min-h-[46px] rounded-xl" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                <input className="input-base min-h-[46px] rounded-xl" type="password" value={password} onChange={(event) => { setPassword(event.target.value); if (formError) { setFormError(null); } }} />
               </label>
 
               <label className="flex items-center gap-3 pt-1 text-sm text-muted">
@@ -149,7 +227,17 @@ export function AuthPage() {
             </form>
 
             <div className="mt-6 space-y-3 text-center text-sm">
-              <button className="text-slate-400 transition hover:text-brand" type="button">{t("auth.forgotPassword")}</button>
+              <button
+                className="text-slate-400 transition hover:text-brand"
+                onClick={() => {
+                  setForgotPasswordError(null);
+                  setForgotPasswordEmail((current) => current || email.trim());
+                  setIsForgotPasswordOpen(true);
+                }}
+                type="button"
+              >
+                {t("auth.forgotPassword")}
+              </button>
             </div>
           </section>
         </div>
@@ -160,6 +248,67 @@ export function AuthPage() {
           <AppFooter />
         </div>
       </div>
+
+      <ModalDialog
+        open={isForgotPasswordOpen}
+        title={t("auth.forgotPasswordDialogTitle")}
+        description={t("auth.forgotPasswordDialogBody")}
+        onClose={() => {
+          if (!forgotPasswordMutation.isPending) {
+            setForgotPasswordError(null);
+            setIsForgotPasswordOpen(false);
+          }
+        }}
+        actions={(
+          <>
+            <button
+              className="button-secondary"
+              disabled={forgotPasswordMutation.isPending}
+              onClick={() => {
+                setForgotPasswordError(null);
+                setIsForgotPasswordOpen(false);
+              }}
+              type="button"
+            >
+              {t("common.dismiss")}
+            </button>
+            <button
+              className="button-primary"
+              disabled={forgotPasswordMutation.isPending || forgotPasswordSecondsRemaining > 0}
+              form="forgot-password-form"
+              type="submit"
+            >
+              {forgotPasswordMutation.isPending ? <LoadingSpinner /> : null}
+              {forgotPasswordActionLabel}
+            </button>
+          </>
+        )}
+      >
+        <form id="forgot-password-form" className="space-y-4" onSubmit={handleForgotPasswordSubmit}>
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-muted">{t("auth.email")}</span>
+            <input
+              className="input-base min-h-[46px] rounded-xl"
+              type="email"
+              value={forgotPasswordEmail}
+              onChange={(event) => {
+                setForgotPasswordEmail(event.target.value);
+                if (forgotPasswordError) {
+                  setForgotPasswordError(null);
+                }
+              }}
+            />
+          </label>
+
+          <div className="text-sm leading-6 text-muted">{t("auth.forgotPasswordEmailHint")}</div>
+
+          {forgotPasswordSubmitted ? (
+            <InlineMessage tone="success">{t("auth.forgotPasswordSuccess")}</InlineMessage>
+          ) : null}
+
+          {forgotPasswordError ? <InlineMessage tone="error">{forgotPasswordError}</InlineMessage> : null}
+        </form>
+      </ModalDialog>
     </div>
   );
 }
