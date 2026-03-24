@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type BillDetailDto, type SettlementTransferDto, type SettlementTransferStatus } from "@api-client";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import { AppFooter } from "@/shared/ui/AppFooter";
@@ -9,10 +9,11 @@ import { EmptyState, InlineMessage, LoadingSpinner, LoadingState, PageHeading, S
 import { CheckIcon, SparklesIcon, UsersIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 import {
+  hasSharePaymentInfo,
   hasSharePaymentTextInfo,
   prepareSettlementProofImageDataUrl,
-  readLegacySettlementShareData,
-  type SettlementSharePaymentInfo
+  type SettlementSharePaymentInfo,
+  type SettlementShareReceiverPaymentInfo
 } from "@/features/settlements/share";
 import { buildSettlementReceiptData } from "@/features/settlements/receipt";
 import { getPayerFacingStatus, isSettlementPaid, isSettlementReceived, isSettlementUnpaid, SETTLEMENT_STATUS } from "@/features/settlements/status";
@@ -26,8 +27,7 @@ type CompletionState =
   | null;
 
 export function SettlementSharePage() {
-  const { groupId: routeGroupId, shareToken } = useParams<{ groupId?: string; shareToken?: string }>();
-  const [searchParams] = useSearchParams();
+  const { shareToken } = useParams<{ shareToken?: string }>();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -38,7 +38,6 @@ export function SettlementSharePage() {
   const [completion, setCompletion] = useState<CompletionState>(null);
   const [proofScreenshotDataUrl, setProofScreenshotDataUrl] = useState("");
 
-  const legacyShareData = useMemo(() => readLegacySettlementShareData(searchParams), [searchParams]);
   const shareRecordQuery = useQuery({
     queryKey: ["settlement-share", shareToken],
     queryFn: () => apiClient.getSettlementShare(shareToken!),
@@ -46,22 +45,12 @@ export function SettlementSharePage() {
     retry: false
   });
 
-  const groupId = shareRecordQuery.data?.groupId ?? routeGroupId ?? "";
-  const fromDate = shareRecordQuery.data?.fromDateUtc ?? searchParams.get("fromDate") ?? "";
-  const toDate = shareRecordQuery.data?.toDateUtc ?? searchParams.get("toDate") ?? "";
-  const shareData = useMemo(() => {
-    if (shareRecordQuery.data) {
-      return {
-        creatorName: shareRecordQuery.data.creatorName ?? null,
-        paymentInfo: shareRecordQuery.data.paymentInfo ?? null
-      };
-    }
-
-    return legacyShareData;
-  }, [legacyShareData, shareRecordQuery.data]);
-  const paymentInfo = shareData.paymentInfo;
-  const paymentInfoAvailable = Boolean(paymentInfo);
-  const paymentTextAvailable = hasSharePaymentTextInfo(paymentInfo);
+  const groupId = shareRecordQuery.data?.groupId ?? "";
+  const fromDate = shareRecordQuery.data?.fromDateUtc ?? "";
+  const toDate = shareRecordQuery.data?.toDateUtc ?? "";
+  const receiverPaymentInfos = useMemo<SettlementShareReceiverPaymentInfo[]>(() => {
+    return shareRecordQuery.data?.receiverPaymentInfos ?? [];
+  }, [shareRecordQuery.data]);
 
   const groupQuery = useQuery({
     queryKey: ["group", groupId],
@@ -169,11 +158,11 @@ export function SettlementSharePage() {
 
   const inviteMessage = useMemo(() => {
     const template = t("settlement.inviteMessage");
-    const creatorName = shareData.creatorName ?? groupQuery.data?.createdByUserName ?? t("settlement.shareFallbackCreator");
+    const creatorName = shareRecordQuery.data?.creatorName ?? groupQuery.data?.createdByUserName ?? t("settlement.shareFallbackCreator");
     return template
       .replace("{creator}", creatorName)
       .replace("{group}", groupQuery.data?.name ?? "...");
-  }, [shareData.creatorName, groupQuery.data?.createdByUserName, groupQuery.data?.name, t]);
+  }, [groupQuery.data?.createdByUserName, groupQuery.data?.name, shareRecordQuery.data?.creatorName, t]);
 
   function handleContinueFromIdentity() {
     setCurrentRole(inferredRole);
@@ -182,10 +171,12 @@ export function SettlementSharePage() {
 
   const hasErrors = shareRecordQuery.isError || groupQuery.isError || participantsQuery.isError || settlementQuery.isError || billsQuery.isError;
   const isLoading = shareRecordQuery.isPending || groupQuery.isPending || participantsQuery.isPending || settlementQuery.isPending || billsQuery.isPending;
+  const isShareReadOnly = groupQuery.data?.status === "settled";
 
   const markPaidMutation = useMutation({
     mutationFn: async (paymentProofScreenshotDataUrl?: string) => {
       if (!groupId) throw new Error(t("settlement.shareMissingGroup"));
+      if (isShareReadOnly) throw new Error(t("groups.readOnlySharePage"));
       if (!selectedParticipantId) throw new Error(t("settlement.shareIdentityRequired"));
       if (pendingOutgoingTransfers.length === 0) throw new Error(t("settlement.shareNoPendingPayment"));
 
@@ -225,6 +216,7 @@ export function SettlementSharePage() {
   const markReceivedMutation = useMutation({
     mutationFn: async (transfer: SettlementTransferDto) => {
       if (!groupId) throw new Error(t("settlement.shareMissingGroup"));
+      if (isShareReadOnly) throw new Error(t("groups.readOnlySharePage"));
       if (!selectedParticipantId) throw new Error(t("settlement.shareIdentityRequired"));
       if (!isSettlementPaid(transfer.status)) throw new Error(t("settlement.shareNoReceivablePayment"));
 
@@ -437,14 +429,13 @@ export function SettlementSharePage() {
                 {currentRole === "payer" ? (
                   <PayerPanel
                     groupName={groupQuery.data?.name ?? "..."}
+                    isReadOnly={isShareReadOnly}
                     receipt={payerReceipt}
                     receiptError={billDetailsQuery.error}
                     receiptLoading={billDetailsQuery.isPending}
                     outgoingTransfers={outgoingTransfers}
                     selectedParticipantName={selectedParticipant?.name ?? t("settlement.shareUnknownParticipant")}
-                    paymentInfo={paymentInfo}
-                    paymentInfoAvailable={paymentInfoAvailable}
-                    paymentTextAvailable={paymentTextAvailable}
+                    receiverPaymentInfos={receiverPaymentInfos}
                     participantNameById={participantNameById}
                     recipientNames={recipientNames}
                     proofScreenshotDataUrl={proofScreenshotDataUrl}
@@ -463,6 +454,7 @@ export function SettlementSharePage() {
                   <ReceiverPanel
                     groupName={groupQuery.data?.name ?? "..."}
                     incomingTransfers={incomingTransfers}
+                    isReadOnly={isShareReadOnly}
                     receipt={receiverReceipt}
                     receiptError={billDetailsQuery.error}
                     receiptLoading={billDetailsQuery.isPending}
@@ -534,14 +526,13 @@ export function SettlementSharePage() {
 
 function PayerPanel({
   groupName,
+  isReadOnly,
   receipt,
   receiptError,
   receiptLoading,
   outgoingTransfers,
   selectedParticipantName,
-  paymentInfo,
-  paymentInfoAvailable,
-  paymentTextAvailable,
+  receiverPaymentInfos,
   participantNameById,
   recipientNames,
   proofScreenshotDataUrl,
@@ -555,14 +546,13 @@ function PayerPanel({
   t
 }: {
   groupName: string;
+  isReadOnly: boolean;
   receipt: ReturnType<typeof buildSettlementReceiptData>;
   receiptError: unknown;
   receiptLoading: boolean;
   outgoingTransfers: SettlementTransferDto[];
   selectedParticipantName: string;
-  paymentInfo: SettlementSharePaymentInfo | null;
-  paymentInfoAvailable: boolean;
-  paymentTextAvailable: boolean;
+  receiverPaymentInfos: SettlementShareReceiverPaymentInfo[];
   participantNameById: Record<string, string>;
   recipientNames: string[];
   proofScreenshotDataUrl: string;
@@ -585,6 +575,7 @@ function PayerPanel({
     : outgoingTransfers.every((transfer) => isSettlementReceived(transfer.status))
       ? t("settlement.sharePayerActionReceived")
       : t("settlement.sharePayerActionDone");
+  const fallbackReceiverInfo = receiverPaymentInfos.length === 1 ? receiverPaymentInfos[0] : null;
 
   return (
     <div className="mt-6 space-y-6">
@@ -631,38 +622,25 @@ function PayerPanel({
             <InfoRow label={t("settlement.sharePayerStatus")} value={payerStatus} />
           </div>
 
-          {paymentInfoAvailable ? (
-            <div className="mt-5 space-y-4">
-              {paymentTextAvailable ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {paymentInfo?.payeeName ? <InfoRow label={t("settlement.payeeName")} value={paymentInfo.payeeName} /> : null}
-                  {paymentInfo?.paymentMethod ? <InfoRow label={t("settlement.paymentMethod")} value={paymentInfo.paymentMethod} /> : null}
-                  {paymentInfo?.accountName ? <InfoRow label={t("settlement.accountName")} value={paymentInfo.accountName} /> : null}
-                  {paymentInfo?.accountNumber ? <InfoRow label={t("settlement.accountNumber")} value={paymentInfo.accountNumber} /> : null}
-                  {paymentInfo?.notes ? (
-                    <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3 md:col-span-2">
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.notes")}</div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{paymentInfo.notes}</div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {paymentInfo?.paymentQrDataUrl ? (
-                <PaymentQrPanel paymentQrDataUrl={paymentInfo.paymentQrDataUrl} t={t} />
-              ) : null}
-
-              {!paymentTextAvailable && !paymentInfo?.paymentQrDataUrl ? (
-                <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-muted">
-                  {t("settlement.shareMissingPaymentInfo")}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="mt-5">
+          <div className="mt-5 space-y-4">
+            {outgoingTransfers.length === 0 ? (
               <InlineMessage tone="info">{t("settlement.shareMissingPaymentInfo")}</InlineMessage>
-            </div>
-          )}
+            ) : (
+              outgoingTransfers.map((transfer) => {
+                const receiverName = getParticipantName(participantNameById, transfer.toParticipantId);
+                const receiverInfo = receiverPaymentInfos.find((entry) => entry.participantId === transfer.toParticipantId)
+                  ?? fallbackReceiverInfo;
+                return (
+                  <ReceiverPaymentInfoCard
+                    key={transfer.transferKey}
+                    receiverName={receiverName}
+                    paymentInfo={receiverInfo?.paymentInfo ?? null}
+                    t={t}
+                  />
+                );
+              })
+            )}
+          </div>
         </div>
 
         <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
@@ -708,7 +686,7 @@ function PayerPanel({
             <div className="mt-5">
               <PaymentProofUploader
                 proofScreenshotDataUrl={proofScreenshotDataUrl}
-                disabled={isBusy}
+                disabled={isBusy || isReadOnly}
                 onChange={onProofChange}
                 t={t}
               />
@@ -716,9 +694,12 @@ function PayerPanel({
           ) : null}
 
           {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
+          {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
 
           <div className="mt-6 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-            {payerDisplayStatus === "unpaid"
+            {isReadOnly
+              ? t("groups.readOnlySharePage")
+              : payerDisplayStatus === "unpaid"
               ? t("settlement.shareMarkPaidHelp")
               : outgoingTransfers.every((transfer) => isSettlementReceived(transfer.status))
                 ? t("settlement.sharePayerReceivedHelp")
@@ -727,7 +708,7 @@ function PayerPanel({
 
           <div className="mt-6 flex flex-wrap justify-between gap-3">
             <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
-            {outgoingTransfers.length > 0 && canMarkPaid ? (
+            {outgoingTransfers.length > 0 && canMarkPaid && !isReadOnly ? (
               <button className="button-primary" disabled={isBusy} onClick={onMarkPaid} type="button">
                 {isBusy ? <LoadingSpinner /> : null}
                 {t("settlement.markPaid")}
@@ -745,6 +726,7 @@ function PayerPanel({
 function ReceiverPanel({
   groupName,
   incomingTransfers,
+  isReadOnly,
   receipt,
   receiptError,
   receiptLoading,
@@ -760,6 +742,7 @@ function ReceiverPanel({
 }: {
   groupName: string;
   incomingTransfers: SettlementTransferDto[];
+  isReadOnly: boolean;
   receipt: ReturnType<typeof buildSettlementReceiptData>;
   receiptError: unknown;
   receiptLoading: boolean;
@@ -841,7 +824,7 @@ function ReceiverPanel({
             <div className="mt-6 space-y-3">
               {sortedTransfers.map((transfer) => {
                 const payerName = getParticipantName(participantNameById, transfer.fromParticipantId);
-                const canMarkReceived = isSettlementPaid(transfer.status);
+                const canMarkReceived = isSettlementPaid(transfer.status) && !isReadOnly;
                 const hasProof = Boolean(transfer.proofScreenshotDataUrl);
                 const proofExpanded = expandedProofTransferKey === transfer.transferKey;
                 return (
@@ -909,9 +892,10 @@ function ReceiverPanel({
           </div>
 
           {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
+          {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
 
           <div className="mt-5 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-            {t("settlement.shareMarkReceivedHelp")}
+            {isReadOnly ? t("groups.readOnlySharePage") : t("settlement.shareMarkReceivedHelp")}
           </div>
           <div className="mt-6 flex justify-start">
             <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
@@ -972,6 +956,65 @@ function SummaryInfoCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-4 text-left">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
       <div className="mt-2 text-base font-semibold text-ink">{value}</div>
+    </div>
+  );
+}
+
+function ReceiverPaymentInfoCard({
+  receiverName,
+  paymentInfo,
+  t
+}: {
+  receiverName: string;
+  paymentInfo: SettlementSharePaymentInfo | null;
+  t: (key: any) => string;
+}) {
+  const paymentTextAvailable = hasSharePaymentTextInfo(paymentInfo);
+
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-ink">{receiverName}</div>
+          <div className="mt-1 text-sm text-muted">{t("settlement.sharePayerReceiverBody")}</div>
+        </div>
+        <span className={`tag ${paymentInfo && hasSharePaymentInfo(paymentInfo) ? "bg-sky text-brand" : "bg-slate-100 text-muted"}`}>
+          {paymentInfo && hasSharePaymentInfo(paymentInfo) ? t("settlement.receiverInfoShared") : t("settlement.receiverInfoNotProvided")}
+        </span>
+      </div>
+
+      {paymentInfo && hasSharePaymentInfo(paymentInfo) ? (
+        <div className="mt-4 space-y-4">
+          {paymentTextAvailable ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {paymentInfo.payeeName ? <InfoRow label={t("settlement.payeeName")} value={paymentInfo.payeeName} /> : null}
+              {paymentInfo.paymentMethod ? <InfoRow label={t("settlement.paymentMethod")} value={paymentInfo.paymentMethod} /> : null}
+              {paymentInfo.accountName ? <InfoRow label={t("settlement.accountName")} value={paymentInfo.accountName} /> : null}
+              {paymentInfo.accountNumber ? <InfoRow label={t("settlement.accountNumber")} value={paymentInfo.accountNumber} /> : null}
+              {paymentInfo.notes ? (
+                <div className="rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 md:col-span-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.notes")}</div>
+                  <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{paymentInfo.notes}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {paymentInfo.paymentQrDataUrl ? (
+            <PaymentQrPanel paymentQrDataUrl={paymentInfo.paymentQrDataUrl} t={t} />
+          ) : null}
+
+          {!paymentTextAvailable && !paymentInfo.paymentQrDataUrl ? (
+            <div className="rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
+              {t("settlement.shareMissingPaymentInfo")}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
+          {t("settlement.shareMissingPaymentInfo")}
+        </div>
+      )}
     </div>
   );
 }

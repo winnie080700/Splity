@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type SettlementTransferDto } from "@api-client";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { formatCurrency, getErrorMessage } from "@/shared/utils/format";
 import { EmptyState, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
 import { ArrowsIcon, CalendarIcon, SparklesIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
@@ -19,6 +21,9 @@ export function SettlementsPage() {
   const [toDate, setToDate] = useState("");
   const [actingParticipantId, setActingParticipantId] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isStartSettlementOpen, setIsStartSettlementOpen] = useState(false);
+  const [isMarkSettledOpen, setIsMarkSettledOpen] = useState(false);
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
   const hasInvalidDateRange = Boolean(fromDate && toDate && fromDate > toDate);
 
   const groupQuery = useQuery({
@@ -38,6 +43,7 @@ export function SettlementsPage() {
 
   const balances = settlementQuery.data?.netBalances ?? [];
   const transfers = settlementQuery.data?.transfers ?? [];
+  const isLocked = groupQuery.data ? isGroupLocked(groupQuery.data.status) : false;
   const nameById = Object.fromEntries(balances.map((x) => [x.participantId, x.participantName]));
   const creditors = balances.filter((balance) => balance.netAmount > 0).length;
   const debtors = balances.filter((balance) => balance.netAmount < 0).length;
@@ -47,6 +53,34 @@ export function SettlementsPage() {
       setActingParticipantId(balances[0].participantId);
     }
   }, [actingParticipantId, balances]);
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: "settling" | "settled") => apiClient.updateGroupStatus(groupId!, { status }),
+    onSuccess: async (nextGroup, nextStatus) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["group", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setStatusActionError(null);
+      setIsStartSettlementOpen(false);
+      setIsMarkSettledOpen(false);
+      showToast({
+        title: nextStatus === "settling" ? t("groups.startSettlementAction") : t("groups.markSettledAction"),
+        description: t("feedback.saved"),
+        tone: "success"
+      });
+
+      if (nextGroup.status === "settling") {
+        setIsShareDialogOpen(true);
+      }
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setStatusActionError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
 
   const markPaidMutation = useMutation({
     mutationFn: (transfer: SettlementTransferDto) => apiClient.markSettlementPaid(groupId!, {
@@ -81,6 +115,122 @@ export function SettlementsPage() {
   });
 
   const isBusy = markPaidMutation.isPending || markReceivedMutation.isPending;
+  const isUnresolved = groupQuery.data?.status === "unresolved";
+
+  if (isUnresolved) {
+    return (
+      <div className="space-y-6">
+        <SectionCard className="p-6 md:p-7">
+          <PageHeading
+            eyebrow={t("nav.settlement")}
+            title={t("settlement.unresolvedTitle")}
+            description={t("settlement.unresolvedBody")}
+          />
+          {groupQuery.data ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <GroupStatusBadge status={groupQuery.data.status} t={t} />
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1.04fr,0.96fr]">
+            <article className="rounded-[26px] border border-brand/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft">
+              <h2 className="section-title">{t("settlement.unresolvedPromptTitle")}</h2>
+              <p className="mt-2 section-copy">{t("settlement.unresolvedPromptBody")}</p>
+
+              <div className="mt-5 space-y-3">
+                {[
+                  t("settlement.unresolvedPointStatus"),
+                  t("settlement.unresolvedPointQuestion"),
+                  t("settlement.unresolvedPointLock"),
+                  t("settlement.unresolvedPointConfirm")
+                ].map((point) => (
+                  <div key={point} className="rounded-[20px] border border-slate-200/80 bg-white/88 px-4 py-3 text-sm leading-6 text-muted">
+                    {point}
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="rounded-[26px] border border-slate-200/80 bg-white/94 p-5 shadow-soft">
+              <div>
+                <h2 className="section-title">{t("settlement.unresolvedNextTitle")}</h2>
+                <p className="mt-2 section-copy">{t("settlement.unresolvedNextBody")}</p>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <StatTile
+                  label={t("groups.currentStatusLabel")}
+                  value={t("groups.statusUnresolved")}
+                  icon={<WalletIcon className="h-5 w-5" />}
+                  tone="warning"
+                />
+                <StatTile
+                  label={t("settlement.transfersCount")}
+                  value="00"
+                  icon={<ArrowsIcon className="h-5 w-5" />}
+                  tone="brand"
+                />
+              </div>
+
+              <div className="mt-5 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-sm leading-6 text-muted">
+                {t("settlement.unresolvedLockHint")}
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  className="button-primary"
+                  disabled={updateStatusMutation.isPending}
+                  onClick={() => {
+                    setStatusActionError(null);
+                    setIsStartSettlementOpen(true);
+                  }}
+                  type="button"
+                >
+                  {updateStatusMutation.isPending ? <LoadingSpinner /> : null}
+                  {t("groups.startSettlementAction")}
+                </button>
+                {groupId ? (
+                  <Link className="button-secondary" to={`/groups/${groupId}/bills`}>
+                    {t("common.goToBills")}
+                  </Link>
+                ) : null}
+              </div>
+            </article>
+          </div>
+        </SectionCard>
+
+        <ConfirmDialog
+          open={isStartSettlementOpen}
+          title={t("groups.startSettlementTitle")}
+          description={t("groups.startSettlementBody")}
+          details={groupQuery.data?.name ?? ""}
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("groups.startSettlementAction")}
+          error={statusActionError}
+          isBusy={updateStatusMutation.isPending}
+          onClose={() => {
+            setStatusActionError(null);
+            setIsStartSettlementOpen(false);
+          }}
+          onConfirm={() => updateStatusMutation.mutate("settling")}
+        />
+
+        {groupId ? (
+          <SettlementShareDialog
+            open={isShareDialogOpen}
+            onClose={() => setIsShareDialogOpen(false)}
+            groupId={groupId}
+            groupName={groupQuery.data?.name}
+            creatorName={groupQuery.data?.createdByUserName ?? undefined}
+            fromDate={fromDate}
+            toDate={toDate}
+            hasInvalidDateRange={hasInvalidDateRange}
+            groupStatus={groupQuery.data?.status}
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -89,14 +239,40 @@ export function SettlementsPage() {
           eyebrow={t("nav.settlement")}
           title={t("settlement.transferPlan")}
           description={t("settlement.subtitle") + t("settlement.shareHint")}
-          actions={
-            groupId ? (
-              <button className="button-secondary" onClick={() => setIsShareDialogOpen(true)} type="button">
-                {t("settlement.shareAction")}
-              </button>
-            ) : undefined
-          }
+          actions={(
+            <div className="flex flex-wrap gap-3">
+              {groupId ? (
+                <button className="button-secondary" onClick={() => setIsShareDialogOpen(true)} type="button">
+                  {t("groups.shareLinkAction")}
+                </button>
+              ) : null}
+              {groupQuery.data?.status === "settling" ? (
+                <button
+                  className="button-primary"
+                  disabled={updateStatusMutation.isPending}
+                  onClick={() => {
+                    setStatusActionError(null);
+                    setIsMarkSettledOpen(true);
+                  }}
+                  type="button"
+                >
+                  {updateStatusMutation.isPending ? <LoadingSpinner /> : null}
+                  {t("groups.markSettledAction")}
+                </button>
+              ) : null}
+            </div>
+          )}
         />
+        {groupQuery.data ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <GroupStatusBadge status={groupQuery.data.status} t={t} />
+          </div>
+        ) : null}
+        {isLocked ? (
+          <div className="mt-4">
+            <InlineMessage tone="info">{t("groups.readOnlySettlement")}</InlineMessage>
+          </div>
+        ) : null}
         <div className="mt-6 grid gap-3 xl:grid-cols-[1.36fr,0.78fr,0.78fr,0.78fr]">
           <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-soft">
             <div className="flex items-center gap-2 text-sm font-semibold text-ink"><CalendarIcon className="h-4 w-4 text-brand" />{t("settlement.filters")}</div>
@@ -159,7 +335,7 @@ export function SettlementsPage() {
                       <div className="text-xl font-semibold tracking-tight text-ink">{formatCurrency(transfer.amount)}</div>
                     </div>
                   </div>
-                  {canMarkPaid || canMarkReceived ? (
+                  {(canMarkPaid || canMarkReceived) && !isLocked ? (
                     <div className="mt-4 flex justify-end">
                       {canMarkPaid ? <button className="button-primary" disabled={isBusy} onClick={() => markPaidMutation.mutate(transfer)} type="button">{markPaidMutation.isPending ? <LoadingSpinner /> : null}{t("settlement.markPaid")}</button> : null}
                       {canMarkReceived ? <button className="button-primary" disabled={isBusy} onClick={() => markReceivedMutation.mutate(transfer)} type="button">{markReceivedMutation.isPending ? <LoadingSpinner /> : null}{t("settlement.markReceived")}</button> : null}
@@ -182,8 +358,24 @@ export function SettlementsPage() {
           fromDate={fromDate}
           toDate={toDate}
           hasInvalidDateRange={hasInvalidDateRange}
+          groupStatus={groupQuery.data?.status}
         />
       ) : null}
+      <ConfirmDialog
+        open={isMarkSettledOpen}
+        title={t("groups.markSettledTitle")}
+        description={t("groups.markSettledBody")}
+        details={groupQuery.data?.name ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("groups.markSettledAction")}
+        error={statusActionError}
+        isBusy={updateStatusMutation.isPending}
+        onClose={() => {
+          setStatusActionError(null);
+          setIsMarkSettledOpen(false);
+        }}
+        onConfirm={() => updateStatusMutation.mutate("settled")}
+      />
     </div>
   );
 }

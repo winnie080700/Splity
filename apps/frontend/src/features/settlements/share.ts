@@ -7,19 +7,11 @@ export type SettlementSharePaymentInfo = {
   paymentQrDataUrl: string;
 };
 
-export type SettlementShareData = {
-  creatorName: string | null;
-  paymentInfo: SettlementSharePaymentInfo | null;
+export type SettlementShareReceiverPaymentInfo = {
+  participantId: string;
+  participantName: string;
+  paymentInfo: SettlementSharePaymentInfo;
 };
-
-const PAYMENT_QUERY_KEYS = {
-  payeeName: "payeeName",
-  paymentMethod: "paymentMethod",
-  accountName: "accountName",
-  accountNumber: "accountNumber",
-  notes: "notes",
-  paymentQrDataUrl: "paymentQr"
-} as const;
 
 const MAX_QR_DIMENSION = 512;
 const MAX_QR_DATA_URL_LENGTH = 180_000;
@@ -65,25 +57,6 @@ export function hasSharePaymentTextInfo(paymentInfo: Partial<SettlementSharePaym
     normalized.accountNumber,
     normalized.notes
   ].some((value) => value.length > 0);
-}
-
-export function readLegacySettlementSharePaymentInfo(searchParams: URLSearchParams): SettlementSharePaymentInfo {
-  return normalizePaymentInfo({
-    payeeName: searchParams.get(PAYMENT_QUERY_KEYS.payeeName) ?? "",
-    paymentMethod: searchParams.get(PAYMENT_QUERY_KEYS.paymentMethod) ?? "",
-    accountName: searchParams.get(PAYMENT_QUERY_KEYS.accountName) ?? "",
-    accountNumber: searchParams.get(PAYMENT_QUERY_KEYS.accountNumber) ?? "",
-    notes: searchParams.get(PAYMENT_QUERY_KEYS.notes) ?? "",
-    paymentQrDataUrl: searchParams.get(PAYMENT_QUERY_KEYS.paymentQrDataUrl) ?? ""
-  });
-}
-
-export function readLegacySettlementShareData(searchParams: URLSearchParams): SettlementShareData {
-  const paymentInfo = readLegacySettlementSharePaymentInfo(searchParams);
-  return {
-    creatorName: clean(searchParams.get("creator") ?? undefined) || null,
-    paymentInfo: hasSharePaymentInfo(paymentInfo) ? paymentInfo : null
-  };
 }
 
 export async function prepareSettlementShareQrDataUrl(file: File) {
