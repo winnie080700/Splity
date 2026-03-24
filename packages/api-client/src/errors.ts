@@ -89,7 +89,7 @@ function tryExtractMessage(value: unknown): string | null {
 
 export function getApiErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
-    return error.message;
+    return tryExtractMessage(error.problem ?? error.message) ?? "Something went wrong.";
   }
 
   if (error instanceof Error) {

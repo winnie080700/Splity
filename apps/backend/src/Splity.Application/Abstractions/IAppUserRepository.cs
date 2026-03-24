@@ -7,4 +7,5 @@ public interface IAppUserRepository
     Task AddAsync(AppUser user, CancellationToken cancellationToken);
     Task<AppUser?> GetByEmailAsync(string email, CancellationToken cancellationToken);
     Task<AppUser?> GetByIdAsync(Guid userId, CancellationToken cancellationToken);
+    Task<AppUser?> GetByIdForUpdateAsync(Guid userId, CancellationToken cancellationToken);
 }

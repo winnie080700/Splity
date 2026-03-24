@@ -8,6 +8,17 @@ public static class SettlementShareEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/groups/{groupId:guid}/settlement-shares", async (
+                Guid groupId,
+                ISettlementSharesService service,
+                CancellationToken ct) =>
+            {
+                var result = await service.GetActiveAsync(groupId, ct);
+                return Results.Ok(result);
+            })
+            .WithName("GetCurrentSettlementShare")
+            .WithSummary("Get the current active settlement share for a group.");
+
         app.MapPost("/api/groups/{groupId:guid}/settlement-shares", async (
                 Guid groupId,
                 CreateSettlementShareRequest request,
@@ -38,15 +49,21 @@ public static class SettlementShareEndpoints
             NormalizeDate(request.FromDateUtc),
             NormalizeDate(request.ToDateUtc),
             request.CreatorName,
-            request.PaymentInfo is null
-                ? null
-                : new SettlementSharePaymentInfoDto(
-                    request.PaymentInfo.PayeeName ?? string.Empty,
-                    request.PaymentInfo.PaymentMethod ?? string.Empty,
-                    request.PaymentInfo.AccountName ?? string.Empty,
-                    request.PaymentInfo.AccountNumber ?? string.Empty,
-                    request.PaymentInfo.Notes ?? string.Empty,
-                    request.PaymentInfo.PaymentQrDataUrl ?? string.Empty));
+            (request.ReceiverPaymentInfos ?? Array.Empty<SettlementShareReceiverPaymentInfoRequest>())
+                .Select(receiver => new SettlementShareReceiverPaymentInfoDto(
+                    receiver.ParticipantId,
+                    string.Empty,
+                    receiver.PaymentInfo is null
+                        ? new SettlementSharePaymentInfoDto(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty)
+                        : new SettlementSharePaymentInfoDto(
+                            receiver.PaymentInfo.PayeeName ?? string.Empty,
+                            receiver.PaymentInfo.PaymentMethod ?? string.Empty,
+                            receiver.PaymentInfo.AccountName ?? string.Empty,
+                            receiver.PaymentInfo.AccountNumber ?? string.Empty,
+                            receiver.PaymentInfo.Notes ?? string.Empty,
+                            receiver.PaymentInfo.PaymentQrDataUrl ?? string.Empty)))
+                .ToArray(),
+            request.Regenerate);
     }
 
     private static DateTime? NormalizeDate(DateTime? value)

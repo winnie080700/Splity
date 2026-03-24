@@ -55,7 +55,7 @@ public sealed class SettlementsService(
         UpdateSettlementTransferStatusInput input,
         CancellationToken cancellationToken)
     {
-        await EnsureGroupExists(groupId, cancellationToken);
+        await EnsureGroupAllowsSettlementActions(groupId, cancellationToken);
 
         if (input.ActorParticipantId != input.FromParticipantId)
         {
@@ -123,7 +123,7 @@ public sealed class SettlementsService(
         UpdateSettlementTransferStatusInput input,
         CancellationToken cancellationToken)
     {
-        await EnsureGroupExists(groupId, cancellationToken);
+        await EnsureGroupAllowsSettlementActions(groupId, cancellationToken);
 
         if (input.ActorParticipantId != input.ToParticipantId)
         {
@@ -255,6 +255,20 @@ public sealed class SettlementsService(
         if (!await groupRepository.ExistsAsync(groupId, cancellationToken))
         {
             throw new EntityNotFoundException("Group not found.");
+        }
+    }
+
+    private async Task EnsureGroupAllowsSettlementActions(Guid groupId, CancellationToken cancellationToken)
+    {
+        var group = await groupRepository.GetAsync(groupId, cancellationToken);
+        if (group is null)
+        {
+            throw new EntityNotFoundException("Group not found.");
+        }
+
+        if (group.Status != GroupStatus.Settling)
+        {
+            throw new DomainValidationException("This group does not accept settlement actions in its current status.");
         }
     }
 

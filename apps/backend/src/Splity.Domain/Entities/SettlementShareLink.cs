@@ -14,6 +14,8 @@ public sealed class SettlementShareLink
     public string? AccountNumber { get; set; }
     public string? Notes { get; set; }
     public string? PaymentQrDataUrl { get; set; }
+    public string? ReceiverPaymentInfosJson { get; set; }
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; }
 
     public Group? Group { get; set; }

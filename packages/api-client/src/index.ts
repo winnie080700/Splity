@@ -8,17 +8,34 @@ export type GroupDto = {
   id: string;
   name: string;
   createdAtUtc: string;
+  status: GroupStatus;
   createdByUserName?: string | null;
+};
+
+export type GroupStatus = "unresolved" | "settling" | "settled";
+
+export type GroupSummaryDto = {
+  id: string;
+  name: string;
+  createdAtUtc: string;
+  status: GroupStatus;
 };
 
 export type UpdateGroupRequest = {
   name: string;
 };
 
+export type UpdateGroupStatusRequest = {
+  status: GroupStatus;
+};
+
 export type AuthUserDto = {
   id: string;
   name: string;
   email: string;
+  isEmailVerified: boolean;
+  emailVerifiedAtUtc: string | null;
+  emailVerificationPendingUntilUtc: string | null;
 };
 
 export type AuthResultDto = {
@@ -133,15 +150,30 @@ export type SettlementSharePaymentInfoDto = {
   paymentQrDataUrl: string;
 };
 
+export type SettlementShareReceiverPaymentInfoDto = {
+  participantId: string;
+  participantName: string;
+  paymentInfo: SettlementSharePaymentInfoDto;
+};
+
 export type CreateSettlementShareRequest = {
   fromDateUtc?: string;
   toDateUtc?: string;
   creatorName?: string;
-  paymentInfo?: SettlementSharePaymentInfoDto;
+  receiverPaymentInfos?: Array<{
+    participantId: string;
+    paymentInfo?: SettlementSharePaymentInfoDto;
+  }>;
+  regenerate?: boolean;
 };
 
-export type SettlementShareLinkDto = {
+export type SettlementShareRecordDto = {
   shareToken: string;
+  groupId: string;
+  fromDateUtc?: string;
+  toDateUtc?: string;
+  creatorName?: string;
+  receiverPaymentInfos: SettlementShareReceiverPaymentInfoDto[];
   createdAtUtc: string;
 };
 
@@ -151,7 +183,7 @@ export type SettlementSharePublicDto = {
   fromDateUtc?: string;
   toDateUtc?: string;
   creatorName?: string;
-  paymentInfo?: SettlementSharePaymentInfoDto;
+  receiverPaymentInfos: SettlementShareReceiverPaymentInfoDto[];
 };
 
 export type ParticipantNetBalanceDto = {
@@ -190,12 +222,38 @@ export const apiClient = {
     method: "POST",
     body: JSON.stringify(payload)
   }),
+  forgotPassword: (payload: { email: string }) => request<void>("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+  getCurrentUser: () => request<AuthUserDto>("/api/auth/me"),
+  updateProfile: (payload: { name: string }) => request<AuthUserDto>("/api/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+  changePassword: (payload: { currentPassword: string; newPassword: string; confirmNewPassword: string }) => request<void>("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+  sendEmailVerification: () => request<AuthUserDto>("/api/auth/email-verification/send", {
+    method: "POST",
+    body: JSON.stringify({})
+  }),
+  verifyEmail: (payload: { code: string }) => request<AuthUserDto>("/api/auth/email-verification/verify", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
   createGroup: (name: string) => request<GroupDto>("/api/groups", {
     method: "POST",
     body: JSON.stringify({ name })
   }),
+  listGroups: () => request<GroupSummaryDto[]>("/api/groups"),
   getGroup: (groupId: string) => request<GroupDto>(`/api/groups/${groupId}`),
   updateGroup: (groupId: string, payload: UpdateGroupRequest) => request<GroupDto>(`/api/groups/${groupId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+  updateGroupStatus: (groupId: string, payload: UpdateGroupStatusRequest) => request<GroupDto>(`/api/groups/${groupId}/status`, {
     method: "PUT",
     body: JSON.stringify(payload)
   }),
@@ -241,8 +299,9 @@ export const apiClient = {
     const suffix = params.toString().length > 0 ? `?${params.toString()}` : "";
     return request<SettlementResultDto>(`/api/groups/${groupId}/settlements${suffix}`);
   },
+  getCurrentSettlementShare: (groupId: string) => request<SettlementShareRecordDto | null>(`/api/groups/${groupId}/settlement-shares`),
   createSettlementShare: (groupId: string, payload: CreateSettlementShareRequest) =>
-    request<SettlementShareLinkDto>(`/api/groups/${groupId}/settlement-shares`, {
+    request<SettlementShareRecordDto>(`/api/groups/${groupId}/settlement-shares`, {
       method: "POST",
       body: JSON.stringify(payload)
     }),

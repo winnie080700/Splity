@@ -12,10 +12,18 @@ public sealed class SettlementShareLinkRepository(SplityDbContext dbContext) : I
         return dbContext.SettlementShareLinks.AddAsync(shareLink, cancellationToken).AsTask();
     }
 
-    public Task<SettlementShareLink?> GetByShareTokenAsync(string shareToken, CancellationToken cancellationToken)
+    public Task<SettlementShareLink?> GetActiveByGroupIdAsync(Guid groupId, CancellationToken cancellationToken)
     {
         return dbContext.SettlementShareLinks
-            .FirstOrDefaultAsync(x => x.ShareToken == shareToken, cancellationToken);
+            .Where(x => x.GroupId == groupId && x.IsActive)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<SettlementShareLink?> GetActiveByShareTokenAsync(string shareToken, CancellationToken cancellationToken)
+    {
+        return dbContext.SettlementShareLinks
+            .FirstOrDefaultAsync(x => x.ShareToken == shareToken && x.IsActive, cancellationToken);
     }
 
     public Task<bool> ShareTokenExistsAsync(string shareToken, CancellationToken cancellationToken)

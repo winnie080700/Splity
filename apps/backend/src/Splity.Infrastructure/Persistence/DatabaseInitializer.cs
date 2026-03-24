@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Splity.Domain.Entities;
-using Splity.Domain.Enums;
 using System.Data;
 
 namespace Splity.Infrastructure.Persistence;
@@ -10,109 +8,46 @@ public static class DatabaseInitializer
     public static async Task InitializeAsync(SplityDbContext dbContext, CancellationToken cancellationToken = default)
     {
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await EnsureGroupSchemaAsync(dbContext, cancellationToken);
+        await EnsureAppUserSchemaAsync(dbContext, cancellationToken);
         await EnsureSettlementTransferConfirmationSchemaAsync(dbContext, cancellationToken);
         await EnsureSettlementShareLinkSchemaAsync(dbContext, cancellationToken);
 
-        if (await dbContext.Groups.AnyAsync(cancellationToken))
+        return;
+    }
+
+    private static async Task EnsureGroupSchemaAsync(
+        SplityDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsInMemory())
         {
             return;
         }
 
-        var groupId = Guid.NewGuid();
-        var aliceId = Guid.NewGuid();
-        var bobId = Guid.NewGuid();
-        var charlieId = Guid.NewGuid();
-        var billId = Guid.NewGuid();
-        var groceriesItemId = Guid.NewGuid();
-        var snacksItemId = Guid.NewGuid();
-        var nowUtc = DateTime.UtcNow;
-
-        dbContext.Groups.Add(new Group
+        var connection = dbContext.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
         {
-            Id = groupId,
-            Name = "Demo Group",
-            CreatedAtUtc = nowUtc
-        });
+            await connection.OpenAsync(cancellationToken);
+        }
 
-        dbContext.Participants.AddRange(
-            new Participant { Id = aliceId, GroupId = groupId, Name = "Alice", CreatedAtUtc = nowUtc },
-            new Participant { Id = bobId, GroupId = groupId, Name = "Bob", CreatedAtUtc = nowUtc },
-            new Participant { Id = charlieId, GroupId = groupId, Name = "Charlie", CreatedAtUtc = nowUtc });
-
-        dbContext.Bills.Add(new Bill
+        try
         {
-            Id = billId,
-            GroupId = groupId,
-            StoreName = "GrocerX",
-            TransactionDateUtc = nowUtc.Date,
-            CurrencyCode = "MYR",
-            SplitMode = SplitMode.Equal,
-            PrimaryPayerParticipantId = aliceId,
-            CreatedAtUtc = nowUtc,
-            UpdatedAtUtc = nowUtc
-        });
-
-        dbContext.BillItems.AddRange(
-            new BillItem { Id = groceriesItemId, BillId = billId, Description = "Groceries", Amount = 80.00m },
-            new BillItem { Id = snacksItemId, BillId = billId, Description = "Snacks", Amount = 20.00m });
-
-        dbContext.BillItemResponsibilities.AddRange(
-            new BillItemResponsibility { Id = Guid.NewGuid(), BillItemId = groceriesItemId, ParticipantId = aliceId },
-            new BillItemResponsibility { Id = Guid.NewGuid(), BillItemId = groceriesItemId, ParticipantId = bobId },
-            new BillItemResponsibility { Id = Guid.NewGuid(), BillItemId = groceriesItemId, ParticipantId = charlieId },
-            new BillItemResponsibility { Id = Guid.NewGuid(), BillItemId = snacksItemId, ParticipantId = charlieId });
-
-        dbContext.BillFees.Add(new BillFee
-        {
-            Id = Guid.NewGuid(),
-            BillId = billId,
-            Name = "SST",
-            FeeType = FeeType.Percentage,
-            Value = 6.00m
-        });
-
-        dbContext.BillShares.AddRange(
-            new BillShare
+            if (!await ColumnExistsAsync(connection, connection.Database, "groups", "status", cancellationToken))
             {
-                Id = Guid.NewGuid(),
-                BillId = billId,
-                ParticipantId = aliceId,
-                Weight = 1m,
-                PreFeeAmount = 26.67m,
-                FeeAmount = 1.60m,
-                TotalShareAmount = 28.27m
-            },
-            new BillShare
-            {
-                Id = Guid.NewGuid(),
-                BillId = billId,
-                ParticipantId = bobId,
-                Weight = 1m,
-                PreFeeAmount = 26.67m,
-                FeeAmount = 1.60m,
-                TotalShareAmount = 28.27m
-            },
-            new BillShare
-            {
-                Id = Guid.NewGuid(),
-                BillId = billId,
-                ParticipantId = charlieId,
-                Weight = 1m,
-                PreFeeAmount = 46.66m,
-                FeeAmount = 2.80m,
-                TotalShareAmount = 49.46m
-            });
-
-        dbContext.PaymentContributions.Add(new PaymentContribution
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE groups ADD COLUMN status INT NOT NULL DEFAULT 0";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+        finally
         {
-            Id = Guid.NewGuid(),
-            BillId = billId,
-            ParticipantId = aliceId,
-            Amount = 106m,
-            CreatedAtUtc = nowUtc
-        });
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private static async Task EnsureSettlementShareLinkSchemaAsync(
@@ -148,6 +83,8 @@ public static class DatabaseInitializer
                     account_number VARCHAR(120) NULL,
                     notes VARCHAR(2000) NULL,
                     payment_qr_data_url LONGTEXT NULL,
+                    receiver_payment_infos_json LONGTEXT NULL,
+                    is_active BIT NOT NULL DEFAULT b'1',
                     created_at_utc DATETIME(6) NOT NULL,
                     CONSTRAINT pk_settlement_share_links PRIMARY KEY (id),
                     CONSTRAINT ux_settlement_share_links_share_token UNIQUE (share_token),
@@ -156,6 +93,68 @@ public static class DatabaseInitializer
                 )
                 """;
             await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "settlement_share_links", "receiver_payment_infos_json", cancellationToken))
+            {
+                await using var addReceiverInfosCommand = connection.CreateCommand();
+                addReceiverInfosCommand.CommandText = "ALTER TABLE settlement_share_links ADD COLUMN receiver_payment_infos_json LONGTEXT NULL";
+                await addReceiverInfosCommand.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "settlement_share_links", "is_active", cancellationToken))
+            {
+                await using var addIsActiveCommand = connection.CreateCommand();
+                addIsActiveCommand.CommandText = "ALTER TABLE settlement_share_links ADD COLUMN is_active BIT NOT NULL DEFAULT b'1'";
+                await addIsActiveCommand.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task EnsureAppUserSchemaAsync(
+        SplityDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsInMemory())
+        {
+            return;
+        }
+
+        var connection = dbContext.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            if (!await ColumnExistsAsync(connection, connection.Database, "app_users", "email_verified_at_utc", cancellationToken))
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE app_users ADD COLUMN email_verified_at_utc DATETIME(6) NULL";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "app_users", "pending_email_verification_code_hash", cancellationToken))
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE app_users ADD COLUMN pending_email_verification_code_hash VARCHAR(128) NULL";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "app_users", "pending_email_verification_expires_at_utc", cancellationToken))
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE app_users ADD COLUMN pending_email_verification_expires_at_utc DATETIME(6) NULL";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
         }
         finally
         {

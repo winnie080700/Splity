@@ -29,6 +29,11 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
             entity.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(x => x.Status)
+                .HasColumnName("status")
+                .HasConversion<int>()
+                .HasDefaultValue(GroupStatus.Unresolved)
+                .IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
 
             entity.HasOne(x => x.CreatedByUser)
@@ -46,6 +51,11 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
             entity.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(200).IsRequired();
             entity.Property(x => x.PasswordSalt).HasColumnName("password_salt").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.EmailVerifiedAtUtc).HasColumnName("email_verified_at_utc");
+            entity.Property(x => x.PendingEmailVerificationCodeHash)
+                .HasColumnName("pending_email_verification_code_hash")
+                .HasMaxLength(128);
+            entity.Property(x => x.PendingEmailVerificationExpiresAtUtc).HasColumnName("pending_email_verification_expires_at_utc");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
             entity.HasIndex(x => x.Email).IsUnique();
         });
@@ -229,6 +239,8 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.AccountNumber).HasColumnName("account_number").HasMaxLength(120);
             entity.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(2000);
             entity.Property(x => x.PaymentQrDataUrl).HasColumnName("payment_qr_data_url").HasColumnType("longtext");
+            entity.Property(x => x.ReceiverPaymentInfosJson).HasColumnName("receiver_payment_infos_json").HasColumnType("longtext");
+            entity.Property(x => x.IsActive).HasColumnName("is_active").HasDefaultValue(true).IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
             entity.HasIndex(x => x.ShareToken).IsUnique();
             entity.HasIndex(x => x.GroupId);

@@ -21,6 +21,13 @@ public sealed class AppUserRepository(SplityDbContext dbContext) : IAppUserRepos
     public Task<AppUser?> GetByIdAsync(Guid userId, CancellationToken cancellationToken)
     {
         return dbContext.AppUsers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+    }
+
+    public Task<AppUser?> GetByIdForUpdateAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return dbContext.AppUsers
             .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
     }
 }

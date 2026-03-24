@@ -2,6 +2,7 @@ using Splity.Application.Abstractions;
 using Splity.Application.Exceptions;
 using Splity.Application.Models;
 using Splity.Domain.Entities;
+using Splity.Domain.Enums;
 
 namespace Splity.Application.Services;
 
@@ -28,13 +29,14 @@ public sealed class GroupsService(
             Id = Guid.NewGuid(),
             Name = input.Name.Trim(),
             CreatedByUserId = creatorUserId,
+            Status = GroupStatus.Unresolved,
             CreatedAtUtc = DateTime.UtcNow
         };
 
         await groupRepository.AddAsync(group, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, group.CreatedByUser?.Name);
+        return ToGroupDto(group);
     }
 
     public async Task<GroupDto> GetAsync(Guid groupId, CancellationToken cancellationToken)
@@ -45,7 +47,15 @@ public sealed class GroupsService(
             throw new EntityNotFoundException("Group not found.");
         }
 
-        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, group.CreatedByUser?.Name);
+        return ToGroupDto(group);
+    }
+
+    public async Task<IReadOnlyCollection<GroupSummaryDto>> ListByCreatorAsync(Guid creatorUserId, CancellationToken cancellationToken)
+    {
+        var groups = await groupRepository.ListByCreatorAsync(creatorUserId, cancellationToken);
+        return groups
+            .Select(group => new GroupSummaryDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status)))
+            .ToArray();
     }
 
     public async Task<GroupDto> UpdateAsync(Guid groupId, UpdateGroupInput input, CancellationToken cancellationToken)
@@ -64,7 +74,21 @@ public sealed class GroupsService(
         group.Name = input.Name.Trim();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, group.CreatedByUser?.Name);
+        return ToGroupDto(group);
+    }
+
+    public async Task<GroupDto> UpdateStatusAsync(Guid groupId, UpdateGroupStatusInput input, CancellationToken cancellationToken)
+    {
+        var group = await groupRepository.GetForUpdateAsync(groupId, cancellationToken);
+        if (group is null)
+        {
+            throw new EntityNotFoundException("Group not found.");
+        }
+
+        group.Status = ParseGroupStatus(input.Status);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ToGroupDto(group);
     }
 
     public async Task DeleteAsync(Guid groupId, CancellationToken cancellationToken)
@@ -78,5 +102,32 @@ public sealed class GroupsService(
         await confirmationRepository.DeleteByGroupAsync(groupId, cancellationToken);
         groupRepository.Remove(group);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private static GroupDto ToGroupDto(Group group)
+    {
+        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status), group.CreatedByUser?.Name);
+    }
+
+    private static GroupStatus ParseGroupStatus(string? rawStatus)
+    {
+        return rawStatus?.Trim().ToLowerInvariant() switch
+        {
+            "unresolved" => GroupStatus.Unresolved,
+            "settling" => GroupStatus.Settling,
+            "settled" => GroupStatus.Settled,
+            _ => throw new DomainValidationException("Unsupported group status.")
+        };
+    }
+
+    private static string ToStatusValue(GroupStatus status)
+    {
+        return status switch
+        {
+            GroupStatus.Unresolved => "unresolved",
+            GroupStatus.Settling => "settling",
+            GroupStatus.Settled => "settled",
+            _ => throw new DomainValidationException("Unsupported group status.")
+        };
     }
 }

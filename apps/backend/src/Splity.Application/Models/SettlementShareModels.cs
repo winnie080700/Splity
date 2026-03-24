@@ -8,14 +8,25 @@ public sealed record SettlementSharePaymentInfoDto(
     string Notes,
     string PaymentQrDataUrl);
 
+public sealed record SettlementShareReceiverPaymentInfoDto(
+    Guid ParticipantId,
+    string ParticipantName,
+    SettlementSharePaymentInfoDto PaymentInfo);
+
 public sealed record CreateSettlementShareInput(
     DateTime? FromDateUtc,
     DateTime? ToDateUtc,
     string? CreatorName,
-    SettlementSharePaymentInfoDto? PaymentInfo);
+    IReadOnlyCollection<SettlementShareReceiverPaymentInfoDto> ReceiverPaymentInfos,
+    bool Regenerate);
 
-public sealed record SettlementShareLinkDto(
+public sealed record SettlementShareRecordDto(
     string ShareToken,
+    Guid GroupId,
+    DateTime? FromDateUtc,
+    DateTime? ToDateUtc,
+    string? CreatorName,
+    IReadOnlyCollection<SettlementShareReceiverPaymentInfoDto> ReceiverPaymentInfos,
     DateTime CreatedAtUtc);
 
 public sealed record SettlementSharePublicDto(
@@ -24,4 +35,4 @@ public sealed record SettlementSharePublicDto(
     DateTime? FromDateUtc,
     DateTime? ToDateUtc,
     string? CreatorName,
-    SettlementSharePaymentInfoDto? PaymentInfo);
+    IReadOnlyCollection<SettlementShareReceiverPaymentInfoDto> ReceiverPaymentInfos);

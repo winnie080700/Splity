@@ -7,6 +7,9 @@ public sealed class AppUser
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string PasswordSalt { get; set; } = string.Empty;
+    public DateTime? EmailVerifiedAtUtc { get; set; }
+    public string? PendingEmailVerificationCodeHash { get; set; }
+    public DateTime? PendingEmailVerificationExpiresAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
     public ICollection<Group> CreatedGroups { get; set; } = new List<Group>();

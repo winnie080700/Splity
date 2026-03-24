@@ -17,8 +17,13 @@ public sealed record SettlementSharePaymentInfoRequest(
     string? Notes,
     string? PaymentQrDataUrl);
 
+public sealed record SettlementShareReceiverPaymentInfoRequest(
+    Guid ParticipantId,
+    SettlementSharePaymentInfoRequest? PaymentInfo);
+
 public sealed record CreateSettlementShareRequest(
     DateTime? FromDateUtc,
     DateTime? ToDateUtc,
     string? CreatorName,
-    SettlementSharePaymentInfoRequest? PaymentInfo);
+    IReadOnlyCollection<SettlementShareReceiverPaymentInfoRequest>? ReceiverPaymentInfos,
+    bool Regenerate);

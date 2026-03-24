@@ -16,7 +16,16 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
                     "Validation error",
                     validationException.Message,
                     StatusCodes.Status400BadRequest,
-                    "validation_error");
+                    validationException.ErrorCode);
+                return true;
+            case ExternalServiceException externalServiceException:
+                logger.LogError(exception, "External service failure for {Path}", httpContext.Request.Path);
+                await WriteProblemAsync(
+                    httpContext,
+                    "Service unavailable",
+                    externalServiceException.Message,
+                    StatusCodes.Status503ServiceUnavailable,
+                    externalServiceException.ErrorCode);
                 return true;
             case EntityNotFoundException notFoundException:
                 await WriteProblemAsync(

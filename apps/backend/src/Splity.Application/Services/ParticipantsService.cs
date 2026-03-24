@@ -2,6 +2,7 @@ using Splity.Application.Abstractions;
 using Splity.Application.Exceptions;
 using Splity.Application.Models;
 using Splity.Domain.Entities;
+using Splity.Domain.Enums;
 
 namespace Splity.Application.Services;
 
@@ -15,10 +16,7 @@ public sealed class ParticipantsService(
         CreateParticipantInput input,
         CancellationToken cancellationToken)
     {
-        if (!await groupRepository.ExistsAsync(groupId, cancellationToken))
-        {
-            throw new EntityNotFoundException("Group not found.");
-        }
+        await EnsureGroupEditableAsync(groupId, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(input.Name))
         {
@@ -59,10 +57,7 @@ public sealed class ParticipantsService(
         UpdateParticipantInput input,
         CancellationToken cancellationToken)
     {
-        if (!await groupRepository.ExistsAsync(groupId, cancellationToken))
-        {
-            throw new EntityNotFoundException("Group not found.");
-        }
+        await EnsureGroupEditableAsync(groupId, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(input.Name))
         {
@@ -83,10 +78,7 @@ public sealed class ParticipantsService(
 
     public async Task DeleteAsync(Guid groupId, Guid participantId, CancellationToken cancellationToken)
     {
-        if (!await groupRepository.ExistsAsync(groupId, cancellationToken))
-        {
-            throw new EntityNotFoundException("Group not found.");
-        }
+        await EnsureGroupEditableAsync(groupId, cancellationToken);
 
         var participant = await participantRepository.GetAsync(groupId, participantId, cancellationToken);
         if (participant is null)
@@ -101,5 +93,19 @@ public sealed class ParticipantsService(
 
         participantRepository.Remove(participant);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureGroupEditableAsync(Guid groupId, CancellationToken cancellationToken)
+    {
+        var group = await groupRepository.GetAsync(groupId, cancellationToken);
+        if (group is null)
+        {
+            throw new EntityNotFoundException("Group not found.");
+        }
+
+        if (group.Status != GroupStatus.Unresolved)
+        {
+            throw new DomainValidationException("This group is locked because settlement has already started.");
+        }
     }
 }

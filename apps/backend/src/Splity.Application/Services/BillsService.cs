@@ -17,7 +17,7 @@ public sealed class BillsService(
 {
     public async Task<BillDetailDto> CreateAsync(Guid groupId, CreateBillInput input, CancellationToken cancellationToken)
     {
-        await EnsureGroupExists(groupId, cancellationToken);
+        await EnsureGroupEditable(groupId, cancellationToken);
         ValidateBillInput(input.StoreName);
 
         var participants = await GetAndValidateBillParticipants(groupId, input.Participants, input.PrimaryPayerParticipantId, cancellationToken);
@@ -78,7 +78,7 @@ public sealed class BillsService(
         UpdateBillInput input,
         CancellationToken cancellationToken)
     {
-        await EnsureGroupExists(groupId, cancellationToken);
+        await EnsureGroupEditable(groupId, cancellationToken);
         var bill = await GetBillEntity(groupId, billId, cancellationToken);
         ValidateBillInput(input.StoreName);
 
@@ -93,7 +93,7 @@ public sealed class BillsService(
 
     public async Task DeleteAsync(Guid groupId, Guid billId, CancellationToken cancellationToken)
     {
-        await EnsureGroupExists(groupId, cancellationToken);
+        await EnsureGroupEditable(groupId, cancellationToken);
         var bill = await GetBillEntity(groupId, billId, cancellationToken);
 
         await confirmationRepository.DeleteByGroupAsync(groupId, cancellationToken);
@@ -404,6 +404,20 @@ public sealed class BillsService(
         if (!await groupRepository.ExistsAsync(groupId, cancellationToken))
         {
             throw new EntityNotFoundException("Group not found.");
+        }
+    }
+
+    private async Task EnsureGroupEditable(Guid groupId, CancellationToken cancellationToken)
+    {
+        var group = await groupRepository.GetAsync(groupId, cancellationToken);
+        if (group is null)
+        {
+            throw new EntityNotFoundException("Group not found.");
+        }
+
+        if (group.Status != GroupStatus.Unresolved)
+        {
+            throw new DomainValidationException("This group is locked because settlement has already started.");
         }
     }
 
