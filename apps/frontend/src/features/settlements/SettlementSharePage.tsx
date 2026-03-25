@@ -37,6 +37,7 @@ export function SettlementSharePage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [completion, setCompletion] = useState<CompletionState>(null);
   const [proofScreenshotDataUrl, setProofScreenshotDataUrl] = useState("");
+  const [pendingReceivedTransferKeys, setPendingReceivedTransferKeys] = useState<string[]>([]);
 
   const shareRecordQuery = useQuery({
     queryKey: ["settlement-share", shareToken],
@@ -73,8 +74,10 @@ export function SettlementSharePage() {
     enabled: Boolean(groupId)
   });
 
+  const settlementQueryKey = ["settlements", groupId, fromDate, toDate] as const;
+
   const settlementQuery = useQuery({
-    queryKey: ["settlements", groupId, fromDate, toDate],
+    queryKey: settlementQueryKey,
     queryFn: () => apiClient.getSettlements(groupId!, {
       fromDate: fromDate ? new Date(fromDate).toISOString() : undefined,
       toDate: toDate ? new Date(toDate).toISOString() : undefined
@@ -229,8 +232,22 @@ export function SettlementSharePage() {
         actorParticipantId: selectedParticipantId
       });
     },
+    onMutate: (transfer) => {
+      setPendingReceivedTransferKeys((current) => current.includes(transfer.transferKey)
+        ? current
+        : [...current, transfer.transferKey]);
+    },
     onSuccess: async (_, transfer) => {
-      await queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+      const refreshedSettlements = await queryClient.fetchQuery({
+        queryKey: settlementQueryKey,
+        queryFn: () => apiClient.getSettlements(groupId!, {
+          fromDate: fromDate ? new Date(fromDate).toISOString() : undefined,
+          toDate: toDate ? new Date(toDate).toISOString() : undefined
+        })
+      });
+      const remainingReadyToConfirm = refreshedSettlements.transfers.filter((item) =>
+        item.toParticipantId === transfer.toParticipantId && isSettlementPaid(item.status));
+
       setCompletion({
         kind: "received",
         amount: transfer.amount,
@@ -238,7 +255,13 @@ export function SettlementSharePage() {
       });
       setActionError(null);
       showToast({ title: t("settlement.markReceived"), description: t("feedback.saved"), tone: "success" });
-      setCurrentStep(3);
+
+      if (remainingReadyToConfirm.length === 0) {
+        setCurrentStep(3);
+      }
+    },
+    onSettled: (_, __, transfer) => {
+      setPendingReceivedTransferKeys((current) => current.filter((key) => key !== transfer.transferKey));
     },
     onError: (error) => {
       const message = getErrorMessage(error);
@@ -343,6 +366,7 @@ export function SettlementSharePage() {
                       readyToConfirmTransfers: participantReadyToConfirm
                     });
                     const participantRoleLabel = getRoleLabel(participantRole, t);
+                    const participantPayerStatus = getPayerFacingStatus(participantOutgoing);
                     const participantAmount = participantRole === "payer"
                       ? participantOutgoing.reduce((sum, transfer) => sum + transfer.amount, 0)
                       : participantRole === "receiver"
@@ -361,7 +385,14 @@ export function SettlementSharePage() {
                         type="button"
                       >
                         <div>
-                          <div className="text-base font-semibold tracking-tight text-ink">{participant.name}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-base font-semibold tracking-tight text-ink">{participant.name}</div>
+                            {participantPayerStatus === "paid" ? (
+                              <span className="tag bg-mint text-success">
+                                {t("settlement.shareIdentityPaid")}
+                              </span>
+                            ) : null}
+                          </div>
                           <div className="mt-1 text-sm text-muted">{participantRoleLabel}</div>
                           {participantRole !== "none" ? (
                             <div className="mt-2 text-sm font-medium text-ink">
@@ -463,7 +494,7 @@ export function SettlementSharePage() {
                     selectedParticipantName={selectedParticipant?.name ?? t("settlement.shareUnknownParticipant")}
                     totalToReceive={totalToReceive}
                     actionError={actionError}
-                    isBusy={markReceivedMutation.isPending}
+                    pendingTransferKeys={pendingReceivedTransferKeys}
                     onBack={() => setCurrentStep(1)}
                     onMarkReceived={(transfer) => markReceivedMutation.mutate(transfer)}
                     t={t}
@@ -735,7 +766,7 @@ function ReceiverPanel({
   selectedParticipantName,
   totalToReceive,
   actionError,
-  isBusy,
+  pendingTransferKeys,
   onBack,
   onMarkReceived,
   t
@@ -751,7 +782,7 @@ function ReceiverPanel({
   selectedParticipantName: string;
   totalToReceive: number;
   actionError: string | null;
-  isBusy: boolean;
+  pendingTransferKeys: string[];
   onBack: () => void;
   onMarkReceived: (transfer: SettlementTransferDto) => void;
   t: (key: any) => string;
@@ -825,6 +856,7 @@ function ReceiverPanel({
               {sortedTransfers.map((transfer) => {
                 const payerName = getParticipantName(participantNameById, transfer.fromParticipantId);
                 const canMarkReceived = isSettlementPaid(transfer.status) && !isReadOnly;
+                const isTransferPending = pendingTransferKeys.includes(transfer.transferKey);
                 const hasProof = Boolean(transfer.proofScreenshotDataUrl);
                 const proofExpanded = expandedProofTransferKey === transfer.transferKey;
                 return (
@@ -856,8 +888,8 @@ function ReceiverPanel({
                         {receiverActionHint(transfer.status, hasProof, t)}
                       </div>
                       {canMarkReceived ? (
-                        <button className="button-primary" disabled={isBusy} onClick={() => onMarkReceived(transfer)} type="button">
-                          {isBusy ? <LoadingSpinner /> : null}
+                        <button className="button-primary" disabled={isTransferPending} onClick={() => onMarkReceived(transfer)} type="button">
+                          {isTransferPending ? <LoadingSpinner /> : null}
                           {t("settlement.markReceived")}
                         </button>
                       ) : (
