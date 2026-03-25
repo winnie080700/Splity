@@ -69,12 +69,12 @@ export function HomePage() {
                     description={t("landing.body")}
                     actions={(
                       <div className="flex flex-wrap gap-2">
-                        <Link className="button-primary" to="/auth?mode=register">
+                        {/* <Link className="button-primary" to="/auth?mode=register">
                           {t("landing.primaryAction")}
                         </Link>
                         <Link className="button-secondary" to="/auth">
                           {t("landing.secondaryAction")}
-                        </Link>
+                        </Link> */}
                       </div>
                     )}
                   />
@@ -146,24 +146,6 @@ export function HomePage() {
               </div>
             </SectionCard>
 
-            <SectionCard className="p-6 md:p-8">
-              <div className="grid gap-5 lg:grid-cols-[1fr,auto] lg:items-center">
-                <div>
-                  <span className="eyebrow">{t("landing.ctaEyebrow")}</span>
-                  <h2 className="mt-4 text-2xl font-semibold tracking-tight text-ink">{t("landing.ctaTitle")}</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{t("landing.ctaBody")}</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Link className="button-primary" to="/auth?mode=register">
-                    {t("auth.register")}
-                  </Link>
-                  <Link className="button-secondary" to="/auth">
-                    {t("auth.login")}
-                  </Link>
-                </div>
-              </div>
-            </SectionCard>
           </div>
         </main>
 

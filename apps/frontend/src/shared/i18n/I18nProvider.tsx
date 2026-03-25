@@ -813,7 +813,7 @@ const messages = {
     "landing.body": "Splity 把流程整理得很直接：创建群组、添加成员、录入账单、结算、分享结果，再继续跟进付款状态。",
     "landing.primaryAction": "创建账号",
     "landing.secondaryAction": "登录",
-    "landing.highlightValueTitle": "一开始就知道怎么用",
+    "landing.highlightValueTitle": "上手更快更清楚",
     "landing.highlightValueBody": "第一次进入也能很快看懂群组怎么开始、账单怎么记、结算怎么结束。",
     "landing.highlightFeatureTitle": "把记录集中在一起",
     "landing.highlightFeatureBody": "参与者、账单和分摊记录都放在同一个地方，每一笔共享支出都能追得回来。",

@@ -297,7 +297,7 @@ export function AppShell() {
           <header className="card mb-6 overflow-hidden px-5 py-5 sm:px-7 sm:py-6">
             <div className="relative flex flex-col gap-5">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div className="max-w-3xl space-y-3">
+                <div className="space-y-3">
                   <span className="eyebrow">{routeGroupId ? t("sidebar.currentGroup") : t("app.kicker")}</span>
                   <div className="space-y-2">
                     {routeGroupId ? (
