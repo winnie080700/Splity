@@ -47,6 +47,8 @@ export function AppShell() {
 
   const routeGroupId = location.pathname.match(/^\/groups\/([^/]+)/)?.[1] ?? null;
   const currentModule = getCurrentModule(location.pathname);
+  const isSettingsRoute = location.pathname === "/settings";
+  const isDashboardRoute = location.pathname === "/dashboard";
 
   const groupsQuery = useQuery({
     queryKey: ["groups"],
@@ -193,6 +195,16 @@ export function AppShell() {
                 </span>
                 <span className="truncate">{t("nav.dashboard")}</span>
               </NavLink>
+              <NavLink
+                className={({ isActive }) => `${buildUtilityNavClass(isActive)} mt-2`}
+                to="/settings"
+                end
+              >
+                <span className={buildUtilityIconClass(isSettingsRoute)}>
+                  <SettingsIcon className="h-4 w-4" />
+                </span>
+                <span className="truncate">{t("settings.title")}</span>
+              </NavLink>
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-2">
@@ -294,42 +306,46 @@ export function AppShell() {
                       </div>
                     ) : (
                       <Link to="/dashboard" className="block text-3xl font-semibold tracking-tight text-ink md:text-4xl">
-                        {t("app.title")}
+                        {isSettingsRoute ? t("settings.title") : t("app.title")}
                       </Link>
                     )}
-                    <p className="max-w-2xl text-sm leading-6 text-muted">
-                      {routeGroupId ? t("app.groupSummary") : 
-<div className="flex items-center gap-3">
-  {DASHBOARD_STEPS.map((step, index) => {
-    const StepIcon = step.icon;
+                    {routeGroupId ? (
+                      <p className="max-w-2xl text-sm leading-6 text-muted">
+                        {t("app.groupSummary")}
+                      </p>
+                    ) : isSettingsRoute ? (
+                      <p className="max-w-2xl text-sm leading-6 text-muted">
+                        {t("settings.body")}
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        {DASHBOARD_STEPS.map((step, index) => {
+                          const StepIcon = step.icon;
 
-    return (
-      <div key={step.titleKey} className="flex items-center gap-3">
-        {/* Step */}
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/92 px-3 py-2 shadow-soft">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink text-xs font-semibold text-white">
-            {index + 1}
-          </span>
+                          return (
+                            <div key={step.titleKey} className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/92 px-3 py-2 shadow-soft">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-ink text-xs font-semibold text-white">
+                                  {index + 1}
+                                </span>
 
-          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky text-brand">
-            <StepIcon className="h-4 w-4" />
-          </span>
+                                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky text-brand">
+                                  <StepIcon className="h-4 w-4" />
+                                </span>
 
-          <span className="text-sm font-medium text-ink whitespace-nowrap">
-            {t(step.titleKey)}
-          </span>
-        </div>
+                                <span className="whitespace-nowrap text-sm font-medium text-ink">
+                                  {t(step.titleKey)}
+                                </span>
+                              </div>
 
-        {/* Arrow */}
-        {index < DASHBOARD_STEPS.length - 1 && (
-          <span className="text-slate-400">{'>'}</span>
-        )}
-      </div>
-    );
-  })}
-</div>                        
-                      }
-                    </p>
+                              {index < DASHBOARD_STEPS.length - 1 ? (
+                                <span className="text-slate-400">{">"}</span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -379,7 +395,18 @@ export function AppShell() {
                     </NavLink>
                   ))}
                 </nav>
-              ) : null}
+              ) : (
+                <nav className="flex flex-wrap gap-2 border-t border-slate-200/80 pt-4">
+                  <NavLink to="/dashboard" className={({ isActive }) => buildTabClass(isActive || isDashboardRoute)}>
+                    <HomeIcon className="h-4 w-4" />
+                    {t("nav.dashboard")}
+                  </NavLink>
+                  <NavLink to="/settings" className={({ isActive }) => buildTabClass(isActive || isSettingsRoute)}>
+                    <SettingsIcon className="h-4 w-4" />
+                    {t("settings.title")}
+                  </NavLink>
+                </nav>
+              )}
             </div>
           </header>
 
