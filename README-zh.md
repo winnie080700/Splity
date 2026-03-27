@@ -125,11 +125,20 @@ Splity 是一个面向真实分账流程的 shared expense workspace。它把「
 前端主要使用：
 
 - `VITE_API_BASE_URL`
+- `VITE_DEV_API_PROXY_TARGET`
+- `VITE_DEV_ALLOWED_HOSTS`
 
 示例：
 
 ```env
-VITE_API_BASE_URL=http://localhost:5204
+# 可选：如果前后端不是同域，显式指定后端地址
+# VITE_API_BASE_URL=https://api.example.com
+
+# 本地开发时，Vite 会把 /api 和 /health 代理到这里
+VITE_DEV_API_PROXY_TARGET=http://localhost:5204
+
+# 可选：允许 Cloudflare Quick Tunnel 这类反向代理域名访问 Vite dev server
+# VITE_DEV_ALLOWED_HOSTS=.trycloudflare.com
 ```
 
 ### Backend
@@ -217,6 +226,12 @@ npm run dev:frontend
 
 - `http://localhost:5173`
 
+说明：
+
+- 前端默认通过同域 `/api` 调用后端
+- 本地开发下，Vite 会自动把 `/api` 和 `/health` 代理到 `VITE_DEV_API_PROXY_TARGET`
+- Vite 默认允许 `*.trycloudflare.com` 访问，便于 Cloudflare quick tunnel
+
 ### 启动 backend
 
 ```powershell
@@ -233,6 +248,57 @@ npm run dev:backend
 ```powershell
 npm run dev
 ```
+
+## Cloudflare Tunnel（本地分享开发环境）
+
+当前仓库已经改成适合单 tunnel 的开发模式：
+
+- 浏览器请求前端页面时，API 默认走同域 `/api`
+- Vite 在本地把 `/api` 代理到 `http://localhost:5204`
+- 所以 Cloudflare 只需要暴露前端 `5173`，不需要再单独暴露后端
+
+### 1. 安装 cloudflared
+
+如果你的机器还没有 `cloudflared`，Windows 可先执行：
+
+```powershell
+winget install --id Cloudflare.cloudflared
+```
+
+安装后重新打开终端，确认：
+
+```powershell
+cloudflared --version
+```
+
+### 2. 启动 Splity
+
+```powershell
+npm run dev
+```
+
+确保这两个地址本机都能打开：
+
+- `http://localhost:5173`
+- `http://localhost:5173/health`
+
+其中 `/health` 会通过 Vite 代理到后端健康检查。
+
+### 3. 启动 tunnel
+
+```powershell
+cloudflared tunnel --url http://localhost:5173
+```
+
+成功后，Cloudflare 会返回一个 `https://*.trycloudflare.com` 地址。把这个地址发给别人即可。
+
+### 4. 常见失败原因
+
+- 机器里没有安装 `cloudflared`
+- 前端没启动，`5173` 没在监听
+- 后端没启动，页面能打开但接口会失败
+- 如果访问 tunnel 地址返回 `Blocked request. This host is not allowed.`，说明 Vite 的允许域名没生效；当前仓库默认已放行 `*.trycloudflare.com`
+- 你旧的 `.env` 里如果还写着 `VITE_API_BASE_URL=http://localhost:5204`，外部访问时会失效；这时请删除该变量或改成可公网访问的 API 地址
 
 ## 构建命令
 
