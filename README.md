@@ -126,11 +126,21 @@ Screenshots are available in the [screenshots](./screenshots) folder.
 The frontend mainly uses:
 
 - `VITE_API_BASE_URL`
+- `VITE_DEV_API_PROXY_TARGET`
+- `VITE_DEV_ALLOWED_HOSTS`
 
 Example:
 
 ```env
-VITE_API_BASE_URL=http://localhost:5204
+# Optional: set this only when the API is hosted on a different origin.
+# VITE_API_BASE_URL=https://api.example.com
+
+# Local Vite proxy target for /api and /health during development.
+VITE_DEV_API_PROXY_TARGET=http://localhost:5204
+
+# Optional additional hosts allowed by the Vite dev server.
+# Useful for Cloudflare Quick Tunnel or other reverse proxies.
+# VITE_DEV_ALLOWED_HOSTS=.trycloudflare.com
 ```
 
 ### Backend
@@ -218,6 +228,12 @@ Default URL:
 
 - `http://localhost:5173`
 
+Notes:
+
+- The frontend uses same-origin `/api` requests by default
+- During local development, Vite proxies `/api` and `/health` to `VITE_DEV_API_PROXY_TARGET`
+- Vite allows `*.trycloudflare.com` by default for Cloudflare quick tunnels
+
 ### Start the backend
 
 ```powershell
@@ -234,6 +250,57 @@ Default URLs:
 ```powershell
 npm run dev
 ```
+
+## Cloudflare Tunnel For Local Sharing
+
+This repository is now set up for a single frontend tunnel:
+
+- the browser calls the API through same-origin `/api`
+- Vite proxies `/api` to `http://localhost:5204` in local development
+- Cloudflare only needs to expose `http://localhost:5173`
+
+### 1. Install cloudflared
+
+If `cloudflared` is not installed on Windows:
+
+```powershell
+winget install --id Cloudflare.cloudflared
+```
+
+Then reopen the terminal and verify:
+
+```powershell
+cloudflared --version
+```
+
+### 2. Start Splity
+
+```powershell
+npm run dev
+```
+
+Make sure these work locally:
+
+- `http://localhost:5173`
+- `http://localhost:5173/health`
+
+`/health` is proxied by Vite to the backend health endpoint.
+
+### 3. Start the tunnel
+
+```powershell
+cloudflared tunnel --url http://localhost:5173
+```
+
+Cloudflare will print a `https://*.trycloudflare.com` URL. Share that URL.
+
+### 4. Common failure cases
+
+- `cloudflared` is not installed
+- frontend is not running on port `5173`
+- backend is not running, so the page loads but API requests fail
+- if the tunnel URL returns `Blocked request. This host is not allowed.`, Vite host allow-listing is the issue; this repository now allows `*.trycloudflare.com` by default
+- an old `.env` still sets `VITE_API_BASE_URL=http://localhost:5204`; external users will fail in that case, so remove it or point it at a publicly reachable API
 
 ## Build Commands
 

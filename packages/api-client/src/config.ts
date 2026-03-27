@@ -1,4 +1,6 @@
-const DEFAULT_API_BASE_URL = "http://localhost:5204";
+// Default to same-origin requests so the app can work behind a single
+// frontend tunnel or reverse proxy without exposing the backend separately.
+const DEFAULT_API_BASE_URL = "";
 
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
