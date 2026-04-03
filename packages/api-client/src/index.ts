@@ -213,7 +213,7 @@ export type UpdateSettlementTransferStatusRequest = {
 export { ApiError, getApiErrorMessage, type ApiProblemDetails } from "./errors";
 export { getApiBaseUrl } from "./config";
 
-export const apiClient = {
+const defaultApiClient = {
   register: (payload: { name: string; email: string; password: string }) => request<AuthResultDto>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -317,3 +317,21 @@ export const apiClient = {
       body: JSON.stringify(payload)
     })
 };
+
+export type ApiClient = typeof defaultApiClient;
+
+let apiClientOverride: Partial<ApiClient> | null = null;
+
+export function setApiClientOverride(override: Partial<ApiClient> | null) {
+  apiClientOverride = override;
+}
+
+export const apiClient = new Proxy(defaultApiClient, {
+  get(target, property, receiver) {
+    if (apiClientOverride && property in apiClientOverride) {
+      return Reflect.get(apiClientOverride, property, receiver);
+    }
+
+    return Reflect.get(target, property, receiver);
+  }
+}) as ApiClient;

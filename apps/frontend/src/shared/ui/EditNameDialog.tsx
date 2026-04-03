@@ -69,7 +69,7 @@ export function EditNameDialog({
       actions={(
         <>
           <button
-            className="button-secondary"
+            className="button-secondary w-full sm:w-auto"
             onClick={() => {
               setValue(initialValue);
               setValidationError(null);
@@ -79,7 +79,7 @@ export function EditNameDialog({
           >
             {cancelLabel}
           </button>
-          <button className="button-primary" disabled={isBusy} form="edit-name-form" type="submit">
+          <button className="button-primary w-full sm:w-auto" disabled={isBusy} form="edit-name-form" type="submit">
             {isBusy ? <LoadingSpinner /> : null}
             {submitLabel}
           </button>

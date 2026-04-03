@@ -6,14 +6,16 @@ import { GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { CustomSelect } from "@/shared/ui/CustomSelect";
 import { ModalDialog } from "@/shared/ui/dialog";
 import { EmptyState, IconActionButton, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
-import { PencilIcon, PlusIcon, ReceiptIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
+import { CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon, ReceiptIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 
 type BillFieldErrors = Partial<Record<"storeName" | "transactionDateUtc" | "feeName" | "feeValue" | "primaryPayer" | "weights" | "items", string>>;
 type DraftItem = { id: string; description: string; amount: string; responsibleParticipantIds: string[] };
 type DraftItemErrors = Record<string, { description?: string; amount?: string; responsible?: string }>;
+type BillEditorStep = 1 | 2;
 
 const createItem = (overrides?: Partial<DraftItem>): DraftItem => ({
   id: `item-${Math.random().toString(36).slice(2, 10)}`,
@@ -46,6 +48,7 @@ export function BillsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editorStep, setEditorStep] = useState<BillEditorStep>(1);
   const [loadingBillId, setLoadingBillId] = useState<string | null>(null);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
   const [deleteBillError, setDeleteBillError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function BillsPage() {
   const dateRef = useRef<HTMLInputElement>(null);
   const feeNameRef = useRef<HTMLInputElement>(null);
   const feeValueRef = useRef<HTMLInputElement>(null);
-  const payerRef = useRef<HTMLSelectElement>(null);
+  const payerRef = useRef<HTMLButtonElement>(null);
   const itemDescRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const itemAmountRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const itemResponsibleRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -258,8 +261,6 @@ export function BillsPage() {
 
   const fieldClass = (field: keyof BillFieldErrors, extra = "") =>
     ["input-base", fieldErrors[field] ? "border-danger focus:border-danger focus:ring-danger/10" : "", extra].filter(Boolean).join(" ");
-  const selectClass = (field: keyof BillFieldErrors, extra = "") =>
-    ["select-base", fieldErrors[field] ? "border-danger focus:border-danger focus:ring-danger/10" : "", extra].filter(Boolean).join(" ");
   const itemClass = (itemId: string, field: "description" | "amount", extra = "") =>
     ["input-base", itemErrors[itemId]?.[field] ? "border-danger focus:border-danger focus:ring-danger/10" : "", extra].filter(Boolean).join(" ");
 
@@ -297,6 +298,7 @@ export function BillsPage() {
     setItemErrors({});
     setFormError(null);
     setEditingBillId(null);
+    setEditorStep(1);
     setOpenResponsibleItemId(null);
   };
 
@@ -403,20 +405,20 @@ export function BillsPage() {
     setFieldErrors({});
     setItemErrors({});
     setFormError(null);
+    setEditorStep(1);
     setOpenResponsibleItemId(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function validateBillDraft() {
     if (!groupId || isSubmitting || isLocked) {
-      return;
+      return false;
     }
 
     if (participants.length === 0) {
       const message = t("bills.noParticipantsBody");
       setFormError(message);
       showToast({ title: t("feedback.validationFailed"), description: message, tone: "error" });
-      return;
+      return false;
     }
 
     const nextErrors: BillFieldErrors = {};
@@ -485,12 +487,29 @@ export function BillsPage() {
       if (firstField !== null) {
         focusField(firstField, firstItemId, firstPartId, firstItemField);
       }
-      return;
+      return false;
     }
 
     setFieldErrors({});
     setItemErrors({});
     setFormError(null);
+    return true;
+  }
+
+  function handleNextStep() {
+    if (!validateBillDraft()) {
+      return;
+    }
+
+    setEditorStep(2);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!validateBillDraft()) {
+      return;
+    }
 
     if (editingBillId) {
       updateBillMutation.mutate();
@@ -579,13 +598,13 @@ export function BillsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="text-right">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <div className="sm:text-right">
                       <div className="text-sm text-muted">{t("bills.total")}</div>
                       <div className="mt-1 text-2xl font-semibold tracking-tight text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
                     </div>
                     {!isLocked ? (
-                      <>
+                      <div className="flex gap-2">
                         <IconActionButton
                           icon={loadingBillId === bill.id ? <LoadingSpinner /> : <PencilIcon className="h-4 w-4" />}
                           label={t("bills.editAction")}
@@ -604,7 +623,7 @@ export function BillsPage() {
                           size="sm"
                           disabled={Boolean(loadingBillId) || isBillActionBusy}
                         />
-                      </>
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -632,7 +651,10 @@ export function BillsPage() {
       <ModalDialog
         open={isEditorOpen}
         title={editingBillId ? t("bills.editTitle") : t("bills.create")}
-        description={editingBillId ? t("bills.editBody") : t("bills.modalBody")}
+        description={editorStep === 1
+          ? (editingBillId ? t("bills.editBody") : t("bills.modalBody"))
+          : "Review the bill before saving it."
+        }
         onClose={() => {
           if (!isSubmitting) {
             closeEditor();
@@ -641,18 +663,51 @@ export function BillsPage() {
         className="max-w-6xl"
         actions={(
           <>
-            <button className="button-secondary" disabled={isSubmitting} onClick={closeEditor} type="button">
+            <button className="button-secondary w-full sm:w-auto" disabled={isSubmitting} onClick={closeEditor} type="button">
               {t("common.cancel")}
             </button>
-            <button className="button-primary" disabled={!groupId || participants.length === 0 || isBillActionBusy} form="bill-editor-form" type="submit">
-              {isSubmitting ? <LoadingSpinner /> : null}
-              {editingBillId ? t("bills.saveEdited") : t("bills.save")}
-            </button>
+            {editorStep === 2 ? (
+              <button className="button-secondary w-full sm:w-auto" disabled={isSubmitting} onClick={() => setEditorStep(1)} type="button">
+                Back
+              </button>
+            ) : null}
+            {editorStep === 1 ? (
+              <button
+                className="button-primary w-full sm:w-auto"
+                disabled={!groupId || participants.length === 0 || isBillActionBusy}
+                onClick={handleNextStep}
+                type="button"
+              >
+                {t("bills.next")}
+              </button>
+            ) : (
+              <button
+                className="button-primary w-full sm:w-auto"
+                disabled={!groupId || participants.length === 0 || isBillActionBusy}
+                form="bill-editor-form"
+                type="submit"
+              >
+                {isSubmitting ? <LoadingSpinner /> : null}
+                {editingBillId ? t("bills.saveEdited") : t("bills.save")}
+              </button>
+            )}
           </>
         )}
       >
-        <form id="bill-editor-form" className="grid gap-6 xl:grid-cols-[1.12fr,0.88fr]" onSubmit={handleSubmit}>
-          <div className="space-y-5">
+        <form id="bill-editor-form" className="space-y-6" onSubmit={handleSubmit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className={["rounded-[18px] border px-4 py-3", editorStep === 1 ? "border-ink/10 bg-ink text-white" : "border-slate-200 bg-slate-50 text-ink"].join(" ")}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">{t("bills.step1")}</div>
+              <div className="mt-1 text-sm font-semibold">{t("bills.fillDetails")}</div>
+            </div>
+            <div className={["rounded-[18px] border px-4 py-3", editorStep === 2 ? "border-ink/10 bg-ink text-white" : "border-slate-200 bg-slate-50 text-ink"].join(" ")}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">{t("bills.step2")}</div>
+              <div className="mt-1 text-sm font-semibold">{t("bills.reviewReceipt")}</div>
+            </div>
+          </div>
+
+          {editorStep === 1 ? (
+            <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-ink">{t("bills.store")}</span>
@@ -669,16 +724,36 @@ export function BillsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-ink">{t("bills.splitMode")}</span>
-                <select className={selectClass("weights")} value={splitMode} onChange={(event) => { setSplitMode(Number(event.target.value) as SplitMode); clearFieldError("weights"); }}>
-                  <option value={1}>{t("bills.equal")}</option>
-                  <option value={2}>{t("bills.weighted")}</option>
-                </select>
+                <CustomSelect
+                  ariaLabel={t("bills.splitMode")}
+                  invalid={Boolean(fieldErrors.weights)}
+                  options={[
+                    { value: "1", label: t("bills.equal") },
+                    { value: "2", label: t("bills.weighted") }
+                  ]}
+                  value={String(splitMode)}
+                  onChange={(value) => {
+                    setSplitMode(Number(value) as SplitMode);
+                    clearFieldError("weights");
+                  }}
+                />
               </label>
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-ink">{t("bills.primaryPayer")}</span>
-                <select ref={payerRef} className={selectClass("primaryPayer")} value={primaryPayer} onChange={(event) => { setPrimaryPayerParticipantId(event.target.value); clearFieldError("primaryPayer"); }}>
-                  {participants.map((participant) => <option key={participant.id} value={participant.id}>{participant.name}</option>)}
-                </select>
+                <CustomSelect
+                  ref={payerRef}
+                  ariaLabel={t("bills.primaryPayer")}
+                  invalid={Boolean(fieldErrors.primaryPayer)}
+                  options={participants.map((participant) => ({
+                    value: participant.id,
+                    label: participant.name
+                  }))}
+                  value={primaryPayer}
+                  onChange={(value) => {
+                    setPrimaryPayerParticipantId(value);
+                    clearFieldError("primaryPayer");
+                  }}
+                />
                 {fieldErrors.primaryPayer ? <p className="text-sm font-medium text-danger">{fieldErrors.primaryPayer}</p> : null}
               </label>
             </div>
@@ -689,17 +764,22 @@ export function BillsPage() {
                   <div className="text-sm font-semibold text-ink">{t("bills.itemsSection")}</div>
                   <p className="mt-2 text-sm leading-6 text-muted">{t("bills.itemSplitHint")}</p>
                 </div>
-                <button className="button-secondary" onClick={addItem} type="button">
+                <button className="button-secondary w-full sm:w-auto" onClick={addItem} type="button">
                   {t("bills.addItem")}
                 </button>
               </div>
 
               <div className="mt-4 space-y-3">
                 {items.map((item, index) => (
-                  <article key={item.id} className="rounded-[22px] border border-slate-200 bg-white/92 p-4 shadow-soft">
-                    <div className="flex items-center justify-between gap-3">
+                  <article key={item.id} className="rounded-[20px] border border-slate-200 bg-white/92 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="text-sm font-semibold text-ink">{t("bills.item")} {String(index + 1).padStart(2, "0")}</div>
-                      <button className="button-pill" disabled={items.length === 1 || isBillActionBusy} onClick={() => handleRemoveItem(item.id)} type="button">
+                      <button
+                        className="button-pill w-full justify-center sm:w-auto"
+                        disabled={items.length === 1 || isBillActionBusy}
+                        onClick={() => handleRemoveItem(item.id)}
+                        type="button"
+                      >
                         {t("bills.removeItem")}
                       </button>
                     </div>
@@ -778,10 +858,17 @@ export function BillsPage() {
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-ink">{t("bills.fees")}</span>
-                  <select className="select-base" value={feeType} onChange={(event) => { setFeeType(Number(event.target.value) as FeeType); }}>
-                    <option value={1}>{t("bills.percentage")}</option>
-                    <option value={2}>{t("bills.fixed")}</option>
-                  </select>
+                  <CustomSelect
+                    ariaLabel={t("bills.fees")}
+                    options={[
+                      { value: "1", label: t("bills.percentage") },
+                      { value: "2", label: t("bills.fixed") }
+                    ]}
+                    value={String(feeType)}
+                    onChange={(value) => {
+                      setFeeType(Number(value) as FeeType);
+                    }}
+                  />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-ink">{t("bills.feeValue")}</span>
@@ -837,24 +924,49 @@ export function BillsPage() {
             {participants.length === 0 ? (
               <EmptyState icon={<UsersIcon className="h-6 w-6" />} title={t("bills.noParticipantsTitle")} description={t("bills.noParticipantsBody")} action={groupId ? <Link className="button-secondary" to={`/groups/${groupId}/participants`}>{t("nav.participants")}</Link> : undefined} />
             ) : null}
-          </div>
+            </div>
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-[0.78fr,1.22fr]">
+              <section className="space-y-4">
+                <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-4">
+                  <div className="text-sm font-semibold text-ink">Bill summary</div>
+                  <div className="mt-4 space-y-3">
+                    <ReviewRow label={t("bills.store")} value={storeName.trim() || "-"} />
+                    <ReviewRow label={t("bills.date")} value={transactionDateUtc ? formatDate(transactionDateUtc) : "-"} />
+                    <ReviewRow
+                      label={t("bills.primaryPayer")}
+                      value={participants.find((participant) => participant.id === primaryPayer)?.name ?? "-"}
+                    />
+                    <ReviewRow
+                      label={t("bills.splitMode")}
+                      value={splitMode === 2 ? t("bills.weighted") : t("bills.equal")}
+                    />
+                    <ReviewRow label={t("bills.lineItems")} value={String(items.length)} />
+                    <ReviewRow label={t("bills.total")} value={formatCurrency(estimatedTotal)} />
+                  </div>
+                </div>
 
-          <div className="space-y-4">
-            <BillPreviewReceipt
-              estimatedFee={estimatedFee}
-              estimatedTotal={estimatedTotal}
-              feeName={feeName}
-              feeType={feeType}
-              feeValue={feeValue}
-              items={items}
-              participants={participants}
-              primaryPayerId={primaryPayer}
-              storeName={storeName}
-              subtotal={subtotal}
-              t={t}
-              transactionDateUtc={transactionDateUtc}
-            />
-          </div>
+                {formError ? <InlineMessage tone="error">{formError}</InlineMessage> : null}
+              </section>
+
+              <div className="space-y-4">
+                <BillPreviewReceipt
+                  estimatedFee={estimatedFee}
+                  estimatedTotal={estimatedTotal}
+                  feeName={feeName}
+                  feeType={feeType}
+                  feeValue={feeValue}
+                  items={items}
+                  participants={participants}
+                  primaryPayerId={primaryPayer}
+                  storeName={storeName}
+                  subtotal={subtotal}
+                  t={t}
+                  transactionDateUtc={transactionDateUtc}
+                />
+              </div>
+            </div>
+          )}
         </form>
       </ModalDialog>
 
@@ -905,7 +1017,7 @@ function ResponsibleMultiSelect({
       <button
         ref={buttonRef}
         className={[
-          "flex min-h-12 w-full items-center justify-between gap-3 rounded-[20px] border bg-white px-4 py-3 text-left transition-colors focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10",
+          "dropdown-trigger",
           error ? "border-danger" : "border-slate-200 hover:border-slate-300"
         ].join(" ")}
         onClick={onToggleOpen}
@@ -913,31 +1025,81 @@ function ResponsibleMultiSelect({
       >
         <div className="min-w-0 flex-1">
           {selectedParticipants.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedParticipants.map((participant) => <span key={participant.id} className="tag bg-sky text-brand">{participant.name}</span>)}
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                {selectedParticipants.length} {t("bills.selectedCount")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedParticipants.map((participant) => (
+                  <span
+                    key={participant.id}
+                    className="tag rounded-full border border-sky-200 bg-sky/70 px-2.5 py-1 text-brand"
+                  >
+                    {participant.name}
+                  </span>
+                ))}
+              </div>
             </div>
           ) : (
-            <span className="text-sm text-muted">{t("bills.responsiblePlaceholder")}</span>
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                {t("bills.responsible")}
+              </div>
+              <span className="text-sm text-muted">{t("bills.responsiblePlaceholder")}</span>
+            </div>
           )}
         </div>
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-          {selectedParticipants.length > 0 ? `${selectedParticipants.length} ${t("bills.selectedCount")}` : t("common.select")}
+        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+          <span>{selectedParticipants.length > 0 ? t("common.select") : t("common.select")}</span>
+          <ChevronDownIcon className={["h-4 w-4 transition-transform", open ? "rotate-180" : ""].join(" ")} />
         </span>
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] rounded-[24px] border border-slate-200 bg-white p-3 shadow-soft">
-          <div className="max-h-64 overflow-y-auto pr-1">
+        <div className="dropdown-surface absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70]">
+          <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-200/80 px-1 pb-3">
+            <div>
+              <div className="text-sm font-semibold text-ink">{t("bills.responsible")}</div>
+              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">
+                {selectedParticipants.length} {t("bills.selectedCount")}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto pr-1">
             <div className="space-y-2">
               {participants.map((participant) => {
                 const checked = selectedIds.includes(participant.id);
                 return (
-                  <label key={participant.id} className={["flex cursor-pointer items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-sm transition-all", checked ? "border-brand bg-sky/80 text-ink shadow-soft" : "border-slate-200 bg-white text-muted hover:border-slate-300 hover:text-ink"].join(" ")}>
-                    <div className="min-w-0">
-                      <div className="font-medium">{participant.name}</div>
-                      <div className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{t("bills.selectedSplitHint")}</div>
+                  <label
+                    key={participant.id}
+                    className={[
+                      "dropdown-option",
+                      checked ? "dropdown-option-active" : "text-muted hover:text-ink"
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-ink">{participant.name}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">
+                        {checked ? t("bills.selectedCount") : t("bills.selectedSplitHint")}
+                      </div>
                     </div>
-                    <input checked={checked} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20" onChange={() => onToggleParticipant(participant.id)} type="checkbox" />
+                    <span
+                      className={[
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition",
+                        checked
+                          ? "border-brand/20 bg-brand text-white"
+                          : "border-slate-200 bg-white text-slate-300"
+                      ].join(" ")}
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                    </span>
+                    <input
+                      checked={checked}
+                      className="sr-only"
+                      onChange={() => onToggleParticipant(participant.id)}
+                      type="checkbox"
+                    />
                   </label>
                 );
               })}
@@ -1050,6 +1212,21 @@ function BillPreviewReceipt({
         </div>
       </div>
     </section>
+  );
+}
+
+function ReviewRow({
+  label,
+  value
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 pb-3 last:border-b-0 last:pb-0">
+      <span className="text-sm text-muted">{label}</span>
+      <span className="text-sm font-semibold text-ink">{value}</span>
+    </div>
   );
 }
 

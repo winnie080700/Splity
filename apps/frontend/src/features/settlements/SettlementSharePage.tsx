@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
-import { AppFooter } from "@/shared/ui/AppFooter";
+import { PublicSiteFooter } from "@/shared/ui/PublicSiteFooter";
 import { EmptyState, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard } from "@/shared/ui/primitives";
 import { CheckIcon, SparklesIcon, UsersIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
@@ -549,7 +549,7 @@ export function SettlementSharePage() {
         )}
       </div>
       <div className="mx-auto mt-8 w-full max-w-[88rem]">
-        <AppFooter />
+        <PublicSiteFooter />
       </div>
     </div>
   );

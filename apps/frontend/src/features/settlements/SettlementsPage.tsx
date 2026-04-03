@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type SettlementTransferDto } from "@api-client";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { downloadSettlementSummaryImage } from "@/features/settlements/summaryImage";
 import { GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
+import { useAuth } from "@/shared/auth/AuthProvider";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { formatCurrency, getErrorMessage } from "@/shared/utils/format";
@@ -16,6 +18,7 @@ export function SettlementsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { isGuest } = useAuth();
   const { showToast } = useToast();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -71,7 +74,7 @@ export function SettlementsPage() {
         tone: "success"
       });
 
-      if (nextGroup.status === "settling") {
+      if (nextGroup.status === "settling" && !isGuest) {
         setIsShareDialogOpen(true);
       }
     },
@@ -116,6 +119,29 @@ export function SettlementsPage() {
 
   const isBusy = markPaidMutation.isPending || markReceivedMutation.isPending;
   const isUnresolved = groupQuery.data?.status === "unresolved";
+  const canSaveGuestSummary = isGuest && groupQuery.data?.status === "settled" && !hasInvalidDateRange;
+
+  async function handleSaveGuestSummary() {
+    if (!groupQuery.data) {
+      return;
+    }
+
+    try {
+      await downloadSettlementSummaryImage({
+        fileName: `${groupQuery.data.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "guest-summary"}-summary.png`,
+        groupName: groupQuery.data.name,
+        subtitle: t("guest.summaryImageSubtitle"),
+        balances,
+        transfers,
+        statusLabel: (status) => statusLabel(status, t),
+        formatCurrency
+      });
+      showToast({ title: t("guest.summaryImageSavedTitle"), description: t("guest.summaryImageSavedBody"), tone: "success" });
+    }
+    catch (error) {
+      showToast({ title: t("feedback.requestFailed"), description: error instanceof Error ? error.message : getErrorMessage(error), tone: "error" });
+    }
+  }
 
   if (isUnresolved) {
     return (
@@ -215,7 +241,7 @@ export function SettlementsPage() {
           onConfirm={() => updateStatusMutation.mutate("settling")}
         />
 
-        {groupId ? (
+        {!isGuest && groupId ? (
           <SettlementShareDialog
             open={isShareDialogOpen}
             onClose={() => setIsShareDialogOpen(false)}
@@ -241,9 +267,14 @@ export function SettlementsPage() {
           description={t("settlement.subtitle") + t("settlement.shareHint")}
           actions={(
             <div className="flex flex-wrap gap-3">
-              {groupId ? (
+              {!isGuest && groupId ? (
                 <button className="button-secondary" onClick={() => setIsShareDialogOpen(true)} type="button">
                   {t("groups.shareLinkAction")}
+                </button>
+              ) : null}
+              {canSaveGuestSummary ? (
+                <button className="button-secondary" onClick={handleSaveGuestSummary} type="button">
+                  {t("guest.saveSummaryImage")}
                 </button>
               ) : null}
               {groupQuery.data?.status === "settling" ? (
@@ -271,6 +302,13 @@ export function SettlementsPage() {
         {isLocked ? (
           <div className="mt-4">
             <InlineMessage tone="info">{t("groups.readOnlySettlement")}</InlineMessage>
+          </div>
+        ) : null}
+        {isGuest ? (
+          <div className="mt-4">
+            <InlineMessage tone="info">
+              {groupQuery.data?.status === "settled" ? t("guest.summaryImageHint") : t("guest.shareDisabledHint")}
+            </InlineMessage>
           </div>
         ) : null}
         <div className="mt-6 grid gap-3 xl:grid-cols-[1.36fr,0.78fr,0.78fr,0.78fr]">
@@ -348,7 +386,7 @@ export function SettlementsPage() {
         </SectionCard>
       </div>
 
-      {groupId ? (
+      {!isGuest && groupId ? (
         <SettlementShareDialog
           open={isShareDialogOpen}
           onClose={() => setIsShareDialogOpen(false)}

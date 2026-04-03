@@ -27,7 +27,7 @@ export function PageHeading({
           {description ? <p className="section-copy max-w-2xl">{description}</p> : null}
         </div>
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-3">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">{actions}</div> : null}
     </div>
   );
 }
@@ -69,10 +69,10 @@ export function StatTile({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-muted">{label}</div>
-          <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+          <div className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{value}</div>
         </div>
         {icon ? (
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-brand shadow-sm">
+          <span className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white text-brand">
             {icon}
           </span>
         ) : null}
@@ -95,7 +95,7 @@ export function EmptyState({
   return (
     <div className="empty-state">
       {icon ? (
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
+        <span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-white text-brand">
           {icon}
         </span>
       ) : null}
@@ -150,7 +150,7 @@ export function LoadingState({ lines = 4 }: { lines?: number }) {
       {Array.from({ length: lines }).map((_, index) => (
         <div
           key={index}
-          className="h-20 animate-pulse rounded-[24px] border border-slate-200/80 bg-white/70"
+          className="h-20 animate-pulse rounded-[20px] border border-slate-200/80 bg-white/80"
         />
       ))}
     </div>

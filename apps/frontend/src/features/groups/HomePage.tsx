@@ -6,7 +6,8 @@ import { EditNameDialog } from "@/shared/ui/EditNameDialog";
 import { GroupStatusBadge, formatGroupCreatedAt } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { ArrowsIcon, ReceiptIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
-import { EmptyState, InlineMessage, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
+import { CustomSelect } from "@/shared/ui/CustomSelect";
+import { EmptyState, InlineMessage, LoadingState } from "@/shared/ui/primitives";
 import { useToast } from "@/shared/ui/toast";
 import { getErrorMessage } from "@/shared/utils/format";
 
@@ -15,6 +16,12 @@ type DashboardRange = "month" | "year";
 type DashboardBillItem = {
   group: GroupSummaryDto;
   bill: BillSummaryDto;
+};
+
+type DashboardStep = {
+  index: string;
+  title: string;
+  body: string;
 };
 
 function getDashboardRange(period: DashboardRange) {
@@ -41,6 +48,14 @@ function getContinuePath(group: GroupSummaryDto) {
 
 function buildBillsPath(groupId: string) {
   return `/groups/${groupId}/bills#create-bill`;
+}
+
+function buildParticipantsPath(groupId: string) {
+  return `/groups/${groupId}/participants`;
+}
+
+function buildSettlementsPath(groupId: string) {
+  return `/groups/${groupId}/settlements`;
 }
 
 export function DashboardPage() {
@@ -137,6 +152,34 @@ export function DashboardPage() {
       .slice(0, 4);
   }, [billGroups]);
 
+  const flowSteps: DashboardStep[] = [
+    {
+      index: "01",
+      title: t("dashboard.stepCreateGroupTitle"),
+      body: t("dashboard.stepCreateGroupBody")
+    },
+    {
+      index: "02",
+      title: t("dashboard.stepAddParticipantsTitle"),
+      body: t("dashboard.stepAddParticipantsBody")
+    },
+    {
+      index: "03",
+      title: t("dashboard.stepAddBillsTitle"),
+      body: t("dashboard.stepAddBillsBody")
+    },
+    {
+      index: "04",
+      title: t("dashboard.stepOpenSettlementTitle"),
+      body: t("dashboard.stepOpenSettlementBody")
+    },
+    {
+      index: "05",
+      title: t("dashboard.stepWaitPaymentsTitle"),
+      body: t("dashboard.stepWaitPaymentsBody")
+    }
+  ];
+
   function handleRetryDashboardData() {
     void groupsQuery.refetch();
     void queryClient.invalidateQueries({ queryKey: ["dashboard", "bills"] });
@@ -144,89 +187,105 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-
-      <SectionCard className="p-6 md:p-7">
-        <PageHeading
-          eyebrow={t("dashboard.overviewEyebrow")}
-          title={t("dashboard.overviewTitle")}
-          description={t("dashboard.overviewBody")}
-          actions={(
-            <div className="w-full sm:w-auto">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-                {t("dashboard.rangeLabel")}
-              </div>
-              <select
-                className="select-base"
-                value={period}
-                onChange={(event) => setPeriod(event.target.value as DashboardRange)}
-              >
-                <option value="month">{t("dashboard.rangeMonth")}</option>
-                <option value="year">{t("dashboard.rangeYear")}</option>
-              </select>
+      <section className="dashboard-surface p-6 md:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#918970]">
+              {t("dashboard.overviewEyebrow")}
             </div>
-          )}
-        />
+            <h2 className="mt-4 text-[1.8rem] font-semibold tracking-[-0.03em] text-[#1c1a16] sm:text-[2.3rem]">
+              {t("dashboard.overviewTitle")}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#7f7869]">{t("dashboard.overviewBody")}</p>
+          </div>
 
-        {groupsQuery.isPending ? (
-          <div className="mt-6">
-            <LoadingState lines={1} />
+          <div className="w-full lg:max-w-[220px]">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#918970]">
+              {t("dashboard.rangeLabel")}
+            </div>
+            <CustomSelect
+              ariaLabel={t("dashboard.rangeLabel")}
+              options={[
+                { value: "month", label: t("dashboard.rangeMonth") },
+                { value: "year", label: t("dashboard.rangeYear") }
+              ]}
+              value={period}
+              onChange={(value) => setPeriod(value as DashboardRange)}
+            />
           </div>
-        ) : groupsQuery.isError ? (
+        </div>
+
+        {groupsQuery.isPending || isBillsLoading ? (
+          <div className="mt-6">
+            <LoadingState lines={2} />
+          </div>
+        ) : groupsQuery.isError || billQueryError ? (
           <div className="mt-6">
             <InlineMessage
               tone="error"
               title={t("feedback.loadFailed")}
               action={(
-                <button className="button-secondary" onClick={handleRetryDashboardData} type="button">
+                <button className="workspace-shell-trigger" onClick={handleRetryDashboardData} type="button">
                   {t("common.retry")}
                 </button>
               )}
             >
-              {getErrorMessage(groupsQuery.error)}
-            </InlineMessage>
-          </div>
-        ) : isBillsLoading ? (
-          <div className="mt-6">
-            <LoadingState lines={1} />
-          </div>
-        ) : billQueryError ? (
-          <div className="mt-6">
-            <InlineMessage
-              tone="error"
-              title={t("feedback.loadFailed")}
-              action={(
-                <button className="button-secondary" onClick={handleRetryDashboardData} type="button">
-                  {t("common.retry")}
-                </button>
-              )}
-            >
-              {getErrorMessage(billQueryError)}
+              {getErrorMessage(groupsQuery.error ?? billQueryError)}
             </InlineMessage>
           </div>
         ) : (
           <>
-            <div className="mt-6 grid gap-3 md:grid-cols-3">
-              <StatTile
-                label={t("dashboard.currentGroups")}
-                value={String(currentGroupCount).padStart(2, "0")}
-                icon={<WalletIcon className="h-5 w-5" />}
-                tone="warning"
-              />
-              <StatTile
-                label={t("dashboard.settledGroups")}
-                value={String(settledGroupCount).padStart(2, "0")}
-                icon={<ArrowsIcon className="h-5 w-5" />}
-                tone="success"
-              />
-              <StatTile
-                label={t("dashboard.createdBills")}
-                value={String(createdBillCount).padStart(2, "0")}
-                icon={<ReceiptIcon className="h-5 w-5" />}
-                tone="brand"
-              />
+            <div className="mt-6 grid gap-3 lg:grid-cols-3">
+              <article className="dashboard-metric-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8f8873]">
+                      {t("dashboard.currentGroups")}
+                    </div>
+                    <div className="mt-4 text-[2.6rem] font-semibold tracking-[-0.05em] text-[#1a1813]">
+                      {String(currentGroupCount).padStart(2, "0")}
+                    </div>
+                  </div>
+                  <span className="dashboard-metric-icon bg-[#f1ecd8] text-[#5f7520]">
+                    <WalletIcon className="h-5 w-5" />
+                  </span>
+                </div>
+              </article>
+
+              <article className="dashboard-metric-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8f8873]">
+                      {t("dashboard.settledGroups")}
+                    </div>
+                    <div className="mt-4 text-[2.6rem] font-semibold tracking-[-0.05em] text-[#1a1813]">
+                      {String(settledGroupCount).padStart(2, "0")}
+                    </div>
+                  </div>
+                  <span className="dashboard-metric-icon bg-[#eef5e3] text-[#5f7520]">
+                    <ArrowsIcon className="h-5 w-5" />
+                  </span>
+                </div>
+              </article>
+
+              <article className="dashboard-metric-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8f8873]">
+                      {t("dashboard.createdBills")}
+                    </div>
+                    <div className="mt-4 text-[2.6rem] font-semibold tracking-[-0.05em] text-[#1a1813]">
+                      {String(createdBillCount).padStart(2, "0")}
+                    </div>
+                  </div>
+                  <span className="dashboard-metric-icon bg-[#f7efe5] text-[#5f7520]">
+                    <ReceiptIcon className="h-5 w-5" />
+                  </span>
+                </div>
+              </article>
             </div>
 
-            <div className="mt-4 rounded-[22px] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-muted">
+            <div className="mt-4 rounded-[24px] border border-[#e5ddcb] bg-[#fbf8f1] px-4 py-4 text-sm leading-7 text-[#7c7567]">
               {t("dashboard.periodHint")}
             </div>
 
@@ -237,17 +296,21 @@ export function DashboardPage() {
             ) : null}
           </>
         )}
-      </SectionCard>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1fr,1fr]">
-        <SectionCard className="p-6">
-          <PageHeading
-            eyebrow={t("dashboard.recentGroupsEyebrow")}
-            title={t("dashboard.recentGroupsTitle")}
-            description={t("dashboard.recentGroupsBody")}
-          />
+        <section className="dashboard-surface p-6">
+          <div className="max-w-2xl">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#918970]">
+              {t("dashboard.recentGroupsEyebrow")}
+            </div>
+            <h2 className="mt-4 text-[1.8rem] font-semibold tracking-[-0.03em] text-[#1c1a16]">
+              {t("dashboard.recentGroupsTitle")}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#7f7869]">{t("dashboard.recentGroupsBody")}</p>
+          </div>
 
-          <div className="mt-5">
+          <div className="mt-6">
             {groupsQuery.isPending ? (
               <LoadingState lines={3} />
             ) : groupsQuery.isError ? (
@@ -255,7 +318,7 @@ export function DashboardPage() {
                 tone="error"
                 title={t("feedback.loadFailed")}
                 action={(
-                  <button className="button-secondary" onClick={handleRetryDashboardData} type="button">
+                  <button className="workspace-shell-trigger" onClick={handleRetryDashboardData} type="button">
                     {t("common.retry")}
                   </button>
                 )}
@@ -269,7 +332,7 @@ export function DashboardPage() {
                 description={t("home.emptyBody")}
                 action={(
                   <button
-                    className="button-primary"
+                    className="landing-contact-button min-w-0"
                     onClick={() => {
                       setCreateGroupError(null);
                       setIsCreateGroupOpen(true);
@@ -283,21 +346,21 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {groups.slice(0, 4).map((group) => (
-                  <article key={group.id} className="list-card">
+                  <article key={group.id} className="dashboard-list-card">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="truncate text-lg font-semibold tracking-tight text-ink">{group.name}</div>
-                        <p className="mt-1 text-sm text-muted">
+                        <div className="truncate text-lg font-semibold tracking-tight text-[#1a1813]">{group.name}</div>
+                        <p className="mt-1 text-sm text-[#7c7567]">
                           {formatGroupCreatedAt(group.createdAtUtc, language)}
                         </p>
                       </div>
                       <GroupStatusBadge status={group.status} t={t} className="shrink-0" />
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Link className="button-secondary" to={getContinuePath(group)}>
+                      <Link className="workspace-shell-trigger" to={getContinuePath(group)}>
                         {t("sidebar.openGroup")}
                       </Link>
-                      <Link className="button-secondary" to={buildBillsPath(group.id)}>
+                      <Link className="workspace-shell-trigger" to={buildBillsPath(group.id)}>
                         {t("common.goToBills")}
                       </Link>
                     </div>
@@ -306,16 +369,20 @@ export function DashboardPage() {
               </div>
             )}
           </div>
-        </SectionCard>
+        </section>
 
-        <SectionCard className="p-6">
-          <PageHeading
-            eyebrow={t("dashboard.recentBillsEyebrow")}
-            title={t("dashboard.recentBillsTitle")}
-            description={t("dashboard.recentBillsBody")}
-          />
+        <section className="dashboard-surface p-6">
+          <div className="max-w-2xl">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#918970]">
+              {t("dashboard.recentBillsEyebrow")}
+            </div>
+            <h2 className="mt-4 text-[1.8rem] font-semibold tracking-[-0.03em] text-[#1c1a16]">
+              {t("dashboard.recentBillsTitle")}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#7f7869]">{t("dashboard.recentBillsBody")}</p>
+          </div>
 
-          <div className="mt-5">
+          <div className="mt-6">
             {groupsQuery.isPending ? (
               <LoadingState lines={3} />
             ) : groupsQuery.isError ? (
@@ -323,7 +390,7 @@ export function DashboardPage() {
                 tone="error"
                 title={t("feedback.loadFailed")}
                 action={(
-                  <button className="button-secondary" onClick={handleRetryDashboardData} type="button">
+                  <button className="workspace-shell-trigger" onClick={handleRetryDashboardData} type="button">
                     {t("common.retry")}
                   </button>
                 )}
@@ -337,7 +404,7 @@ export function DashboardPage() {
                 tone="error"
                 title={t("feedback.loadFailed")}
                 action={(
-                  <button className="button-secondary" onClick={handleRetryDashboardData} type="button">
+                  <button className="workspace-shell-trigger" onClick={handleRetryDashboardData} type="button">
                     {t("common.retry")}
                   </button>
                 )}
@@ -351,12 +418,12 @@ export function DashboardPage() {
                 description={t("dashboard.recentBillsEmpty")}
                 action={
                   latestGroup ? (
-                    <Link className="button-secondary" to={buildBillsPath(latestGroup.id)}>
+                    <Link className="workspace-shell-trigger" to={buildBillsPath(latestGroup.id)}>
                       {t("common.goToBills")}
                     </Link>
                   ) : (
                     <button
-                      className="button-primary"
+                      className="landing-contact-button min-w-0"
                       onClick={() => {
                         setCreateGroupError(null);
                         setIsCreateGroupOpen(true);
@@ -371,21 +438,21 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {recentBills.map(({ group, bill }) => (
-                  <article key={`${group.id}:${bill.id}`} className="list-card">
+                  <article key={`${group.id}:${bill.id}`} className="dashboard-list-card">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="truncate text-lg font-semibold tracking-tight text-ink">{bill.storeName}</div>
-                        <p className="mt-1 text-sm text-muted">{group.name}</p>
+                        <div className="truncate text-lg font-semibold tracking-tight text-[#1a1813]">{bill.storeName}</div>
+                        <p className="mt-1 text-sm text-[#7c7567]">{group.name}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-muted">{formatGroupCreatedAt(bill.transactionDateUtc, language)}</div>
-                        <div className="mt-1 text-lg font-semibold tracking-tight text-ink">
+                        <div className="text-sm text-[#7c7567]">{formatGroupCreatedAt(bill.transactionDateUtc, language)}</div>
+                        <div className="mt-1 text-lg font-semibold tracking-tight text-[#1a1813]">
                           RM {bill.grandTotalAmount.toFixed(2)}
                         </div>
                       </div>
                     </div>
                     <div className="mt-4">
-                      <Link className="button-secondary" to={buildBillsPath(group.id)}>
+                      <Link className="workspace-shell-trigger" to={buildBillsPath(group.id)}>
                         {t("common.goToBills")}
                       </Link>
                     </div>
@@ -394,7 +461,7 @@ export function DashboardPage() {
               </div>
             )}
           </div>
-        </SectionCard>
+        </section>
       </div>
 
       <EditNameDialog

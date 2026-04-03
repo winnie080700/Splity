@@ -39,11 +39,11 @@ export function ConfirmDialog({
       }}
       actions={(
         <>
-          <button className="button-secondary" disabled={isBusy} onClick={onClose} type="button">
+          <button className="button-secondary w-full sm:w-auto" disabled={isBusy} onClick={onClose} type="button">
             {cancelLabel}
           </button>
           <button
-            className={tone === "danger" ? "button-danger" : "button-primary"}
+            className={tone === "danger" ? "button-danger w-full sm:w-auto" : "button-primary w-full sm:w-auto"}
             disabled={isBusy}
             onClick={onConfirm}
             type="button"

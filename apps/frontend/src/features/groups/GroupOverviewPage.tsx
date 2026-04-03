@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { SettlementShareDialog } from "@/features/settlements/SettlementShareDialog";
 import { isSettlementPaid, isSettlementReceived, isSettlementUnpaid } from "@/features/settlements/status";
+import { useAuth } from "@/shared/auth/AuthProvider";
 import { GroupStatusBadge, formatGroupCreatedAt, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
@@ -16,6 +17,7 @@ export function GroupOverviewPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const queryClient = useQueryClient();
   const { t, language } = useI18n();
+  const { isGuest } = useAuth();
   const { showToast } = useToast();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isStartSettlementOpen, setIsStartSettlementOpen] = useState(false);
@@ -78,7 +80,7 @@ export function GroupOverviewPage() {
         tone: "success"
       });
 
-      if (nextGroup.status === "settling") {
+      if (nextGroup.status === "settling" && !isGuest) {
         setIsShareDialogOpen(true);
       }
     },
@@ -184,14 +186,20 @@ export function GroupOverviewPage() {
                 </>
               ) : group.status === "settling" ? (
                 <>
-                  <button
-                    className="button-secondary w-full justify-center"
-                    disabled={updateStatusMutation.isPending}
-                    onClick={() => setIsShareDialogOpen(true)}
-                    type="button"
-                  >
-                    {t("groups.shareLinkAction")}
-                  </button>
+                  {!isGuest ? (
+                    <button
+                      className="button-secondary w-full justify-center"
+                      disabled={updateStatusMutation.isPending}
+                      onClick={() => setIsShareDialogOpen(true)}
+                      type="button"
+                    >
+                      {t("groups.shareLinkAction")}
+                    </button>
+                  ) : (
+                    <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
+                      {t("guest.shareDisabledHint")}
+                    </div>
+                  )}
                   <button
                     className="button-primary w-full justify-center"
                     disabled={updateStatusMutation.isPending}
@@ -210,6 +218,7 @@ export function GroupOverviewPage() {
                 </div>
               )}
 
+              {isGuest ? <InlineMessage tone="info">{t("guest.sessionHint")}</InlineMessage> : null}
               {isLocked ? <InlineMessage tone="info">{t("groups.readOnlyHint")}</InlineMessage> : null}
             </div>
           </article>
@@ -354,16 +363,18 @@ export function GroupOverviewPage() {
         onConfirm={() => updateStatusMutation.mutate("settled")}
       />
 
-      <SettlementShareDialog
-        open={isShareDialogOpen}
-        onClose={() => setIsShareDialogOpen(false)}
-        groupId={group.id}
-        groupName={group.name}
-        creatorName={group.createdByUserName ?? undefined}
-        fromDate=""
-        toDate=""
-        hasInvalidDateRange={false}
-      />
+      {!isGuest ? (
+        <SettlementShareDialog
+          open={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          groupId={group.id}
+          groupName={group.name}
+          creatorName={group.createdByUserName ?? undefined}
+          fromDate=""
+          toDate=""
+          hasInvalidDateRange={false}
+        />
+      ) : null}
     </div>
   );
 }

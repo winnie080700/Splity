@@ -1,32 +1,55 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useI18n } from "@/shared/i18n/I18nProvider";
-import { AppFooter } from "@/shared/ui/AppFooter";
-import { BrandLogo } from "@/shared/ui/BrandLogo";
-import { ArrowsIcon, ReceiptIcon, SparklesIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
-import { PageHeading, SectionCard } from "@/shared/ui/primitives";
+import { ArrowsIcon, ReceiptIcon, SparklesIcon, WalletIcon } from "@/shared/ui/icons";
+import { PublicSiteFooter } from "@/shared/ui/PublicSiteFooter";
+import { PublicSiteHeader } from "@/shared/ui/PublicSiteHeader";
+
+type LandingFeature = {
+  icon: ReactNode;
+  title: string;
+  body: string;
+};
+
+type LandingStep = {
+  index: string;
+  title: string;
+  body: string;
+};
 
 export function HomePage() {
   const { t } = useI18n();
 
-  const highlights = [
+  const navItems = [
+    { href: "#why-splity", label: t("landing.navWhy") },
+    { href: "#how-it-works", label: t("landing.navHow") },
+    { href: "#contact", label: t("landing.navContact") }
+  ];
+
+  const features: LandingFeature[] = [
     {
-      icon: <WalletIcon className="h-5 w-5" />,
-      title: t("landing.highlightValueTitle"),
-      body: t("landing.highlightValueBody")
+      icon: <ReceiptIcon className="h-4 w-4" />,
+      title: t("landing.featureTrackTitle"),
+      body: t("landing.featureTrackBody")
     },
     {
-      icon: <ReceiptIcon className="h-5 w-5" />,
-      title: t("landing.highlightFeatureTitle"),
-      body: t("landing.highlightFeatureBody")
+      icon: <WalletIcon className="h-4 w-4" />,
+      title: t("landing.featureSettlementTitle"),
+      body: t("landing.featureSettlementBody")
     },
     {
-      icon: <ArrowsIcon className="h-5 w-5" />,
-      title: t("landing.highlightSettlementTitle"),
-      body: t("landing.highlightSettlementBody")
+      icon: <ArrowsIcon className="h-4 w-4" />,
+      title: t("landing.featureShareTitle"),
+      body: t("landing.featureShareBody")
+    },
+    {
+      icon: <SparklesIcon className="h-4 w-4" />,
+      title: t("landing.featurePaymentTitle"),
+      body: t("landing.featurePaymentBody")
     }
   ];
 
-  const flow = [
+  const steps: LandingStep[] = [
     { index: "01", title: t("landing.stepCreateGroupTitle"), body: t("landing.stepCreateGroupBody") },
     { index: "02", title: t("landing.stepAddMembersTitle"), body: t("landing.stepAddMembersBody") },
     { index: "03", title: t("landing.stepAddBillTitle"), body: t("landing.stepAddBillBody") },
@@ -35,121 +58,127 @@ export function HomePage() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="card px-5 py-4 sm:px-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <BrandLogo className="h-11 w-11 shrink-0" />
-              <div>
-                <div className="text-lg font-semibold tracking-tight text-ink">{t("app.title")}</div>
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted">{t("app.kicker")}</div>
+    <div className="min-h-screen bg-[#f7f4ed] text-[#161616]">
+      <div className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-5 lg:px-10">
+        <PublicSiteHeader
+          navItems={navItems}
+          cta={{ label: t("landing.tryNow"), to: "/auth?mode=register" }}
+        />
+
+        <main className="pb-8 pt-4 sm:pt-6 lg:pt-8">
+          <section className="text-center">
+            <h1 className="landing-display landing-fade-up mx-auto max-w-[5ch] text-[4.15rem] leading-[0.8] text-[#161616] sm:max-w-[6.4ch] sm:text-[6.2rem] lg:max-w-none lg:text-[7.35rem]" style={{ animationDelay: "120ms" }}>
+              {t("landing.heroTitle")}
+            </h1>
+
+            <div className="mx-auto mt-8 flex max-w-[1080px] justify-center sm:mt-10 lg:mt-12">
+              <div className="landing-scale-in relative h-[150px] w-[202px] sm:h-[270px] sm:w-full lg:h-[340px]" aria-label={t("landing.heroFrameLabel")} style={{ animationDelay: "220ms" }}>
+                <div className="absolute inset-x-0 bottom-0 h-[104px] rounded-[14px] bg-[#afbe93] sm:h-[180px] sm:rounded-[18px] lg:h-[208px]" />
+                <div className="absolute bottom-[12px] left-1/2 h-[136px] w-[124px] -translate-x-1/2 rounded-[14px] bg-black shadow-[0_20px_40px_rgba(0,0,0,0.18)] sm:bottom-[18px] sm:h-[206px] sm:w-[84%] sm:rounded-[20px] lg:h-[260px] lg:w-[78%]" />
               </div>
             </div>
+          </section>
 
-            <div className="flex flex-wrap gap-2">
-              <Link className="button-secondary" to="/auth">
-                {t("auth.login")}
-              </Link>
-              <Link className="button-primary" to="/auth?mode=register">
-                {t("auth.register")}
-              </Link>
+          <section id="why-splity" className="landing-fade-up mt-14 sm:mt-16 lg:mt-20" style={{ animationDelay: "320ms" }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#b0a997]">
+              {t("landing.sectionLabel")}
             </div>
-          </div>
-        </header>
 
-        <main className="flex-1 py-6">
-          <div className="space-y-6">
-            <SectionCard className="overflow-hidden p-6 md:p-8">
-              <div className="grid gap-6 lg:grid-cols-[1.18fr,0.82fr] lg:items-start">
-                <div>
-                  <PageHeading
-                    eyebrow={t("landing.eyebrow")}
-                    title={t("landing.title")}
-                    description={t("landing.body")}
-                    actions={(
-                      <div className="flex flex-wrap gap-2">
-                        {/* <Link className="button-primary" to="/auth?mode=register">
-                          {t("landing.primaryAction")}
-                        </Link>
-                        <Link className="button-secondary" to="/auth">
-                          {t("landing.secondaryAction")}
-                        </Link> */}
-                      </div>
-                    )}
-                  />
+            <div className="mt-4 max-w-[720px]">
+              <h2 className="landing-display text-[3rem] leading-[0.9] text-[#1c1a17] sm:text-[3.85rem]">
+                {t("landing.calculationTitle")}
+              </h2>
+              <p className="mt-4 max-w-[620px] text-[13px] leading-6 text-[#8a8478] sm:text-[14px]">
+                {t("landing.calculationBody")}
+              </p>
+            </div>
 
-                  <div className="mt-8 grid gap-3 md:grid-cols-3">
-                    {highlights.map((item) => (
-                      <article key={item.title} className="rounded-[24px] border border-slate-200/80 bg-white/88 p-4 shadow-soft">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-brand">
-                          {item.icon}
-                        </span>
-                        <h2 className="mt-4 text-lg font-semibold tracking-tight text-ink">{item.title}</h2>
-                        <p className="mt-2 text-sm leading-6 text-muted">{item.body}</p>
-                      </article>
-                    ))}
+            <div className="mt-8 grid gap-x-8 gap-y-6 border-t border-[#e5dfd2] pt-6 sm:mt-10 sm:grid-cols-2 lg:grid-cols-4">
+              {features.map((feature, index) => (
+                <article key={feature.title} className="landing-fade-up min-w-0" style={{ animationDelay: `${380 + index * 80}ms` }}>
+                  <div className="flex items-center gap-2 text-[#171511]">
+                    {feature.icon}
                   </div>
-                </div>
+                  <h3 className="mt-4 text-[13px] font-semibold text-[#26231d] sm:text-[14px]">{feature.title}</h3>
+                  <p className="mt-3 max-w-[250px] text-[12px] leading-5 text-[#8c8679] sm:text-[12.5px]">
+                    {feature.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
 
-                <div className="surface-muted p-5 md:p-6">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    <SparklesIcon className="h-4 w-4 text-brand" />
-                    {t("landing.sideTitle")}
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted">{t("landing.sideBody")}</p>
+          <section id="how-it-works" className="mt-16 grid gap-10 lg:mt-24 lg:grid-cols-[1.04fr,0.96fr] lg:items-start">
+            <div className="landing-fade-up" style={{ animationDelay: "540ms" }}>
+              <h2 className="landing-display text-[3.2rem] leading-[0.88] text-[#1d1b17] sm:text-[4.1rem]">
+                {t("landing.workflowTitle")}
+              </h2>
+              <p className="mt-4 max-w-[560px] text-[13px] leading-6 text-[#8a8478] sm:text-[14px]">
+                {t("landing.workflowBody")}
+              </p>
 
-                  <div className="mt-5 space-y-3">
-                    <div className="rounded-[22px] border border-white/80 bg-white/88 p-4 shadow-soft">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-                          <UsersIcon className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <div className="text-sm font-semibold text-ink">{t("landing.sideCardMembersTitle")}</div>
-                          <div className="mt-1 text-sm text-muted">{t("landing.sideCardMembersBody")}</div>
-                        </div>
-                      </div>
+              <div className="mt-8 border-t border-[#e5dfd2]">
+                {steps.map((step, index) => (
+                  <article
+                    key={step.index}
+                    className={index === 0 ? "landing-fade-up grid grid-cols-[32px,1fr] gap-3 py-4" : "landing-fade-up grid grid-cols-[32px,1fr] gap-3 border-t border-[#ece6d8] py-4"}
+                    style={{ animationDelay: `${620 + index * 80}ms` }}
+                  >
+                    <div className="pt-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#8d8575]">
+                      {step.index}
                     </div>
-
-                    <div className="rounded-[22px] border border-white/80 bg-white/88 p-4 shadow-soft">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-mint/70 text-success">
-                          <ArrowsIcon className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <div className="text-sm font-semibold text-ink">{t("landing.sideCardSettlementTitle")}</div>
-                          <div className="mt-1 text-sm text-muted">{t("landing.sideCardSettlementBody")}</div>
-                        </div>
-                      </div>
+                    <div>
+                      <h3 className="text-[12px] font-semibold text-[#1f1c16] sm:text-[13px]">{step.title}</h3>
+                      <p className="mt-2 max-w-[520px] text-[12px] leading-5 text-[#8a8478] sm:text-[13px]">
+                        {step.body}
+                      </p>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard className="p-6 md:p-8">
-              <PageHeading
-                eyebrow={t("landing.flowEyebrow")}
-                title={t("landing.flowTitle")}
-                description={t("landing.flowBody")}
-              />
-
-              <div className="mt-6 grid gap-3 lg:grid-cols-5">
-                {flow.map((step) => (
-                  <article key={step.index} className="rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-soft">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">{step.index}</div>
-                    <h2 className="mt-4 text-lg font-semibold tracking-tight text-ink">{step.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
                   </article>
                 ))}
               </div>
-            </SectionCard>
 
-          </div>
+              <Link className="landing-olive-button mt-6" to="/auth?mode=register">
+                {t("landing.workflowCta")}
+              </Link>
+            </div>
+
+            <div className="landing-fade-up hidden lg:block" style={{ animationDelay: "700ms" }}>
+              <div className="landing-visual-panel relative overflow-hidden rounded-[20px] bg-[#d9c7a1] p-10 shadow-[0_26px_60px_rgba(66,52,22,0.12)]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.26),transparent_34%)]" />
+                <div className="relative flex h-[420px] items-end justify-center gap-4">
+                  <div className="w-20 rounded-[18px] bg-[linear-gradient(180deg,#f5efe6_0%,#d7ccb9_100%)] shadow-[0_22px_38px_rgba(108,90,55,0.14)]" style={{ height: "112px" }} />
+                  <div className="w-24 rounded-[18px] bg-[linear-gradient(180deg,#f5efe6_0%,#d7ccb9_100%)] shadow-[0_22px_38px_rgba(108,90,55,0.14)]" style={{ height: "208px" }} />
+                  <div className="w-24 rounded-[18px] bg-[linear-gradient(180deg,#f5efe6_0%,#d7ccb9_100%)] shadow-[0_22px_38px_rgba(108,90,55,0.14)]" style={{ height: "168px" }} />
+                  <div className="w-20 rounded-[18px] bg-[linear-gradient(180deg,#f5efe6_0%,#d7ccb9_100%)] shadow-[0_22px_38px_rgba(108,90,55,0.14)]" style={{ height: "84px" }} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="contact" className="landing-fade-up mt-20 pb-8 pt-2 text-center sm:mt-24 lg:mt-28" style={{ animationDelay: "780ms" }}>
+            <h2 className="landing-display mx-auto text-[3.4rem] leading-[0.86] text-[#1d1a16] sm:text-[4.45rem]">
+              {t("landing.improveTitle")}
+            </h2>
+            <p className="mx-auto mt-4 max-w-[460px] text-[13px] leading-6 text-[#8a8478] sm:text-[14px]">
+              {t("landing.improveBody")}
+            </p>
+            <a
+              className="landing-contact-button mt-6"
+              href="https://github.com/winnie080700/Splity"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("landing.improveAction")}
+            </a>          
+            </section>
         </main>
 
-        <AppFooter />
+        <PublicSiteFooter
+          links={[
+            { href: "#why-splity", label: t("landing.navWhy") },
+            { href: "#contact", label: t("landing.navContact") }
+          ]}
+        />
       </div>
     </div>
   );
