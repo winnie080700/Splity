@@ -16,11 +16,6 @@ function RootEntry() {
   return hasWorkspaceAccess ? <Navigate to="/dashboard" replace /> : <HomePage />;
 }
 
-function SettingsEntry() {
-  const { isGuest } = useAuth();
-  return isGuest ? <Navigate to="/dashboard" replace /> : <SettingsPage />;
-}
-
 export const router = createBrowserRouter([
   {
     path: "/auth",
@@ -43,7 +38,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth><AppShell /></RequireAuth>,
     children: [
       { path: "dashboard", element: <DashboardPage /> },
-      { path: "settings", element: <SettingsEntry /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "groups/:groupId", element: <Navigate to="overview" replace /> },
       { path: "groups/:groupId/overview", element: <GroupOverviewPage /> },
       { path: "groups/:groupId/participants", element: <ParticipantsPage /> },

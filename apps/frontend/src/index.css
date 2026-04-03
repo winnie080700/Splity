@@ -599,6 +599,58 @@ a {
     background-color: rgba(255, 253, 248, 0.96);
     box-shadow: 0 14px 30px rgba(34, 29, 20, 0.04);
   }
+
+  .settings-tab-strip {
+    @apply flex items-center gap-2;
+  }
+
+  .settings-tab-button {
+    @apply relative inline-flex min-h-[48px] items-center justify-center px-4 text-sm font-medium;
+    color: #8a836f;
+  }
+
+  .settings-tab-button::after {
+    content: "";
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0;
+    left: 0.75rem;
+    height: 2px;
+    border-radius: 999px;
+    background-color: transparent;
+  }
+
+  .settings-tab-button-active {
+    color: #181612;
+  }
+
+  .settings-tab-button-active::after {
+    background-color: #627a1e;
+  }
+
+  .settings-panel {
+    @apply rounded-[24px] border p-5 sm:p-6;
+    border-color: rgba(228, 219, 203, 0.94);
+    background:
+      linear-gradient(180deg, rgba(255, 254, 249, 0.98), rgba(250, 247, 239, 0.96));
+    box-shadow: 0 18px 38px rgba(34, 29, 20, 0.05);
+  }
+
+  .settings-section-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.16em];
+    color: #918970;
+  }
+
+  .settings-data-card {
+    @apply rounded-[20px] border px-4 py-4;
+    border-color: rgba(228, 219, 203, 0.92);
+    background-color: rgba(255, 253, 248, 0.94);
+  }
+
+  .settings-data-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em];
+    color: #8f8873;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

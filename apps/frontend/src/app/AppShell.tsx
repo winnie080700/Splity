@@ -15,7 +15,6 @@ import {
   TrashIcon,
   UsersIcon
 } from "@/shared/ui/icons";
-import { AnimatedPillSwitch } from "@/shared/ui/AnimatedPillSwitch";
 import { BrandLogo } from "@/shared/ui/BrandLogo";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { CustomSelect } from "@/shared/ui/CustomSelect";
@@ -46,7 +45,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isGuest } = useAuth();
-  const { t, language, setLanguage } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [createGroupError, setCreateGroupError] = useState<string | null>(null);
@@ -361,17 +360,6 @@ export function AppShell() {
               </div>
 
               <div className="mt-4 grid gap-2">
-                <AnimatedPillSwitch
-                  ariaLabel={t("lang.language")}
-                  className="w-full"
-                  value={language}
-                  onChange={(nextLanguage) => setLanguage(nextLanguage)}
-                  options={[
-                    { value: "en", label: "EN" },
-                    { value: "zh", label: "CH" }
-                  ]}
-                />
-
                 <button
                   className="landing-contact-button w-full min-w-0"
                   onClick={() => {
