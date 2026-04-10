@@ -1,7 +1,9 @@
-using System.Security.Claims;
 using Splity.Api.Contracts;
+using Splity.Application.Abstractions;
 using Splity.Application.Models;
 using Splity.Application.Services;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Splity.Api.Endpoints;
 
@@ -13,7 +15,7 @@ public static class AuthEndpoints
 
         group.MapPost("/register", async (RegisterRequest request, IAuthService service, CancellationToken ct) =>
             {
-                var result = await service.RegisterAsync(new RegisterInput(request.Name, request.Email, request.Password), ct);
+                var result = await service.RegisterAsync(new RegisterInput(request.Name, request.Username, request.Email, request.Password), ct);
                 return Results.Ok(result);
             })
             .WithName("Register")
@@ -38,25 +40,67 @@ public static class AuthEndpoints
         var authenticated = group.MapGroup(string.Empty)
             .RequireAuthorization();
 
-        authenticated.MapGet("/me", async (ClaimsPrincipal user, IAuthService service, CancellationToken ct) =>
+        authenticated.MapGet("/me", async (ClaimsPrincipal user, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
             {
-                var userId = GetUserId(user);
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct, refreshProfile: true);
                 var result = await service.GetCurrentUserAsync(userId, ct);
                 return Results.Ok(result);
             })
             .WithName("GetCurrentUser")
             .WithSummary("Get the current authenticated user.");
 
-        authenticated.MapPut("/profile", async (ClaimsPrincipal user, UpdateProfileRequest request, IAuthService service, CancellationToken ct) =>
+        authenticated.MapGet("/users/search", async (string username, IAuthService service, CancellationToken ct) =>
             {
-                var userId = GetUserId(user);
+                var result = await service.FindUserByUsernameAsync(username, ct);
+                return Results.Ok(result);
+            })
+            .WithName("SearchUserByUsername")
+            .WithSummary("Find an existing user by exact username.");
+
+        authenticated.MapPost("/sync", async (ClaimsPrincipal user, SyncCurrentUserRequest request, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
+            {
+                var userId = await identityService.SyncUserProfileAsync(
+                    new ExternalIdentityUser(
+                        GetExternalUserId(user),
+                        request.Email,
+                        request.Username,
+                        request.Name ?? string.Empty,
+                        request.IsEmailVerified),
+                    ct);
+                var result = await service.GetCurrentUserAsync(userId, ct);
+                return Results.Ok(result);
+            })
+            .WithName("SyncCurrentUser")
+            .WithSummary("Upsert the current Clerk-authenticated user into the local application database.");
+
+        authenticated.MapPut("/profile", async (ClaimsPrincipal user, UpdateProfileRequest request, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
+            {
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct);
                 var result = await service.UpdateProfileAsync(userId, new UpdateProfileInput(request.Name), ct);
                 return Results.Ok(result);
             })
             .WithName("UpdateProfile")
             .WithSummary("Update the current authenticated user's profile.");
 
-        authenticated.MapPost("/change-password", async (ClaimsPrincipal user, ChangePasswordRequest request, IAuthService service, CancellationToken ct) =>
+        authenticated.MapPut("/payment-profile", async (ClaimsPrincipal user, UpdatePaymentProfileRequest request, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
+            {
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct);
+                var result = await service.UpdatePaymentProfileAsync(
+                    userId,
+                    new UpdatePaymentProfileInput(
+                        request.PayeeName,
+                        request.PaymentMethod,
+                        request.AccountName,
+                        request.AccountNumber,
+                        request.Notes,
+                        request.PaymentQrDataUrl),
+                    ct);
+                return Results.Ok(result);
+            })
+            .WithName("UpdatePaymentProfile")
+            .WithSummary("Update the current authenticated user's default payment details.");
+
+        authenticated.MapPost("/change-password", async (ClaimsPrincipal user, ChangePasswordRequest request, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
             {
                 if (!string.Equals(request.NewPassword, request.ConfirmNewPassword, StringComparison.Ordinal))
                 {
@@ -65,25 +109,25 @@ public static class AuthEndpoints
                         "auth_password_confirmation_mismatch");
                 }
 
-                var userId = GetUserId(user);
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct);
                 await service.ChangePasswordAsync(userId, new ChangePasswordInput(request.CurrentPassword, request.NewPassword), ct);
                 return Results.Ok();
             })
             .WithName("ChangePassword")
             .WithSummary("Change the current authenticated user's password.");
 
-        authenticated.MapPost("/email-verification/send", async (ClaimsPrincipal user, IAuthService service, CancellationToken ct) =>
+        authenticated.MapPost("/email-verification/send", async (ClaimsPrincipal user, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
             {
-                var userId = GetUserId(user);
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct);
                 var result = await service.SendEmailVerificationAsync(userId, ct);
                 return Results.Ok(result);
             })
             .WithName("SendEmailVerification")
             .WithSummary("Send an email verification code to the current authenticated user.");
 
-        authenticated.MapPost("/email-verification/verify", async (ClaimsPrincipal user, VerifyEmailRequest request, IAuthService service, CancellationToken ct) =>
+        authenticated.MapPost("/email-verification/verify", async (ClaimsPrincipal user, VerifyEmailRequest request, IAppUserIdentityService identityService, IAuthService service, CancellationToken ct) =>
             {
-                var userId = GetUserId(user);
+                var userId = await identityService.ResolveUserIdAsync(GetExternalUserId(user), ct);
                 var result = await service.VerifyEmailAsync(userId, new VerifyEmailInput(request.Code), ct);
                 return Results.Ok(result);
             })
@@ -91,12 +135,13 @@ public static class AuthEndpoints
             .WithSummary("Verify the current authenticated user's email address.");
     }
 
-    private static Guid GetUserId(ClaimsPrincipal user)
+    private static string GetExternalUserId(ClaimsPrincipal user)
     {
-        var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Guid.TryParse(raw, out var userId))
+        var raw = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrWhiteSpace(raw))
         {
-            return userId;
+            return raw;
         }
 
         throw new InvalidOperationException("Authenticated user id is missing.");

@@ -9,7 +9,9 @@ public interface IAuthService
     Task ForgotPasswordAsync(ForgotPasswordInput input, CancellationToken cancellationToken);
     Task<AuthUserDto> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<AuthUserDto> UpdateProfileAsync(Guid userId, UpdateProfileInput input, CancellationToken cancellationToken);
+    Task<AuthUserDto> UpdatePaymentProfileAsync(Guid userId, UpdatePaymentProfileInput input, CancellationToken cancellationToken);
     Task ChangePasswordAsync(Guid userId, ChangePasswordInput input, CancellationToken cancellationToken);
     Task<AuthUserDto> SendEmailVerificationAsync(Guid userId, CancellationToken cancellationToken);
     Task<AuthUserDto> VerifyEmailAsync(Guid userId, VerifyEmailInput input, CancellationToken cancellationToken);
+    Task<UserLookupDto?> FindUserByUsernameAsync(string username, CancellationToken cancellationToken);
 }

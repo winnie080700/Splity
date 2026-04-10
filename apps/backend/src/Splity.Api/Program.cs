@@ -2,17 +2,28 @@ using Splity.Api.Endpoints;
 using Splity.Api.Errors;
 using Splity.Application;
 using Splity.Infrastructure;
+using Splity.Infrastructure.Identity;
 using Splity.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 var allowedOrigins = builder.Configuration.GetSection("Frontend:AllowedOrigins").Get<string[]>() ??
     ["http://localhost:5173", "http://127.0.0.1:5173"];
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret is required.");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Splity";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Splity.Frontend";
+var clerkAuthority = builder.Configuration["Clerk:Authority"]?.Trim()
+    ?? throw new InvalidOperationException("Clerk:Authority is required.");
+var clerkAuthorizedParties = builder.Configuration.GetSection("Clerk:AuthorizedParties").Get<string[]>() ?? [];
+var clerkJwksUrl = builder.Configuration["Clerk:JwksUrl"]?.Trim();
+if (string.IsNullOrWhiteSpace(clerkJwksUrl))
+{
+    clerkJwksUrl = $"{clerkAuthority.TrimEnd('/')}/.well-known/jwks.json";
+}
+
+var clerkJwksProvider = new ClerkJwksProvider(new HttpClient
+{
+    Timeout = TimeSpan.FromSeconds(15)
+}, clerkJwksUrl);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
@@ -20,16 +31,37 @@ builder.Services.AddHealthChecks();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidateAudience = false,
             ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidIssuer = clerkAuthority,
+            NameClaimType = JwtRegisteredClaimNames.Name,
+            IssuerSigningKeyResolver = (_, _, _, _) =>
+                clerkJwksProvider.GetSigningKeysAsync(CancellationToken.None).GetAwaiter().GetResult(),
             ClockSkew = TimeSpan.FromMinutes(2)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                if (clerkAuthorizedParties.Length == 0)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var authorizedParty = context.Principal?.FindFirst("azp")?.Value;
+                if (string.IsNullOrWhiteSpace(authorizedParty) ||
+                    !clerkAuthorizedParties.Contains(authorizedParty, StringComparer.OrdinalIgnoreCase))
+                {
+                    context.Fail("The Clerk token is not valid for this frontend.");
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddAuthorization();

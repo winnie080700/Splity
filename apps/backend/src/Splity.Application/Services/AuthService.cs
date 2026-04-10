@@ -1,6 +1,7 @@
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Splity.Application.Abstractions;
 using Splity.Application.Exceptions;
 using Splity.Application.Models;
@@ -17,10 +18,12 @@ public sealed class AuthService(
     IUnitOfWork unitOfWork) : IAuthService
 {
     private static readonly char[] TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%".ToCharArray();
+    private static readonly Regex UsernamePattern = new("^[a-z0-9._-]{3,30}$", RegexOptions.Compiled);
 
     public async Task<AuthResultDto> RegisterAsync(RegisterInput input, CancellationToken cancellationToken)
     {
         var normalizedEmail = NormalizeEmail(input.Email);
+        var normalizedUsername = NormalizeUsername(input.Username);
         ValidateName(input.Name);
         ValidatePassword(input.Password);
 
@@ -29,11 +32,17 @@ public sealed class AuthService(
             throw new DomainValidationException("This email is already registered.", "auth_email_exists");
         }
 
+        if (await appUserRepository.GetByUsernameAsync(normalizedUsername, cancellationToken) is not null)
+        {
+            throw new DomainValidationException("This username is already registered.", "auth_username_exists");
+        }
+
         var password = passwordHasher.HashPassword(input.Password);
         var user = new AppUser
         {
             Id = Guid.NewGuid(),
             Name = input.Name.Trim(),
+            Username = normalizedUsername,
             Email = normalizedEmail,
             PasswordHash = password.Hash,
             PasswordSalt = password.Salt,
@@ -50,7 +59,13 @@ public sealed class AuthService(
     {
         var normalizedEmail = NormalizeEmail(input.Email);
         var user = await appUserRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
-        if (user is null || !passwordHasher.VerifyPassword(input.Password, user.PasswordHash, user.PasswordSalt))
+        if (user is null)
+        {
+            throw new DomainValidationException("Invalid email or password.", "auth_invalid_credentials");
+        }
+
+        EnsureLocalPasswordAuthenticationAvailable(user);
+        if (!passwordHasher.VerifyPassword(input.Password, user.PasswordHash, user.PasswordSalt))
         {
             throw new DomainValidationException("Invalid email or password.", "auth_invalid_credentials");
         }
@@ -66,6 +81,8 @@ public sealed class AuthService(
         {
             return;
         }
+
+        EnsureLocalPasswordAuthenticationAvailable(user);
 
         var temporaryPassword = GenerateTemporaryPassword();
         var previousHash = user.PasswordHash;
@@ -129,6 +146,25 @@ public sealed class AuthService(
         return ToAuthUser(user);
     }
 
+    public async Task<AuthUserDto> UpdatePaymentProfileAsync(Guid userId, UpdatePaymentProfileInput input, CancellationToken cancellationToken)
+    {
+        var user = await appUserRepository.GetByIdForUpdateAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            throw new EntityNotFoundException("User not found.");
+        }
+
+        user.DefaultPaymentPayeeName = NormalizeOptionalText(input.PayeeName, 150);
+        user.DefaultPaymentMethod = NormalizeOptionalText(input.PaymentMethod, 120);
+        user.DefaultPaymentAccountName = NormalizeOptionalText(input.AccountName, 150);
+        user.DefaultPaymentAccountNumber = NormalizeOptionalText(input.AccountNumber, 120);
+        user.DefaultPaymentNotes = NormalizeOptionalText(input.Notes, 2000);
+        user.DefaultPaymentQrDataUrl = NormalizeOptionalLongText(input.PaymentQrDataUrl);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return ToAuthUser(user);
+    }
+
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordInput input, CancellationToken cancellationToken)
     {
         var user = await appUserRepository.GetByIdForUpdateAsync(userId, cancellationToken);
@@ -136,6 +172,8 @@ public sealed class AuthService(
         {
             throw new EntityNotFoundException("User not found.");
         }
+
+        EnsureLocalPasswordAuthenticationAvailable(user);
 
         if (!passwordHasher.VerifyPassword(input.CurrentPassword, user.PasswordHash, user.PasswordSalt))
         {
@@ -163,6 +201,8 @@ public sealed class AuthService(
         {
             throw new EntityNotFoundException("User not found.");
         }
+
+        EnsureLocalPasswordAuthenticationAvailable(user);
 
         if (user.EmailVerifiedAtUtc.HasValue)
         {
@@ -220,6 +260,8 @@ public sealed class AuthService(
             throw new EntityNotFoundException("User not found.");
         }
 
+        EnsureLocalPasswordAuthenticationAvailable(user);
+
         if (user.EmailVerifiedAtUtc.HasValue)
         {
             return ToAuthUser(user);
@@ -251,6 +293,13 @@ public sealed class AuthService(
         return ToAuthUser(user);
     }
 
+    public async Task<UserLookupDto?> FindUserByUsernameAsync(string username, CancellationToken cancellationToken)
+    {
+        var normalizedUsername = NormalizeUsername(username);
+        var user = await appUserRepository.GetByUsernameAsync(normalizedUsername, cancellationToken);
+        return user is null ? null : new UserLookupDto(user.Id, user.Name, user.Username);
+    }
+
     private AuthResultDto ToAuthResult(AppUser user)
     {
         return new AuthResultDto(
@@ -268,7 +317,9 @@ public sealed class AuthService(
         return new AuthUserDto(
             user.Id,
             user.Name,
+            user.Username,
             user.Email,
+            ToPaymentProfile(user),
             user.EmailVerifiedAtUtc.HasValue,
             user.EmailVerifiedAtUtc,
             user.PendingEmailVerificationExpiresAtUtc);
@@ -299,12 +350,79 @@ public sealed class AuthService(
         }
     }
 
+    private static string NormalizeUsername(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            throw new DomainValidationException("Username is required.", "auth_username_required");
+        }
+
+        var normalized = username.Trim();
+        while (normalized.StartsWith("@", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..];
+        }
+
+        normalized = normalized.Trim().ToLowerInvariant();
+
+        if (!UsernamePattern.IsMatch(normalized))
+        {
+            throw new DomainValidationException(
+                "Username must be 3-30 characters and use only letters, numbers, dot, underscore, or dash.",
+                "auth_username_invalid");
+        }
+
+        return normalized;
+    }
+
     private static void ValidatePassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password) || password.Trim().Length < 8)
         {
             throw new DomainValidationException("Password must be at least 8 characters.", "auth_password_too_short");
         }
+    }
+
+    private static void EnsureLocalPasswordAuthenticationAvailable(AppUser user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.ClerkUserId))
+        {
+            throw new DomainValidationException(
+                "This account is managed by Clerk. Update your credentials from the Clerk flow instead.",
+                "auth_managed_by_clerk");
+        }
+    }
+
+    private static string? NormalizeOptionalText(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim();
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static string? NormalizeOptionalLongText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
+    }
+
+    private static AuthPaymentProfileDto ToPaymentProfile(AppUser user)
+    {
+        return new AuthPaymentProfileDto(
+            user.DefaultPaymentPayeeName?.Trim() ?? string.Empty,
+            user.DefaultPaymentMethod?.Trim() ?? string.Empty,
+            user.DefaultPaymentAccountName?.Trim() ?? string.Empty,
+            user.DefaultPaymentAccountNumber?.Trim() ?? string.Empty,
+            user.DefaultPaymentNotes?.Trim() ?? string.Empty,
+            user.DefaultPaymentQrDataUrl?.Trim() ?? string.Empty);
     }
 
     private static string GenerateTemporaryPassword()
