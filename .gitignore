@@ -19,3 +19,4 @@
 .dotnet/
 .codex-temp/
 .tmp/
+.claude
