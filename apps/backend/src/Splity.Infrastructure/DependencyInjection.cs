@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Splity.Application.Abstractions;
+using Splity.Infrastructure.Identity;
 using Splity.Infrastructure.Mail;
 using Splity.Infrastructure.Persistence;
 using Splity.Infrastructure.Repositories;
@@ -51,6 +52,39 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<ITokenProvider, JwtTokenProvider>();
         services.AddSingleton(smtpOptions);
+        services.AddSingleton(sp =>
+        {
+            var authority = configuration["Clerk:Authority"]?.Trim();
+            if (string.IsNullOrWhiteSpace(authority))
+            {
+                throw new InvalidOperationException("Clerk:Authority is required.");
+            }
+
+            var jwksUrl = configuration["Clerk:JwksUrl"]?.Trim();
+            if (string.IsNullOrWhiteSpace(jwksUrl))
+            {
+                jwksUrl = $"{authority.TrimEnd('/')}/.well-known/jwks.json";
+            }
+
+            return new ClerkJwksProvider(new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(15)
+            }, jwksUrl);
+        });
+        services.AddSingleton<IExternalIdentityUserProvider>(sp =>
+        {
+            var apiUrl = configuration["Clerk:ApiUrl"]?.Trim();
+            if (string.IsNullOrWhiteSpace(apiUrl))
+            {
+                apiUrl = "https://api.clerk.com";
+            }
+
+            var secretKey = configuration["Clerk:SecretKey"]?.Trim();
+            return new ClerkUserClient(new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(15)
+            }, apiUrl, secretKey ?? string.Empty);
+        });
         services.AddScoped<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
         services.AddScoped<IEmailVerificationSender, SmtpEmailVerificationSender>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<SplityDbContext>());

@@ -61,6 +61,7 @@ public static class BillEndpoints
     {
         return new CreateBillInput(
             request.StoreName,
+            request.ReferenceImageDataUrl,
             request.TransactionDateUtc,
             request.SplitMode,
             request.PrimaryPayerParticipantId,
@@ -74,6 +75,7 @@ public static class BillEndpoints
     {
         return new UpdateBillInput(
             request.StoreName,
+            request.ReferenceImageDataUrl,
             request.TransactionDateUtc,
             request.SplitMode,
             request.PrimaryPayerParticipantId,

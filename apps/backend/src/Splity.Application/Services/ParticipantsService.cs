@@ -28,13 +28,14 @@ public sealed class ParticipantsService(
             Id = Guid.NewGuid(),
             GroupId = groupId,
             Name = input.Name.Trim(),
+            Username = NormalizeUsername(input.Username),
             CreatedAtUtc = DateTime.UtcNow
         };
 
         await participantRepository.AddAsync(participant, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.CreatedAtUtc);
+        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.Username, participant.CreatedAtUtc);
     }
 
     public async Task<IReadOnlyCollection<ParticipantDto>> ListAsync(Guid groupId, CancellationToken cancellationToken)
@@ -47,7 +48,7 @@ public sealed class ParticipantsService(
         var participants = await participantRepository.ListByGroupAsync(groupId, cancellationToken);
         return participants
             .OrderBy(x => x.Name)
-            .Select(x => new ParticipantDto(x.Id, x.GroupId, x.Name, x.CreatedAtUtc))
+            .Select(x => new ParticipantDto(x.Id, x.GroupId, x.Name, x.Username, x.CreatedAtUtc))
             .ToArray();
     }
 
@@ -71,9 +72,10 @@ public sealed class ParticipantsService(
         }
 
         participant.Name = input.Name.Trim();
+        participant.Username = NormalizeUsername(input.Username);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.CreatedAtUtc);
+        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.Username, participant.CreatedAtUtc);
     }
 
     public async Task DeleteAsync(Guid groupId, Guid participantId, CancellationToken cancellationToken)
@@ -107,5 +109,21 @@ public sealed class ParticipantsService(
         {
             throw new DomainValidationException("This group is locked because settlement has already started.");
         }
+    }
+
+    private static string? NormalizeUsername(string? username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        var normalized = username.Trim();
+        while (normalized.StartsWith("@", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..];
+        }
+
+        return normalized.Trim().ToLowerInvariant();
     }
 }

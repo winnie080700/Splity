@@ -1,6 +1,6 @@
 namespace Splity.Application.Models;
 
-public sealed record CreateParticipantInput(string Name);
-public sealed record UpdateParticipantInput(string Name);
+public sealed record CreateParticipantInput(string Name, string? Username);
+public sealed record UpdateParticipantInput(string Name, string? Username);
 
-public sealed record ParticipantDto(Guid Id, Guid GroupId, string Name, DateTime CreatedAtUtc);
+public sealed record ParticipantDto(Guid Id, Guid GroupId, string Name, string? Username, DateTime CreatedAtUtc);

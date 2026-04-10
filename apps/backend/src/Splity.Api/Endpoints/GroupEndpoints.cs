@@ -2,6 +2,7 @@ using Splity.Api.Contracts;
 using Splity.Application.Models;
 using Splity.Application.Services;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Splity.Api.Endpoints;
 
@@ -11,9 +12,9 @@ public static class GroupEndpoints
     {
         var group = app.MapGroup("/api/groups").WithTags("Groups");
 
-        group.MapGet("/", async (ClaimsPrincipal user, IGroupsService service, CancellationToken ct) =>
+        group.MapGet("/", async (ClaimsPrincipal user, IAppUserIdentityService identityService, IGroupsService service, CancellationToken ct) =>
             {
-                var creatorUserId = TryGetUserId(user);
+                var creatorUserId = await identityService.TryResolveUserIdAsync(TryGetExternalUserId(user), ct);
                 if (!creatorUserId.HasValue)
                 {
                     return Results.Ok(Array.Empty<GroupSummaryDto>());
@@ -25,9 +26,9 @@ public static class GroupEndpoints
             .WithName("ListGroups")
             .WithSummary("List groups created by the current user.");
 
-        group.MapPost("/", async (ClaimsPrincipal user, CreateGroupRequest request, IGroupsService service, CancellationToken ct) =>
+        group.MapPost("/", async (ClaimsPrincipal user, CreateGroupRequest request, IAppUserIdentityService identityService, IGroupsService service, CancellationToken ct) =>
             {
-                var creatorUserId = TryGetUserId(user);
+                var creatorUserId = await identityService.TryResolveUserIdAsync(TryGetExternalUserId(user), ct);
                 var result = await service.CreateAsync(new CreateGroupInput(request.Name), creatorUserId, ct);
                 return Results.Created($"/api/groups/{result.Id}", result);
             })
@@ -67,9 +68,9 @@ public static class GroupEndpoints
             .WithSummary("Delete a group.");
     }
 
-    private static Guid? TryGetUserId(ClaimsPrincipal user)
+    private static string? TryGetExternalUserId(ClaimsPrincipal user)
     {
-        var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(raw, out var userId) ? userId : null;
+        return user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 }

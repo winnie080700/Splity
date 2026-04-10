@@ -108,7 +108,7 @@ export function HomePage() {
             </div>
           </section>
 
-          <section id="how-it-works" className="mt-16 grid gap-10 lg:mt-24 lg:grid-cols-[1.04fr,0.96fr] lg:items-start">
+          <section id="how-it-works" className="mt-16 grid gap-10 lg:mt-24 lg:grid-cols-[1.04fr,0.96fr] lg:items-center">
             <div className="landing-fade-up" style={{ animationDelay: "540ms" }}>
               <h2 className="landing-display text-[3.2rem] leading-[0.88] text-[#1d1b17] sm:text-[4.1rem]">
                 {t("landing.workflowTitle")}

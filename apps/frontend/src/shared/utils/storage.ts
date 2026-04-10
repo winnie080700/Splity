@@ -6,7 +6,16 @@ type SavedGroup = {
 type AuthUser = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
+  paymentProfile: {
+    payeeName: string;
+    paymentMethod: string;
+    accountName: string;
+    accountNumber: string;
+    notes: string;
+    paymentQrDataUrl: string;
+  };
   isEmailVerified: boolean;
   emailVerifiedAtUtc: string | null;
   emailVerificationPendingUntilUtc: string | null;
@@ -70,7 +79,16 @@ export function readAuthSession(): AuthSession | null {
       user?: {
         id?: string;
         name?: string;
+        username?: string | null;
         email?: string;
+        paymentProfile?: {
+          payeeName?: string;
+          paymentMethod?: string;
+          accountName?: string;
+          accountNumber?: string;
+          notes?: string;
+          paymentQrDataUrl?: string;
+        };
         isEmailVerified?: boolean;
         emailVerifiedAtUtc?: string | null;
         emailVerificationPendingUntilUtc?: string | null;
@@ -85,7 +103,16 @@ export function readAuthSession(): AuthSession | null {
       user: {
         id: parsed.user.id,
         name: parsed.user.name,
+        username: parsed.user.username?.trim() ?? null,
         email: parsed.user.email,
+        paymentProfile: {
+          payeeName: parsed.user.paymentProfile?.payeeName ?? "",
+          paymentMethod: parsed.user.paymentProfile?.paymentMethod ?? "",
+          accountName: parsed.user.paymentProfile?.accountName ?? "",
+          accountNumber: parsed.user.paymentProfile?.accountNumber ?? "",
+          notes: parsed.user.paymentProfile?.notes ?? "",
+          paymentQrDataUrl: parsed.user.paymentProfile?.paymentQrDataUrl ?? ""
+        },
         isEmailVerified: parsed.user.isEmailVerified ?? false,
         emailVerifiedAtUtc: parsed.user.emailVerifiedAtUtc ?? null,
         emailVerificationPendingUntilUtc: parsed.user.emailVerificationPendingUntilUtc ?? null

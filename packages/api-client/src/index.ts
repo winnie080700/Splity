@@ -32,10 +32,21 @@ export type UpdateGroupStatusRequest = {
 export type AuthUserDto = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
+  paymentProfile: AuthPaymentProfileDto;
   isEmailVerified: boolean;
   emailVerifiedAtUtc: string | null;
   emailVerificationPendingUntilUtc: string | null;
+};
+
+export type AuthPaymentProfileDto = {
+  payeeName: string;
+  paymentMethod: string;
+  accountName: string;
+  accountNumber: string;
+  notes: string;
+  paymentQrDataUrl: string;
 };
 
 export type AuthResultDto = {
@@ -47,11 +58,19 @@ export type ParticipantDto = {
   id: string;
   groupId: string;
   name: string;
+  username?: string | null;
   createdAtUtc: string;
 };
 
 export type UpdateParticipantRequest = {
   name: string;
+  username?: string | null;
+};
+
+export type UserLookupDto = {
+  id: string;
+  name: string;
+  username: string | null;
 };
 
 export type BillItemInput = { description: string; amount: number; responsibleParticipantIds: string[] };
@@ -61,6 +80,7 @@ export type BillContributionInput = { participantId: string; amount: number };
 
 export type CreateBillRequest = {
   storeName: string;
+  referenceImageDataUrl?: string | null;
   transactionDateUtc: string;
   splitMode: SplitMode;
   primaryPayerParticipantId: string;
@@ -74,8 +94,10 @@ export type BillSummaryDto = {
   id: string;
   groupId: string;
   storeName: string;
+  referenceImageDataUrl?: string | null;
   transactionDateUtc: string;
   splitMode: SplitMode;
+  primaryPayerParticipantId: string;
   subtotalAmount: number;
   totalFeeAmount: number;
   grandTotalAmount: number;
@@ -118,6 +140,7 @@ export type BillDetailDto = {
   id: string;
   groupId: string;
   storeName: string;
+  referenceImageDataUrl?: string | null;
   transactionDateUtc: string;
   splitMode: SplitMode;
   primaryPayerParticipantId: string;
@@ -212,9 +235,10 @@ export type UpdateSettlementTransferStatusRequest = {
 
 export { ApiError, getApiErrorMessage, type ApiProblemDetails } from "./errors";
 export { getApiBaseUrl } from "./config";
+export { setAccessTokenProvider } from "./http";
 
 const defaultApiClient = {
-  register: (payload: { name: string; email: string; password: string }) => request<AuthResultDto>("/api/auth/register", {
+  register: (payload: { name: string; username: string; email: string; password: string }) => request<AuthResultDto>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(payload)
   }),
@@ -227,7 +251,16 @@ const defaultApiClient = {
     body: JSON.stringify(payload)
   }),
   getCurrentUser: () => request<AuthUserDto>("/api/auth/me"),
+  syncCurrentUser: (payload: { email: string; username?: string | null; name?: string | null; isEmailVerified: boolean }) =>
+    request<AuthUserDto>("/api/auth/sync", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   updateProfile: (payload: { name: string }) => request<AuthUserDto>("/api/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+  updatePaymentProfile: (payload: AuthPaymentProfileDto) => request<AuthUserDto>("/api/auth/payment-profile", {
     method: "PUT",
     body: JSON.stringify(payload)
   }),
@@ -243,6 +276,11 @@ const defaultApiClient = {
     method: "POST",
     body: JSON.stringify(payload)
   }),
+  searchUserByUsername: (username: string) => {
+    const params = new URLSearchParams();
+    params.set("username", username);
+    return request<UserLookupDto | null>(`/api/auth/users/search?${params.toString()}`);
+  },
   createGroup: (name: string) => request<GroupDto>("/api/groups", {
     method: "POST",
     body: JSON.stringify({ name })
@@ -260,9 +298,9 @@ const defaultApiClient = {
   deleteGroup: (groupId: string) => request<void>(`/api/groups/${groupId}`, {
     method: "DELETE"
   }),
-  createParticipant: (groupId: string, name: string) => request<ParticipantDto>(`/api/groups/${groupId}/participants`, {
+  createParticipant: (groupId: string, name: string, username?: string | null) => request<ParticipantDto>(`/api/groups/${groupId}/participants`, {
     method: "POST",
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name, username: username ?? null })
   }),
   listParticipants: (groupId: string) => request<ParticipantDto[]>(`/api/groups/${groupId}/participants`),
   updateParticipant: (groupId: string, participantId: string, payload: UpdateParticipantRequest) => request<ParticipantDto>(`/api/groups/${groupId}/participants/${participantId}`, {

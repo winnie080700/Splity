@@ -12,6 +12,7 @@ public sealed record BillContributionInput(Guid ParticipantId, decimal Amount);
 
 public sealed record CreateBillInput(
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
     Guid PrimaryPayerParticipantId,
@@ -22,6 +23,7 @@ public sealed record CreateBillInput(
 
 public sealed record UpdateBillInput(
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
     Guid PrimaryPayerParticipantId,
@@ -54,8 +56,10 @@ public sealed record BillSummaryDto(
     Guid Id,
     Guid GroupId,
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
+    Guid PrimaryPayerParticipantId,
     decimal SubtotalAmount,
     decimal TotalFeeAmount,
     decimal GrandTotalAmount);
@@ -64,6 +68,7 @@ public sealed record BillDetailDto(
     Guid Id,
     Guid GroupId,
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
     Guid PrimaryPayerParticipantId,

@@ -84,12 +84,29 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </IconBase>
+  );
+}
+
 export function LinkIcon(props: IconProps) {
   return (
     <IconBase {...props}>
       <path d="M10 13.5 8.5 15a3 3 0 1 1-4.25-4.25L7 8" />
       <path d="m14 10.5 1.5-1.5a3 3 0 1 1 4.25 4.25L17 16" />
       <path d="M8.5 15.5 15.5 8.5" />
+    </IconBase>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
     </IconBase>
   );
 }

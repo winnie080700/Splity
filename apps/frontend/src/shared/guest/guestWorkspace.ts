@@ -248,6 +248,7 @@ function computeBillDetail(groupId: string, record: GuestBillRecord): BillDetail
     id: record.id,
     groupId,
     storeName: record.payload.storeName,
+    referenceImageDataUrl: record.payload.referenceImageDataUrl ?? null,
     transactionDateUtc: record.payload.transactionDateUtc,
     splitMode: record.payload.splitMode,
     primaryPayerParticipantId: record.payload.primaryPayerParticipantId,
@@ -266,8 +267,10 @@ function toBillSummary(detail: BillDetailDto): BillSummaryDto {
     id: detail.id,
     groupId: detail.groupId,
     storeName: detail.storeName,
+    referenceImageDataUrl: detail.referenceImageDataUrl ?? null,
     transactionDateUtc: detail.transactionDateUtc,
     splitMode: detail.splitMode,
+    primaryPayerParticipantId: detail.primaryPayerParticipantId,
     subtotalAmount: detail.subtotalAmount,
     totalFeeAmount: detail.totalFeeAmount,
     grandTotalAmount: detail.grandTotalAmount
@@ -466,12 +469,14 @@ export const guestApiClientOverride: Partial<ApiClient> = {
       }
     });
   },
-  createParticipant: async (groupId: string, name: string) => {
+  searchUserByUsername: async () => null,
+  createParticipant: async (groupId: string, name: string, username?: string | null) => {
     ensureGroup(groupId);
     const participant: ParticipantDto = {
       id: nextGuestId("participant"),
       groupId,
       name: name.trim(),
+      username: username?.trim().replace(/^@+/, "") || null,
       createdAtUtc: new Date().toISOString()
     };
     guestState.participantsByGroup[groupId] = [...(guestState.participantsByGroup[groupId] ?? []), participant];
@@ -482,7 +487,9 @@ export const guestApiClientOverride: Partial<ApiClient> = {
     ensureGroup(groupId);
     ensureParticipant(groupId, participantId);
     guestState.participantsByGroup[groupId] = (guestState.participantsByGroup[groupId] ?? []).map((participant) => (
-      participant.id === participantId ? { ...participant, name: payload.name.trim() } : participant
+      participant.id === participantId
+        ? { ...participant, name: payload.name.trim(), username: payload.username?.trim().replace(/^@+/, "") || null }
+        : participant
     ));
     return ensureParticipant(groupId, participantId);
   },

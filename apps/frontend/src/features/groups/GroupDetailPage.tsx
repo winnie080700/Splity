@@ -1,0 +1,2009 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  apiClient,
+  type BillDetailDto,
+  type BillFeeInput,
+  type BillItemInput,
+  type BillParticipantInput,
+  type CreateBillRequest,
+  type FeeType,
+  type SplitMode
+} from "@api-client";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { Link, useParams } from "react-router-dom";
+import { buildSettlementReceiptData } from "@/features/settlements/receipt";
+import { SettlementReceiptBreakdown } from "@/features/settlements/SettlementReceiptBreakdown";
+import { prepareSettlementProofImageDataUrl } from "@/features/settlements/share";
+import { formatGroupCreatedAt, GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
+import { useI18n } from "@/shared/i18n/I18nProvider";
+import { CustomSelect } from "@/shared/ui/CustomSelect";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import { EditNameDialog } from "@/shared/ui/EditNameDialog";
+import { ModalDialog } from "@/shared/ui/dialog";
+import {
+  EmptyState,
+  IconActionButton,
+  InlineMessage,
+  LoadingSpinner,
+  LoadingState,
+  SectionCard,
+  StatTile
+} from "@/shared/ui/primitives";
+import {
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  EyeIcon,
+  PencilIcon,
+  PlusIcon,
+  ReceiptIcon,
+  TrashIcon,
+  UsersIcon
+} from "@/shared/ui/icons";
+import { useToast } from "@/shared/ui/toast";
+import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
+
+type DraftEntry = { id: string; name: string; username?: string | null; isInvite: boolean };
+type BillEditorStep = 1 | 2 | 3 | 4;
+type DraftItem = { id: string; description: string; amount: string; responsibleParticipantIds: string[] };
+type DraftFee = { id: string; name: string; feeType: FeeType; value: string };
+type BillFieldErrors = Partial<Record<"storeName" | "transactionDateUtc" | "primaryPayer" | "items" | "weights" | "fees", string>>;
+type DraftItemErrors = Record<string, { description?: string; amount?: string; responsible?: string }>;
+type DraftFeeErrors = Record<string, { name?: string; value?: string }>;
+type FeeRowState = "blank" | "complete" | "partial";
+type BillModalMode = "create" | "edit";
+
+const createItem = (): DraftItem => ({
+  id: `item-${Math.random().toString(36).slice(2, 10)}`,
+  description: "",
+  amount: "",
+  responsibleParticipantIds: []
+});
+
+const createFee = (): DraftFee => ({
+  id: `fee-${Math.random().toString(36).slice(2, 10)}`,
+  name: "",
+  feeType: 1,
+  value: ""
+});
+
+function getFeeRowState(fee: DraftFee): FeeRowState {
+  const name = fee.name.trim();
+  const rawValue = fee.value.trim();
+  const parsedValue = rawValue === "" ? null : Number(rawValue);
+  const isZero = parsedValue !== null && Number.isFinite(parsedValue) && parsedValue === 0;
+
+  if (name === "" && (rawValue === "" || isZero)) {
+    return "blank";
+  }
+
+  if (name !== "" && parsedValue !== null && Number.isFinite(parsedValue) && parsedValue > 0) {
+    return "complete";
+  }
+
+  return "partial";
+}
+
+function getParticipantHandle(name: string, username?: string | null) {
+  if (username?.trim()) {
+    return `@${username.trim()}`;
+  }
+
+  return `@${name.trim().toLowerCase().replace(/\s+/g, "")}`;
+}
+
+export function GroupDetailPage() {
+  const { groupId } = useParams<{ groupId: string }>();
+  const queryClient = useQueryClient();
+  const { t, language } = useI18n();
+  const { showToast } = useToast();
+
+  const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [isBillEditorOpen, setIsBillEditorOpen] = useState(false);
+  const [billModalMode, setBillModalMode] = useState<BillModalMode>("create");
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
+  const [viewingBillId, setViewingBillId] = useState<string | null>(null);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
+  const [deleteBillError, setDeleteBillError] = useState<string | null>(null);
+  const [settlementReceiptParticipantId, setSettlementReceiptParticipantId] = useState<string | null>(null);
+  const [billEditorStep, setBillEditorStep] = useState<BillEditorStep>(1);
+  const [storeName, setStoreName] = useState("");
+  const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
+  const [transactionDateUtc, setTransactionDateUtc] = useState("");
+  const [splitMode, setSplitMode] = useState<SplitMode>(1);
+  const [primaryPayerParticipantId, setPrimaryPayerParticipantId] = useState("");
+  const [billItems, setBillItems] = useState<DraftItem[]>([createItem()]);
+  const [billFees, setBillFees] = useState<DraftFee[]>([]);
+  const [weights, setWeights] = useState<Record<string, string>>({});
+  const [billFieldErrors, setBillFieldErrors] = useState<BillFieldErrors>({});
+  const [billItemErrors, setBillItemErrors] = useState<DraftItemErrors>({});
+  const [billFeeErrors, setBillFeeErrors] = useState<DraftFeeErrors>({});
+  const [billFormError, setBillFormError] = useState<string | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement | null>(null);
+
+  const searchedUsername = inputValue.trim().startsWith("@")
+    ? inputValue.trim().replace(/^@+/, "").trim().toLowerCase()
+    : "";
+
+  const groupQuery = useQuery({
+    queryKey: ["group", groupId],
+    queryFn: () => apiClient.getGroup(groupId!),
+    enabled: Boolean(groupId)
+  });
+
+  const participantsQuery = useQuery({
+    queryKey: ["participants", groupId],
+    queryFn: () => apiClient.listParticipants(groupId!),
+    enabled: Boolean(groupId)
+  });
+
+  const billsQuery = useQuery({
+    queryKey: ["bills", groupId],
+    queryFn: () => apiClient.listBills(groupId!),
+    enabled: Boolean(groupId)
+  });
+
+  const settlementQuery = useQuery({
+    queryKey: ["settlements", groupId],
+    queryFn: () => apiClient.getSettlements(groupId!),
+    enabled: Boolean(groupId)
+  });
+
+  const searchedUserQuery = useQuery({
+    queryKey: ["user-search", searchedUsername],
+    queryFn: () => apiClient.searchUserByUsername(searchedUsername),
+    enabled: isCreateDialogOpen && searchedUsername.length >= 3
+  });
+
+  const viewingBillQuery = useQuery({
+    queryKey: ["bill", groupId, viewingBillId],
+    queryFn: () => apiClient.getBill(groupId!, viewingBillId!),
+    enabled: Boolean(groupId && viewingBillId)
+  });
+
+  const settlementReceiptBillsQuery = useQuery({
+    queryKey: [
+      "group-detail-bill-details",
+      groupId,
+      settlementReceiptParticipantId,
+      (billsQuery.data ?? []).map((bill) => bill.id).join(",")
+    ],
+    queryFn: async () => {
+      const currentBills = billsQuery.data ?? [];
+      return Promise.all(currentBills.map((bill) => apiClient.getBill(groupId!, bill.id)));
+    },
+    enabled: Boolean(groupId && settlementReceiptParticipantId && (billsQuery.data?.length ?? 0) > 0)
+  });
+
+  const group = groupQuery.data;
+  const participants = participantsQuery.data ?? [];
+  const bills = billsQuery.data ?? [];
+  const settlement = settlementQuery.data;
+  const transfers = settlement?.transfers ?? [];
+  const netBalances = settlement?.netBalances ?? [];
+  const isLocked = group ? isGroupLocked(group.status) : false;
+  const canCreateBills = !isLocked && participants.length > 0;
+  const participantNameById = useMemo(
+    () => Object.fromEntries(participants.map((participant) => [participant.id, participant.name])),
+    [participants]
+  );
+  const effectivePayer = primaryPayerParticipantId || participants[0]?.id || "";
+  const completeBillFees = useMemo(
+    () => billFees.filter((fee) => getFeeRowState(fee) === "complete"),
+    [billFees]
+  );
+  const previewSubtotal = useMemo(
+    () => billItems.reduce((sum, item) => sum + (Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0), 0),
+    [billItems]
+  );
+  const previewFees = useMemo(
+    () => completeBillFees.reduce(
+      (sum, fee) => sum + (fee.feeType === 1 ? (previewSubtotal * Number(fee.value)) / 100 : Number(fee.value)),
+      0
+    ),
+    [completeBillFees, previewSubtotal]
+  );
+  const previewGrand = previewSubtotal + previewFees;
+  const gdStepLabels = [t("bills.gdStep1"), t("bills.gdStep2"), t("bills.gdStep3"), t("bills.gdStep4")] as const;
+  const settlementReceiptParticipant = participants.find((participant) => participant.id === settlementReceiptParticipantId) ?? null;
+  const settlementReceiptData = useMemo(() => {
+    if (!settlementReceiptParticipantId) {
+      return buildSettlementReceiptData({ bills: [], participantId: "", perspective: "payable", t });
+    }
+
+    const participantBalance = netBalances.find((entry) => entry.participantId === settlementReceiptParticipantId)?.netAmount ?? 0;
+    return buildSettlementReceiptData({
+      bills: settlementReceiptBillsQuery.data ?? [],
+      participantId: settlementReceiptParticipantId,
+      perspective: participantBalance < 0 ? "payable" : "receivable",
+      expectedTotalAmount: Math.abs(participantBalance),
+      t
+    });
+  }, [netBalances, settlementReceiptBillsQuery.data, settlementReceiptParticipantId, t]);
+
+  const createParticipantMutation = useMutation({
+    mutationFn: async (entries: Array<{ name: string; username?: string | null }>) => {
+      if (!groupId) {
+        throw new Error(t("participants.editMissing"));
+      }
+
+      await Promise.all(entries.map((entry) => apiClient.createParticipant(groupId, entry.name, entry.username ?? null)));
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["participants", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      closeCreateDialog();
+      showToast({ title: t("participants.addDialogTitle"), description: t("feedback.created"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setCreateError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  const updateParticipantMutation = useMutation({
+    mutationFn: async (name: string) => {
+      if (!groupId || !editingParticipantId) {
+        throw new Error(t("participants.editMissing"));
+      }
+
+      const duplicate = participants.some(
+        (participant) =>
+          participant.id !== editingParticipantId &&
+          participant.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+      );
+
+      if (duplicate) {
+        throw new Error(t("participants.nameDuplicate"));
+      }
+
+      const currentParticipant = participants.find((participant) => participant.id === editingParticipantId);
+      return apiClient.updateParticipant(groupId, editingParticipantId, { name, username: currentParticipant?.username ?? null });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["participants", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setEditError(null);
+      setEditingParticipantId(null);
+      showToast({ title: t("participants.editTitle"), description: t("feedback.saved"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setEditError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  const deleteParticipantMutation = useMutation({
+    mutationFn: () => {
+      if (!groupId || !deletingParticipantId) {
+        throw new Error(t("participants.deleteMissing"));
+      }
+
+      return apiClient.deleteParticipant(groupId, deletingParticipantId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["participants", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setDeleteError(null);
+      setDeletingParticipantId(null);
+      showToast({ title: t("participants.deleteTitle"), description: t("feedback.deleted"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setDeleteError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  const createBillMutation = useMutation({
+    mutationFn: () => {
+      if (!groupId) {
+        throw new Error(t("feedback.requestFailed"));
+      }
+
+      return apiClient.createBill(groupId, buildBillPayload());
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      closeBillEditor(true);
+      showToast({ title: t("bills.create"), description: t("feedback.saved"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setBillFormError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  const updateBillMutation = useMutation({
+    mutationFn: () => {
+      if (!groupId || !editingBillId) {
+        throw new Error(t("bills.editMissing"));
+      }
+
+      return apiClient.updateBill(groupId, editingBillId, buildBillPayload());
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      closeBillEditor(true);
+      showToast({ title: t("bills.editTitle"), description: t("feedback.saved"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setBillFormError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  const isBillMutationPending = createBillMutation.isPending || updateBillMutation.isPending;
+
+  const deleteBillMutation = useMutation({
+    mutationFn: () => {
+      if (!groupId || !deletingBillId) {
+        throw new Error(t("bills.deleteMissing"));
+      }
+
+      return apiClient.deleteBill(groupId, deletingBillId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setDeleteBillError(null);
+      setDeletingBillId(null);
+      if (viewingBillId === deletingBillId) {
+        setViewingBillId(null);
+      }
+      showToast({ title: t("bills.deleteTitle"), description: t("feedback.deleted"), tone: "success" });
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setDeleteBillError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
+  function clearCreateError() {
+    if (createError) {
+      setCreateError(null);
+    }
+  }
+
+  function openCreateDialog() {
+    if (isLocked) {
+      return;
+    }
+
+    setDraftEntries([]);
+    setInputValue("");
+    setCreateError(null);
+    setIsCreateDialogOpen(true);
+  }
+
+  function closeCreateDialog() {
+    if (createParticipantMutation.isPending) {
+      return;
+    }
+
+    setDraftEntries([]);
+    setInputValue("");
+    setCreateError(null);
+    setIsCreateDialogOpen(false);
+  }
+
+  function addEntryFromInput() {
+    const raw = inputValue.trim();
+
+    if (!raw) {
+      return;
+    }
+
+    if (raw.startsWith("@")) {
+      const matchedUser = searchedUserQuery.data;
+      if (!matchedUser) {
+        setCreateError(t("participants.userNotFound"));
+        return;
+      }
+
+      setDraftEntries((current) => [
+        ...current,
+        {
+          id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: matchedUser.name,
+          username: matchedUser.username,
+          isInvite: true
+        }
+      ]);
+      setInputValue("");
+      clearCreateError();
+      return;
+    }
+
+    setDraftEntries((current) => [
+      ...current,
+      {
+        id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: raw,
+        username: null,
+        isInvite: raw.startsWith("@")
+      }
+    ]);
+    setInputValue("");
+    clearCreateError();
+  }
+
+  function handleInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" && event.key !== "Tab") {
+      return;
+    }
+
+    event.preventDefault();
+    addEntryFromInput();
+  }
+
+  function removeEntry(id: string) {
+    setDraftEntries((current) => current.filter((entry) => entry.id !== id));
+    clearCreateError();
+  }
+
+  function handleCreateSave() {
+    if (!groupId || createParticipantMutation.isPending || isLocked) {
+      return;
+    }
+
+    if (draftEntries.length === 0) {
+      setCreateError(t("participants.nameRequired"));
+      return;
+    }
+
+    const entries = draftEntries.map((entry) => ({ name: entry.name.trim(), username: entry.username?.trim() || null }));
+    const existingNames = new Set(participants.map((participant) => participant.name.trim().toLocaleLowerCase()));
+    const existingUsernames = new Set(participants.map((participant) => participant.username?.trim().toLocaleLowerCase()).filter(Boolean));
+    const seen = new Set<string>();
+    const seenUsernames = new Set<string>();
+
+    for (const entry of entries) {
+      const name = entry.name;
+      if (!name) {
+        setCreateError(t("participants.nameRequired"));
+        return;
+      }
+
+      const key = name.toLocaleLowerCase();
+      if (existingNames.has(key) || seen.has(key)) {
+        setCreateError(t("participants.nameDuplicate"));
+        return;
+      }
+
+      seen.add(key);
+
+      const usernameKey = entry.username?.toLocaleLowerCase();
+      if (usernameKey) {
+        if (existingUsernames.has(usernameKey) || seenUsernames.has(usernameKey)) {
+          setCreateError(t("participants.nameDuplicate"));
+          return;
+        }
+
+        seenUsernames.add(usernameKey);
+      }
+    }
+
+    setCreateError(null);
+    createParticipantMutation.mutate(entries);
+  }
+
+  function clearBillFormError() {
+    if (billFormError) {
+      setBillFormError(null);
+    }
+  }
+
+  function clearBillFieldError(field: keyof BillFieldErrors) {
+    setBillFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    clearBillFormError();
+  }
+
+  function clearBillItemError(itemId: string, field: keyof DraftItemErrors[string]) {
+    setBillItemErrors((current) => {
+      if (!current[itemId]?.[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      const nextItem = { ...next[itemId] };
+      delete nextItem[field];
+      if (Object.keys(nextItem).length === 0) {
+        delete next[itemId];
+      }
+      else {
+        next[itemId] = nextItem;
+      }
+      return next;
+    });
+    clearBillFieldError("items");
+  }
+
+  function clearBillFeeError(feeId: string, field: keyof DraftFeeErrors[string]) {
+    setBillFeeErrors((current) => {
+      if (!current[feeId]?.[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      const nextFee = { ...next[feeId] };
+      delete nextFee[field];
+      if (Object.keys(nextFee).length === 0) {
+        delete next[feeId];
+      }
+      else {
+        next[feeId] = nextFee;
+      }
+      return next;
+    });
+    clearBillFieldError("fees");
+  }
+
+  function resetBillEditor() {
+    setBillModalMode("create");
+    setEditingBillId(null);
+    setStoreName("");
+    setReferenceImageDataUrl("");
+    setTransactionDateUtc("");
+    setSplitMode(1);
+    setPrimaryPayerParticipantId(participants[0]?.id ?? "");
+    setBillItems([createItem()]);
+    setBillFees([]);
+    setWeights({});
+    setBillFieldErrors({});
+    setBillItemErrors({});
+    setBillFeeErrors({});
+    setBillFormError(null);
+    setBillEditorStep(1);
+  }
+
+  function openBillEditor() {
+    if (!canCreateBills) {
+      return;
+    }
+
+    resetBillEditor();
+    setBillModalMode("create");
+    setIsBillEditorOpen(true);
+  }
+
+  function closeBillEditor(force = false) {
+    if (!force && (createBillMutation.isPending || updateBillMutation.isPending)) {
+      return;
+    }
+
+    resetBillEditor();
+    setIsBillEditorOpen(false);
+  }
+
+  async function openBillEditorForEdit(billId: string) {
+    if (!groupId || isLocked) {
+      return;
+    }
+
+    const detail = await apiClient.getBill(groupId, billId);
+    resetBillEditor();
+    setBillModalMode("edit");
+    setEditingBillId(detail.id);
+    setStoreName(detail.storeName);
+    setReferenceImageDataUrl(detail.referenceImageDataUrl ?? "");
+    setTransactionDateUtc(new Date(detail.transactionDateUtc).toISOString().slice(0, 10));
+    setSplitMode(detail.splitMode);
+    setPrimaryPayerParticipantId(detail.primaryPayerParticipantId);
+    setBillItems(detail.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      amount: String(item.amount),
+      responsibleParticipantIds: item.responsibleParticipants.map((participant) => participant.participantId)
+    })));
+    setBillFees(detail.fees.map((fee) => ({
+      id: fee.id,
+      name: fee.name,
+      feeType: fee.feeType,
+      value: String(fee.value)
+    })));
+    setWeights(Object.fromEntries(detail.shares.map((share) => [share.participantId, String(share.weight)])));
+    setIsBillEditorOpen(true);
+  }
+
+  function addBillItem() {
+    setBillItems((current) => [...current, createItem()]);
+    clearBillFieldError("items");
+  }
+
+  function removeBillItem(itemId: string) {
+    setBillItems((current) => current.length === 1 ? current : current.filter((item) => item.id !== itemId));
+    setBillItemErrors((current) => {
+      if (!current[itemId]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+    clearBillFieldError("items");
+  }
+
+  function updateBillItem(itemId: string, field: "description" | "amount", value: string) {
+    setBillItems((current) => current.map((item) => item.id === itemId ? { ...item, [field]: value } : item));
+    clearBillItemError(itemId, field);
+  }
+
+  function toggleResponsible(itemId: string, participantId: string) {
+    if (!participantId) {
+      return;
+    }
+
+    setBillItems((current) => current.map((item) => {
+      if (item.id !== itemId) {
+        return item;
+      }
+
+      const isSelected = item.responsibleParticipantIds.includes(participantId);
+      return {
+        ...item,
+        responsibleParticipantIds: isSelected
+          ? item.responsibleParticipantIds.filter((id) => id !== participantId)
+          : [...item.responsibleParticipantIds, participantId]
+      };
+    }));
+    clearBillItemError(itemId, "responsible");
+  }
+
+  function addBillFee() {
+    setBillFees((current) => [...current, createFee()]);
+    clearBillFieldError("fees");
+  }
+
+  function removeBillFee(feeId: string) {
+    setBillFees((current) => current.filter((fee) => fee.id !== feeId));
+    setBillFeeErrors((current) => {
+      if (!current[feeId]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[feeId];
+      return next;
+    });
+    clearBillFieldError("fees");
+  }
+
+  function updateBillFee(feeId: string, field: "name" | "value", value: string) {
+    setBillFees((current) => current.map((fee) => fee.id === feeId ? { ...fee, [field]: value } : fee));
+    clearBillFeeError(feeId, field);
+  }
+
+  function updateBillFeeType(feeId: string, value: FeeType) {
+    setBillFees((current) => current.map((fee) => fee.id === feeId ? { ...fee, feeType: value } : fee));
+    clearBillFieldError("fees");
+  }
+
+  function buildBillPayload(): CreateBillRequest {
+    const billParticipants: BillParticipantInput[] = participants.map((participant) => ({
+      participantId: participant.id,
+      weight: splitMode === 2 ? Number(weights[participant.id] ?? "1") : null
+    }));
+    const items: BillItemInput[] = billItems.map((item) => ({
+      description: item.description.trim(),
+      amount: Number(item.amount),
+      responsibleParticipantIds: item.responsibleParticipantIds
+    }));
+    const fees: BillFeeInput[] = completeBillFees.map((fee) => ({
+      name: fee.name.trim(),
+      feeType: fee.feeType,
+      value: Number(fee.value)
+    }));
+
+    return {
+      storeName: storeName.trim(),
+      referenceImageDataUrl: referenceImageDataUrl.trim() || null,
+      transactionDateUtc: new Date(transactionDateUtc).toISOString(),
+      splitMode,
+      primaryPayerParticipantId: effectivePayer,
+      items,
+      fees,
+      participants: billParticipants,
+      extraContributions: []
+    };
+  }
+
+  function validateBillEditor(step: 1 | 2 | 3) {
+    if (!groupId || createBillMutation.isPending || isLocked) {
+      return false;
+    }
+
+    if (participants.length === 0) {
+      const message = t("bills.noParticipantsBody");
+      setBillFormError(message);
+      showToast({ title: t("feedback.validationFailed"), description: message, tone: "error" });
+      return false;
+    }
+
+    const nextFieldErrors: BillFieldErrors = {};
+    const nextItemErrors: DraftItemErrors = {};
+    const nextFeeErrors: DraftFeeErrors = {};
+    let firstMessage: string | null = null;
+
+    const setFieldError = (field: keyof BillFieldErrors, message: string) => {
+      if (!nextFieldErrors[field]) {
+        nextFieldErrors[field] = message;
+      }
+      if (!firstMessage) {
+        firstMessage = message;
+      }
+    };
+
+    const setItemError = (itemId: string, field: keyof DraftItemErrors[string], message: string) => {
+      nextItemErrors[itemId] = { ...nextItemErrors[itemId], [field]: message };
+      if (!nextFieldErrors.items) {
+        nextFieldErrors.items = message;
+      }
+      if (!firstMessage) {
+        firstMessage = message;
+      }
+    };
+
+    const setFeeError = (feeId: string, field: keyof DraftFeeErrors[string], message: string) => {
+      nextFeeErrors[feeId] = { ...nextFeeErrors[feeId], [field]: message };
+      if (!nextFieldErrors.fees) {
+        nextFieldErrors.fees = message;
+      }
+      if (!firstMessage) {
+        firstMessage = message;
+      }
+    };
+
+    if (!storeName.trim()) {
+      setFieldError("storeName", t("bills.storeRequired"));
+    }
+
+    if (!transactionDateUtc || Number.isNaN(new Date(transactionDateUtc).getTime())) {
+      setFieldError("transactionDateUtc", t("bills.dateRequired"));
+    }
+
+    if (!effectivePayer) {
+      setFieldError("primaryPayer", t("bills.payerRequired"));
+    }
+
+    if (splitMode === 2) {
+      for (const participant of participants) {
+        const weightValue = Number(weights[participant.id] ?? "1");
+        if (!Number.isFinite(weightValue) || weightValue <= 0) {
+          setFieldError("weights", t("bills.weightInvalid"));
+          break;
+        }
+      }
+    }
+
+    if (step >= 2) {
+      if (billItems.length === 0) {
+        setFieldError("items", t("bills.itemsRequired"));
+      }
+
+      for (const item of billItems) {
+        if (!item.description.trim()) {
+          setItemError(item.id, "description", t("bills.itemRequired"));
+        }
+
+        const amount = Number(item.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          setItemError(item.id, "amount", t("bills.amountInvalid"));
+        }
+
+        if (item.responsibleParticipantIds.length === 0) {
+          setItemError(item.id, "responsible", t("bills.responsibleRequired"));
+        }
+      }
+    }
+
+    if (step >= 3) {
+      for (const fee of billFees) {
+        if (getFeeRowState(fee) !== "partial") {
+          continue;
+        }
+
+        const hasName = fee.name.trim() !== "";
+        const parsedValue = fee.value.trim() === "" ? null : Number(fee.value);
+        if (!hasName) {
+          setFeeError(fee.id, "name", t("bills.feeNameRequired"));
+        }
+        if (!Number.isFinite(parsedValue) || parsedValue === null || parsedValue <= 0) {
+          setFeeError(fee.id, "value", t("bills.feeValueRequired"));
+        }
+      }
+    }
+
+    if (firstMessage) {
+      setBillFieldErrors(nextFieldErrors);
+      setBillItemErrors(nextItemErrors);
+      setBillFeeErrors(nextFeeErrors);
+      setBillFormError(firstMessage);
+      showToast({ title: t("feedback.validationFailed"), description: firstMessage, tone: "error" });
+      return false;
+    }
+
+    setBillFieldErrors({});
+    setBillItemErrors({});
+    setBillFeeErrors({});
+    setBillFormError(null);
+    return true;
+  }
+
+  function handleBillNext() {
+    if (billEditorStep === 1) {
+      if (validateBillEditor(1)) {
+        setBillEditorStep(2);
+      }
+      return;
+    }
+
+    if (billEditorStep === 2) {
+      if (validateBillEditor(2)) {
+        setBillEditorStep(3);
+      }
+      return;
+    }
+
+    if (billEditorStep === 3 && validateBillEditor(3)) {
+      setBillEditorStep(4);
+    }
+  }
+
+  function handleBillBack() {
+    setBillEditorStep((current) => current > 1 ? (current - 1) as BillEditorStep : current);
+  }
+
+  function handleBillSave() {
+    if (!validateBillEditor(3)) {
+      return;
+    }
+
+    if (billModalMode === "edit" && editingBillId) {
+      updateBillMutation.mutate();
+      return;
+    }
+
+    createBillMutation.mutate();
+  }
+
+  async function handleReferenceFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const dataUrl = await prepareSettlementProofImageDataUrl(file);
+      setReferenceImageDataUrl(dataUrl);
+      clearBillFormError();
+    }
+    catch (error) {
+      const message = error instanceof Error ? t("bills.referenceInvalid") : t("bills.referenceInvalid");
+      setBillFormError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+    finally {
+      event.target.value = "";
+    }
+  }
+
+  function handleRetry() {
+    void groupQuery.refetch();
+    void participantsQuery.refetch();
+    void billsQuery.refetch();
+    void settlementQuery.refetch();
+  }
+
+  if (groupQuery.isPending || participantsQuery.isPending || billsQuery.isPending || settlementQuery.isPending) {
+    return <LoadingState lines={4} />;
+  }
+
+  if (groupQuery.isError || participantsQuery.isError || billsQuery.isError || settlementQuery.isError) {
+    const error = groupQuery.error ?? participantsQuery.error ?? billsQuery.error ?? settlementQuery.error;
+
+    return (
+      <InlineMessage
+        tone="error"
+        title={t("feedback.loadFailed")}
+        action={(
+          <button className="button-secondary" onClick={handleRetry} type="button">
+            {t("common.retry")}
+          </button>
+        )}
+      >
+        {getErrorMessage(error)}
+      </InlineMessage>
+    );
+  }
+
+  if (!group) {
+    return (
+      <EmptyState
+        icon={<UsersIcon className="h-6 w-6" />}
+        title={t("feedback.loadFailed")}
+        description={t("groups.overviewMissing")}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
+        <Link className="inline-flex items-center gap-2 font-medium text-ink" to="/groups">
+          <ChevronLeftIcon className="h-4 w-4" />
+          {t("groups.detailBreadcrumb")}
+        </Link>
+        <span aria-hidden="true">→</span>
+        <span className="font-semibold text-ink">{group.name}</span>
+      </div>
+
+      <SectionCard className="p-4 md:p-6">
+        <div>
+          <h2 className="section-title">{t("groups.overviewSectionTitle")}</h2>
+          <p className="mt-2 section-copy">{t("groups.overviewBody")}</p>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <StatTile label={t("groups.participantCount")} value={String(participants.length)} icon={<UsersIcon className="h-5 w-5" />} />
+          <StatTile label={t("groups.billCount")} value={String(bills.length)} icon={<ReceiptIcon className="h-5 w-5" />} tone="brand" />
+          <StatTile label={t("groups.createdOnLabel")} value={formatGroupCreatedAt(group.createdAtUtc, language)} icon={<CalendarIcon className="h-5 w-5" />} />
+          <div className="stat-card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-muted">{t("groups.columnStatus")}</div>
+                <div className="mt-3">
+                  <GroupStatusBadge status={group.status} t={t} />
+                </div>
+              </div>
+              <span className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white text-brand">
+                <CheckIcon className="h-5 w-5" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="section-title">{t("groups.participantsSectionTitle")}</h2>
+            <p className="mt-2 section-copy">{t("participants.listBody")}</p>
+          </div>
+          <IconActionButton
+            disabled={isLocked}
+            icon={<PlusIcon className="h-5 w-5" />}
+            label={t("participants.addAction")}
+            onClick={openCreateDialog}
+          />
+        </div>
+
+        {isLocked ? (
+          <div className="mt-4">
+            <InlineMessage tone="info">{t("groups.readOnlyHint")}</InlineMessage>
+          </div>
+        ) : null}
+
+        <div className="mt-6">
+          {participants.length === 0 ? (
+            <EmptyState
+              icon={<UsersIcon className="h-6 w-6" />}
+              title={t("participants.emptyTitle")}
+              description={t("participants.emptyBody")}
+              action={!isLocked ? (
+                <button className="button-secondary" onClick={openCreateDialog} type="button">
+                  {t("participants.addAction")}
+                </button>
+                ) : undefined}
+              />
+            ) : (
+            <div className="max-h-[340px] overflow-y-auto pr-1">
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {participants.map((participant) => (
+                  <li key={participant.id}>
+                    <article className="flex min-h-[58px] items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                      <div className="min-w-0 flex flex-1 items-center gap-2 text-sm">
+                        <span className="truncate font-semibold text-ink">{participant.name}</span>
+                        <span className="shrink-0 text-muted">-</span>
+                        <span className="truncate text-muted">{getParticipantHandle(participant.name, participant.username)}</span>
+                      </div>
+                      {!isLocked ? (
+                        <div className="flex shrink-0 items-center gap-2 text-xs font-semibold">
+                          <button
+                            className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
+                            onClick={() => {
+                              setEditError(null);
+                              setEditingParticipantId(participant.id);
+                            }}
+                            type="button"
+                          >
+                            {t("participants.editAction")}
+                          </button>
+                          <button
+                            className="rounded-full px-2.5 py-1 text-danger transition hover:bg-rose-50"
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingParticipantId(participant.id);
+                            }}
+                            type="button"
+                          >
+                            {t("common.delete")}
+                          </button>
+                        </div>
+                      ) : null}
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="section-title">{t("groups.billsSectionTitle")}</h2>
+            <p className="mt-2 section-copy">{t("bills.moduleBody")}</p>
+          </div>
+          <IconActionButton
+            disabled={!canCreateBills}
+            icon={<PlusIcon className="h-5 w-5" />}
+            label={t("sidebar.createBill")}
+            onClick={openBillEditor}
+          />
+        </div>
+
+        {!canCreateBills && !isLocked ? (
+          <div className="mt-4">
+            <InlineMessage tone="info">{t("bills.noParticipantsBody")}</InlineMessage>
+          </div>
+        ) : null}
+
+        <div className="mt-6">
+          {bills.length === 0 ? (
+            <EmptyState
+              icon={<ReceiptIcon className="h-6 w-6" />}
+              title={t("bills.empty")}
+              description={t("bills.emptyBody")}
+              action={canCreateBills ? (
+                <button className="button-secondary" onClick={openBillEditor} type="button">
+                  {t("bills.create")}
+                </button>
+              ) : undefined}
+            />
+          ) : (
+            <div className="dashboard-activity-table overflow-x-auto">
+              <div className="dashboard-activity-table-header group-bills-table-header min-w-[560px] sm:min-w-[960px]">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.date")}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.store")}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.splitMode")}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.primaryPayer")}</div>
+                <div className="hidden text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("bills.subtotal")}</div>
+                <div className="hidden text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("bills.fees")}</div>
+                <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.total")}</div>
+                <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnActions")}</div>
+              </div>
+              <ul className="min-w-[560px] sm:min-w-[960px]">
+                {bills.map((bill) => (
+                  <li key={bill.id}>
+                    <div className="dashboard-activity-table-row group-bills-table-row">
+                      <div className="text-sm text-muted">{formatDate(bill.transactionDateUtc, language)}</div>
+                      <div className="truncate text-sm font-semibold text-ink">{bill.storeName}</div>
+                      <div className="text-sm text-muted">{bill.splitMode === 2 ? t("bills.weighted") : t("bills.equal")}</div>
+                      <div className="truncate text-sm text-ink">{participantNameById[bill.primaryPayerParticipantId] ?? "-"}</div>
+                      <div className="hidden text-right text-sm text-ink sm:block">{formatCurrency(bill.subtotalAmount)}</div>
+                      <div className="hidden text-right text-sm text-ink sm:block">{formatCurrency(bill.totalFeeAmount)}</div>
+                      <div className="text-right text-sm font-semibold text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
+                      <div className="flex justify-end gap-2 text-xs font-semibold">
+                        <button
+                          className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
+                          onClick={() => setViewingBillId(bill.id)}
+                          type="button"
+                        >
+                          {t("common.view")}
+                        </button>
+                        {!isLocked ? (
+                          <>
+                            <button
+                              className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
+                              onClick={() => void openBillEditorForEdit(bill.id)}
+                              type="button"
+                            >
+                              {t("bills.editAction")}
+                            </button>
+                            <button
+                              className="rounded-full px-2.5 py-1 text-danger transition hover:bg-rose-50"
+                              onClick={() => {
+                                setDeleteBillError(null);
+                                setDeletingBillId(bill.id);
+                              }}
+                              type="button"
+                            >
+                              {t("common.delete")}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4 md:p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="section-title">{t("groups.settlementSectionTitle")}</h2>
+          {transfers.length > 0 ? (
+            <span className="tag border border-brand/10 bg-brand/5 text-brand">{transfers.length} {t("settlement.transferCount")}</span>
+          ) : null}
+        </div>
+        <p className="mt-2 section-copy">{t("settlement.subtitle")}</p>
+
+        <div className="mt-6">
+          {transfers.length === 0 ? (
+            <EmptyState
+              icon={<ReceiptIcon className="h-6 w-6" />}
+              title={t("groups.settlementEmptyTitle")}
+              description={t("groups.settlementEmptyBody")}
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {participants.map((participant) => {
+                const outgoingTransfers = transfers.filter((transfer) => transfer.fromParticipantId === participant.id);
+                const incomingTransfers = transfers.filter((transfer) => transfer.toParticipantId === participant.id);
+                const totalIncoming = incomingTransfers.reduce((sum, transfer) => sum + transfer.amount, 0);
+
+                if (outgoingTransfers.length === 0 && totalIncoming === 0) {
+                  return null;
+                }
+
+                return (
+                  <article key={participant.id} className="rounded-[24px] border border-slate-200 bg-white/94 p-4 shadow-soft">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold tracking-tight text-ink">{participant.name}</div>
+                        {participant.username ? (
+                          <div className="mt-1 text-xs text-muted">{getParticipantHandle(participant.name, participant.username)}</div>
+                        ) : null}
+                      </div>
+                      <button className="button-pill" onClick={() => setSettlementReceiptParticipantId(participant.id)} type="button">
+                        <EyeIcon className="h-4 w-4" />
+                        {t("common.view")}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm">
+                      {outgoingTransfers.map((transfer) => (
+                        <div key={transfer.transferKey} className="rounded-[16px] border border-slate-200 bg-slate-50/80 px-3 py-2 text-ink">
+                          {t("settlement.pays")} {participantNameById[transfer.toParticipantId] ?? transfer.toParticipantId.slice(0, 8)} {formatCurrency(transfer.amount)}
+                        </div>
+                      ))}
+                      <div className="rounded-[16px] border border-brand/10 bg-brand/5 px-3 py-2 text-ink">
+                        {t("groups.balanceReceives")} {formatCurrency(totalIncoming)}
+                      </div>
+                    </div>
+                  </article>
+                );
+              }).filter(Boolean)}
+            </div>
+          )}
+        </div>
+
+        {netBalances.length > 0 ? (
+          <div className="mt-4 rounded-[20px] border border-slate-100 bg-white divide-y divide-slate-100">
+            {netBalances.map((balance) => {
+              const positive = balance.netAmount > 0;
+              const zero = balance.netAmount === 0;
+              const amountClass = positive ? "text-success" : zero ? "text-muted" : "text-danger";
+              const label = positive ? t("groups.balanceReceives") : zero ? "—" : t("groups.balanceOwes");
+
+              return (
+                <div key={balance.participantId} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-ink">{balance.participantName}</span>
+                    <span className="shrink-0 text-xs text-muted">{label}</span>
+                  </div>
+                  <span className={`shrink-0 text-sm font-semibold ${amountClass}`}>
+                    {zero ? "—" : formatCurrency(Math.abs(balance.netAmount))}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <ModalDialog
+        open={isCreateDialogOpen}
+        title={t("participants.addDialogTitle")}
+        description={t("participants.addDialogBody")}
+        onClose={closeCreateDialog}
+        className="sm:max-w-3xl"
+        actions={(
+          <>
+            <button className="button-secondary w-full sm:w-auto" disabled={createParticipantMutation.isPending} onClick={closeCreateDialog} type="button">
+              {t("common.cancel")}
+            </button>
+            <button
+              className="button-primary w-full sm:w-auto"
+              disabled={createParticipantMutation.isPending || draftEntries.length === 0}
+              onClick={handleCreateSave}
+              type="button"
+            >
+              {createParticipantMutation.isPending ? <LoadingSpinner /> : null}
+              {t("participants.addSubmit")} ({draftEntries.length})
+            </button>
+          </>
+        )}
+      >
+        <div className="space-y-6">
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{t("participants.previewPanelTitle")}</div>
+            <div className="min-h-[160px] rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 p-3">
+              {draftEntries.length === 0 ? (
+                <p className="flex h-full items-center justify-center text-sm text-muted">
+                  {t("participants.previewEmpty")}
+                </p>
+              ) : (
+                  <ul className="space-y-2">
+                    {draftEntries.map((entry) => (
+                      <li key={entry.id} className="flex items-center gap-2 rounded-[14px] border border-slate-100 bg-white px-3 py-2 shadow-sm">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="truncate text-sm font-semibold text-ink">{entry.name}</div>
+                            {entry.username ? <div className="truncate text-xs text-muted">{getParticipantHandle(entry.name, entry.username)}</div> : null}
+                          </div>
+                          <div className="mt-0.5">
+                            {entry.isInvite ? (
+                              <span className="tag border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
+                            ) : (
+                              <span className="tag bg-slate-100 text-muted">{t("participants.statusManual")}</span>
+                            )}
+                        </div>
+                      </div>
+                      <IconActionButton
+                        icon={<TrashIcon className="h-4 w-4" />}
+                        label={t("participants.removeRow")}
+                        onClick={() => removeEntry(entry.id)}
+                        size="sm"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{t("participants.inputPanelTitle")}</div>
+            <div className="flex gap-2">
+              <input
+                className="input-base flex-1"
+                placeholder={t("participants.searchPlaceholder")}
+                value={inputValue}
+                onChange={(event) => {
+                  setInputValue(event.target.value);
+                  clearCreateError();
+                }}
+                onKeyDown={handleInputKeyDown}
+              />
+              <button className="button-secondary shrink-0" type="button" onClick={addEntryFromInput}>
+                {t("participants.addEntryAction")}
+              </button>
+            </div>
+            {inputValue.trim().startsWith("@") ? (
+              <div className="mt-3 rounded-[18px] border border-slate-200 bg-slate-50/80 p-3">
+                {searchedUsername.length < 3 ? (
+                  <div className="text-sm text-muted">{t("participants.userSearchHint")}</div>
+                ) : searchedUserQuery.isPending ? (
+                  <div className="text-sm text-muted">{t("participants.userSearching")}</div>
+                ) : searchedUserQuery.data ? (
+                  <button
+                    className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-brand/10 bg-white px-3 py-3 text-left"
+                    onClick={addEntryFromInput}
+                    type="button"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-ink">{searchedUserQuery.data.name}</div>
+                      <div className="mt-1 text-xs text-muted">{getParticipantHandle(searchedUserQuery.data.name, searchedUserQuery.data.username)}</div>
+                    </div>
+                    <span className="tag border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
+                  </button>
+                ) : (
+                  <div className="text-sm text-muted">{t("participants.userNotFound")}</div>
+                )}
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-muted">{t("participants.inputHint")}</p>
+            {createError ? <div className="mt-3"><InlineMessage tone="error">{createError}</InlineMessage></div> : null}
+          </div>
+        </div>
+      </ModalDialog>
+
+      <ModalDialog
+        open={isBillEditorOpen}
+        title={billModalMode === "edit" ? t("bills.editTitle") : t("bills.create")}
+        description={t("bills.moduleBody")}
+        onClose={() => closeBillEditor()}
+        className="sm:max-w-4xl"
+        actions={(
+          <>
+            <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={() => closeBillEditor()} type="button">
+              {t("common.cancel")}
+            </button>
+            {billEditorStep > 1 ? (
+              <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillBack} type="button">
+                {t("common.back")}
+              </button>
+            ) : null}
+            {billEditorStep === 3 ? (
+              <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillNext} type="button">
+                {t("common.skip")}
+              </button>
+            ) : null}
+            {billEditorStep < 4 ? (
+              <button className="button-primary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillNext} type="button">
+                {t("bills.next")}
+              </button>
+            ) : (
+              <button className="button-primary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillSave} type="button">
+                {isBillMutationPending ? <LoadingSpinner /> : null}
+                {billModalMode === "edit" ? t("common.saveChanges") : t("bills.create")}
+              </button>
+            )}
+          </>
+        )}
+      >
+        <div className="mb-6 flex items-center gap-1">
+          {([1, 2, 3, 4] as BillEditorStep[]).map((step) => (
+            <div key={step} className="flex flex-1 flex-col items-center gap-1.5">
+              <div className={`h-1.5 w-full rounded-full transition-colors ${billEditorStep >= step ? "bg-brand" : "bg-slate-200"}`} />
+              <span className={`text-[10px] font-semibold ${billEditorStep >= step ? "text-brand" : "text-muted"}`}>
+                {gdStepLabels[step - 1]}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {billEditorStep === 1 ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted" htmlFor="group-detail-store-name">{t("bills.store")}</label>
+                <input
+                  id="group-detail-store-name"
+                  className={["input-base w-full", billFieldErrors.storeName ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                  value={storeName}
+                  onChange={(event) => {
+                    setStoreName(event.target.value);
+                    clearBillFieldError("storeName");
+                  }}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted" htmlFor="group-detail-transaction-date">{t("bills.date")}</label>
+                <input
+                  id="group-detail-transaction-date"
+                  type="date"
+                  className={["input-base w-full", billFieldErrors.transactionDateUtc ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                  value={transactionDateUtc}
+                  onChange={(event) => {
+                    setTransactionDateUtc(event.target.value);
+                    clearBillFieldError("transactionDateUtc");
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted" htmlFor="group-detail-split-mode">{t("bills.splitMode")}</label>
+                <select
+                  id="group-detail-split-mode"
+                  className="select-base w-full"
+                  value={String(splitMode)}
+                  onChange={(event) => {
+                    setSplitMode(Number(event.target.value) as SplitMode);
+                    clearBillFieldError("weights");
+                  }}
+                >
+                  <option value="1">{t("bills.equal")}</option>
+                  <option value="2">{t("bills.weighted")}</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted" htmlFor="group-detail-primary-payer">{t("bills.primaryPayer")}</label>
+                <select
+                  id="group-detail-primary-payer"
+                  className={["select-base w-full", billFieldErrors.primaryPayer ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                  value={effectivePayer}
+                  onChange={(event) => {
+                    setPrimaryPayerParticipantId(event.target.value);
+                    clearBillFieldError("primaryPayer");
+                  }}
+                >
+                  {participants.map((participant) => (
+                    <option key={participant.id} value={participant.id}>{participant.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-ink">{t("bills.reference")}</div>
+                  <div className="mt-1 text-sm text-muted">{t("bills.referenceHint")}</div>
+                </div>
+                <input
+                  ref={referenceInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleReferenceFileSelected}
+                  type="file"
+                />
+                <button className="button-secondary" onClick={() => referenceInputRef.current?.click()} type="button">
+                  {referenceImageDataUrl ? t("bills.referenceReplace") : t("bills.referenceUpload")}
+                </button>
+              </div>
+              {referenceImageDataUrl ? (
+                <div className="mt-4 rounded-[18px] border border-slate-200 bg-white p-3">
+                  <img alt={t("bills.reference")} className="max-h-56 w-full rounded-[14px] object-contain" src={referenceImageDataUrl} />
+                  <div className="mt-3 flex justify-end">
+                    <button className="button-pill" onClick={() => setReferenceImageDataUrl("")} type="button">
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {splitMode === 2 ? (
+              <div className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-4">
+                <div className="text-sm font-semibold text-ink">{t("bills.weighted")}</div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {participants.map((participant) => (
+                    <label key={participant.id} className="block">
+                      <span className="mb-2 block text-sm font-medium text-ink">{participant.name}</span>
+                      <input
+                        min="1"
+                        type="number"
+                        className={["input-base w-full", billFieldErrors.weights ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                        value={weights[participant.id] ?? "1"}
+                        onChange={(event) => {
+                          setWeights((current) => ({ ...current, [participant.id]: event.target.value }));
+                          clearBillFieldError("weights");
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {billFormError ? <InlineMessage tone="error">{billFormError}</InlineMessage> : null}
+          </div>
+        ) : null}
+
+        {billEditorStep === 2 ? (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-ink">{t("bills.lineItems")}</div>
+                <div className="mt-1 text-sm text-muted">{t("bills.previewEmpty")}</div>
+              </div>
+              <button className="button-secondary" type="button" onClick={addBillItem}>{t("bills.addItem")}</button>
+            </div>
+
+            <div className="space-y-3">
+              {billItems.map((item, index) => (
+                <div key={item.id} className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-3">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.item")} {String(index + 1).padStart(2, "0")}</div>
+                  <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1.3fr)_112px_minmax(260px,1fr)_34px]">
+                    <input
+                      className={["input-base w-full", billItemErrors[item.id]?.description ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                      placeholder={t("bills.itemDescription")}
+                      value={item.description}
+                      onChange={(event) => updateBillItem(item.id, "description", event.target.value)}
+                    />
+                    <input
+                      className={["input-base w-full text-right", billItemErrors[item.id]?.amount ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                      type="number"
+                      placeholder="0.00"
+                      value={item.amount}
+                      onChange={(event) => updateBillItem(item.id, "amount", event.target.value)}
+                    />
+                    <div className="min-w-0">
+                      <ResponsibleMultiSelect
+                        error={billItemErrors[item.id]?.responsible}
+                        onToggleParticipant={(participantId) => toggleResponsible(item.id, participantId)}
+                        participants={participants}
+                        selectedIds={item.responsibleParticipantIds}
+                        t={t}
+                      />
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {item.responsibleParticipantIds.map((participantId) => (
+                          <button key={`${item.id}-${participantId}`} className="tag border border-slate-200 bg-white text-muted" onClick={() => toggleResponsible(item.id, participantId)} type="button">
+                            {participantNameById[participantId] ?? participantId}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <IconActionButton
+                        disabled={billItems.length === 1}
+                        icon={<TrashIcon className="h-4 w-4" />}
+                        label={t("common.delete")}
+                        onClick={() => removeBillItem(item.id)}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-[18px] border border-slate-100 bg-white px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted">{t("bills.subtotal")}</span>
+                <span className="text-sm font-semibold text-ink">{formatCurrency(previewSubtotal)}</span>
+              </div>
+            </div>
+
+            {billFormError ? <InlineMessage tone="error">{billFormError}</InlineMessage> : null}
+          </div>
+        ) : null}
+
+        {billEditorStep === 3 ? (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-ink">{t("bills.fees")}</div>
+                <div className="mt-1 text-sm text-muted">{t("bills.feesOptional")}</div>
+              </div>
+              <button className="button-secondary" type="button" onClick={addBillFee}>{t("bills.addCharge")}</button>
+            </div>
+
+            {billFees.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-muted">
+                {t("bills.noFeesYet")}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {billFees.map((fee) => (
+                  <div key={fee.id} className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-3.5">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_168px_128px_34px]">
+                      <input
+                        className={["input-base w-full", billFeeErrors[fee.id]?.name ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                        placeholder={t("bills.fees")}
+                        value={fee.name}
+                        onChange={(event) => updateBillFee(fee.id, "name", event.target.value)}
+                      />
+                      <CustomSelect
+                        ariaLabel={t("bills.fees")}
+                        className="w-full"
+                        compact
+                        options={[
+                          { value: "1", label: t("bills.percentage") },
+                          { value: "2", label: t("bills.fixed") }
+                        ]}
+                        value={String(fee.feeType)}
+                        onChange={(value) => updateBillFeeType(fee.id, Number(value) as FeeType)}
+                      />
+                      <input
+                        className={["input-base w-full text-right", billFeeErrors[fee.id]?.value ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
+                        type="number"
+                        placeholder="0.00"
+                        value={fee.value}
+                        onChange={(event) => updateBillFee(fee.id, "value", event.target.value)}
+                      />
+                      <div className="flex justify-end">
+                        <IconActionButton icon={<TrashIcon className="h-4 w-4" />} label={t("common.delete")} onClick={() => removeBillFee(fee.id)} size="sm" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {billFormError ? <InlineMessage tone="error">{billFormError}</InlineMessage> : null}
+          </div>
+        ) : null}
+
+        {billEditorStep === 4 ? (
+          <div className="space-y-4">
+            <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.store")}</span><span className="text-sm font-semibold text-ink">{storeName.trim() || "-"}</span></div>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.reference")}</span><span className="text-sm font-semibold text-ink">{referenceImageDataUrl ? t("bills.referenceAttached") : "-"}</span></div>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.date")}</span><span className="text-sm font-semibold text-ink">{transactionDateUtc ? formatDate(transactionDateUtc, language) : "-"}</span></div>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.splitMode")}</span><span className="text-sm font-semibold text-ink">{splitMode === 2 ? t("bills.weighted") : t("bills.equal")}</span></div>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.primaryPayer")}</span><span className="text-sm font-semibold text-ink">{participantNameById[effectivePayer] ?? "-"}</span></div>
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <div className="mb-3 text-sm font-semibold text-ink">{t("bills.lineItems")}</div>
+              <div className="space-y-3">
+                {billItems.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-ink">{item.description.trim() || "-"}</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {item.responsibleParticipantIds.map((participantId) => (
+                          <span key={`${item.id}-${participantId}`} className="tag bg-white text-muted">{participantNameById[participantId] ?? participantId}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-sm font-semibold text-ink">{formatCurrency(Number(item.amount) || 0)}</div>
+                  </div>
+                ))}
+                <div className="border-t border-slate-200 pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted">{t("bills.subtotal")}</span>
+                    <span className="text-sm font-semibold text-ink">{formatCurrency(previewSubtotal)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <div className="mb-3 text-sm font-semibold text-ink">{t("bills.fees")}</div>
+              {completeBillFees.length === 0 ? (
+                <div className="text-sm text-muted">{t("bills.noFee")}</div>
+              ) : (
+                <div className="space-y-3">
+                  {completeBillFees.map((fee) => {
+                    const appliedAmount = fee.feeType === 1 ? (previewSubtotal * Number(fee.value)) / 100 : Number(fee.value);
+                    return (
+                      <div key={fee.id} className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-ink">{fee.name.trim()} · {fee.feeType === 1 ? `${fee.value}%` : formatCurrency(Number(fee.value))}</span>
+                        <span className="text-sm font-semibold text-ink">{formatCurrency(appliedAmount)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t border-slate-200 pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted">{t("bills.fees")}</span>
+                      <span className="text-sm font-semibold text-ink">{formatCurrency(previewFees)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted">{t("bills.total")}</span>
+                <span className="text-lg font-semibold tracking-tight text-ink">{formatCurrency(previewGrand)}</span>
+              </div>
+              <p className="mt-3 text-xs text-muted">{t("bills.roundingEstimate")}</p>
+            </div>
+
+            {referenceImageDataUrl ? (
+              <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+                <div className="mb-3 text-sm font-semibold text-ink">{t("bills.reference")}</div>
+                <img alt={t("bills.reference")} className="max-h-72 w-full rounded-[14px] object-contain" src={referenceImageDataUrl} />
+              </div>
+            ) : null}
+
+            {billFormError ? <InlineMessage tone="error">{billFormError}</InlineMessage> : null}
+          </div>
+        ) : null}
+      </ModalDialog>
+
+      <ModalDialog
+        open={Boolean(viewingBillId)}
+        title={t("groups.viewAction")}
+        description={viewingBillQuery.data?.storeName ?? t("bills.moduleBody")}
+        onClose={() => setViewingBillId(null)}
+        className="sm:max-w-3xl"
+      >
+        {viewingBillQuery.isPending ? (
+          <LoadingState lines={3} />
+        ) : viewingBillQuery.isError ? (
+          <InlineMessage tone="error">{getErrorMessage(viewingBillQuery.error)}</InlineMessage>
+        ) : viewingBillQuery.data ? (
+          <BillDetailPanel bill={viewingBillQuery.data} participantNameById={participantNameById} t={t} language={language} />
+        ) : null}
+      </ModalDialog>
+
+      <ModalDialog
+        open={Boolean(settlementReceiptParticipantId)}
+        title={settlementReceiptParticipant?.name ?? t("groups.viewAction")}
+        description={t("settlement.shareReceiptTitle")}
+        onClose={() => setSettlementReceiptParticipantId(null)}
+        className="sm:max-w-4xl"
+      >
+        <SettlementReceiptBreakdown
+          error={settlementReceiptBillsQuery.error}
+          isLoading={settlementReceiptBillsQuery.isPending}
+          receipt={settlementReceiptData}
+          t={t}
+        />
+      </ModalDialog>
+
+      <ConfirmDialog
+        open={Boolean(deletingBillId)}
+        title={t("bills.deleteTitle")}
+        description={t("bills.deleteBody")}
+        details={bills.find((bill) => bill.id === deletingBillId)?.storeName ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("common.delete")}
+        error={deleteBillError}
+        isBusy={deleteBillMutation.isPending}
+        onClose={() => {
+          setDeleteBillError(null);
+          setDeletingBillId(null);
+        }}
+        onConfirm={() => deleteBillMutation.mutate()}
+      />
+
+      <EditNameDialog
+        open={Boolean(editingParticipantId)}
+        title={t("participants.editTitle")}
+        description={t("participants.editBody")}
+        initialValue={participants.find((participant) => participant.id === editingParticipantId)?.name ?? ""}
+        placeholder={t("participants.placeholder")}
+        cancelLabel={t("common.cancel")}
+        submitLabel={t("common.saveChanges")}
+        validationMessage={t("participants.nameRequired")}
+        error={editError}
+        isBusy={updateParticipantMutation.isPending}
+        onClose={() => {
+          setEditError(null);
+          setEditingParticipantId(null);
+        }}
+        onSubmit={(value) => updateParticipantMutation.mutate(value)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletingParticipantId)}
+        title={t("participants.deleteTitle")}
+        description={t("participants.deleteBody")}
+        details={participants.find((participant) => participant.id === deletingParticipantId)?.name ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("common.delete")}
+        error={deleteError}
+        isBusy={deleteParticipantMutation.isPending}
+        onClose={() => {
+          setDeleteError(null);
+          setDeletingParticipantId(null);
+        }}
+        onConfirm={() => deleteParticipantMutation.mutate()}
+      />
+    </div>
+  );
+}
+
+function ResponsibleMultiSelect({
+  participants,
+  selectedIds,
+  error,
+  onToggleParticipant,
+  t
+}: {
+  participants: Array<{ id: string; name: string }>;
+  selectedIds: string[];
+  error?: string;
+  onToggleParticipant: (participantId: string) => void;
+  t: (key: any) => string;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const selectedParticipants = participants.filter((participant) => selectedIds.includes(participant.id));
+  const selectedLabel = selectedParticipants.map((participant) => participant.name).join(", ");
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        ref={triggerRef}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={[
+          "flex min-h-[44px] w-full items-center gap-3 rounded-[16px] border bg-white px-3 py-2 text-left transition",
+          error ? "border-danger focus:border-danger focus:ring-danger/10" : "border-slate-200 hover:border-slate-300"
+        ].join(" ")}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.responsible")}</div>
+          <div className="mt-1 truncate text-sm font-medium text-ink">
+            {selectedParticipants.length > 0 ? selectedLabel : t("bills.responsiblePlaceholder")}
+          </div>
+        </div>
+        {selectedParticipants.length > 0 ? (
+          <span className="rounded-full bg-brand/5 px-2 py-0.5 text-[11px] font-semibold text-brand">
+            {selectedParticipants.length} {t("bills.selectedCount")}
+          </span>
+        ) : null}
+        <ChevronDownIcon className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+0.375rem)] z-[60] w-full rounded-[18px] border border-slate-200 bg-white p-2 shadow-soft">
+          <div className="max-h-52 space-y-1 overflow-y-auto pr-1" role="listbox">
+            {participants.map((participant) => {
+              const checked = selectedIds.includes(participant.id);
+              return (
+                <button
+                  key={participant.id}
+                  aria-selected={checked}
+                  className={[
+                    "flex w-full items-center justify-between gap-3 rounded-[12px] px-3 py-2 text-left text-sm transition",
+                    checked ? "bg-brand/6 text-ink" : "bg-slate-50/70 text-muted hover:bg-slate-100 hover:text-ink"
+                  ].join(" ")}
+                  onClick={() => onToggleParticipant(participant.id)}
+                  role="option"
+                  type="button"
+                >
+                  <span className="truncate">{participant.name}</span>
+                  <span className={[
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[10px] font-semibold",
+                    checked ? "border-brand bg-brand text-white" : "border-slate-200 bg-white text-transparent"
+                  ].join(" ")}>
+                    <CheckIcon className="h-3 w-3" />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedParticipants.length === 0 ? (
+            <div className="px-2 pt-2 text-xs text-muted">{t("bills.selectResponsible")}</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BillDetailPanel({
+  bill,
+  participantNameById,
+  t,
+  language
+}: {
+  bill: BillDetailDto;
+  participantNameById: Record<string, string>;
+  t: (key: any) => string;
+  language: "en" | "zh";
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.store")}</span><span className="text-sm font-semibold text-ink">{bill.storeName}</span></div>
+          <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.date")}</span><span className="text-sm font-semibold text-ink">{formatDate(bill.transactionDateUtc, language)}</span></div>
+          <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.primaryPayer")}</span><span className="text-sm font-semibold text-ink">{participantNameById[bill.primaryPayerParticipantId] ?? "-"}</span></div>
+        </div>
+      </div>
+
+      {bill.referenceImageDataUrl ? (
+        <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-4">
+          <div className="mb-3 text-sm font-semibold text-ink">{t("bills.reference")}</div>
+          <img alt={t("bills.reference")} className="max-h-72 w-full rounded-[14px] object-contain" src={bill.referenceImageDataUrl} />
+        </div>
+      ) : null}
+
+      <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+        <div className="mb-3 text-sm font-semibold text-ink">{t("bills.lineItems")}</div>
+        <div className="space-y-3">
+          {bill.items.map((item) => (
+            <div key={item.id} className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-ink">{item.description}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.responsibleParticipants.map((participant) => (
+                    <span key={`${item.id}-${participant.participantId}`} className="tag border border-slate-200 bg-white text-muted">{participant.participantName}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="shrink-0 text-sm font-semibold text-ink">{formatCurrency(item.amount)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+        <div className="mb-3 text-sm font-semibold text-ink">{t("bills.fees")}</div>
+        {bill.fees.length === 0 ? (
+          <div className="text-sm text-muted">{t("bills.noFee")}</div>
+        ) : (
+          <div className="space-y-2">
+            {bill.fees.map((fee) => (
+              <div key={fee.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink">
+                  {fee.name} · {fee.feeType === 1 ? `${fee.value}%` : formatCurrency(fee.value)}
+                </span>
+                <span className="font-semibold text-ink">{formatCurrency(fee.appliedAmount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.subtotal")}</span><span className="text-sm font-semibold text-ink">{formatCurrency(bill.subtotalAmount)}</span></div>
+          <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">{t("bills.fees")}</span><span className="text-sm font-semibold text-ink">{formatCurrency(bill.totalFeeAmount)}</span></div>
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-2"><span className="text-sm text-muted">{t("bills.total")}</span><span className="text-base font-semibold text-ink">{formatCurrency(bill.grandTotalAmount)}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -4,8 +4,8 @@ export function formatCurrency(value: number) {
   return `RM ${value.toFixed(2)}`;
 }
 
-export function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-MY", {
+export function formatDate(value: string, language: "en" | "zh" = "en") {
+  return new Date(value).toLocaleDateString(language === "zh" ? "zh-CN" : "en-MY", {
     day: "numeric",
     month: "short",
     year: "numeric"

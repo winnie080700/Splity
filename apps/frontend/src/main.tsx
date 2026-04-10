@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
@@ -9,17 +10,40 @@ import { ToastProvider } from "@/shared/ui/toast";
 import "./index.css";
 
 const queryClient = new QueryClient();
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim() ?? "";
+const isClerkConfigured = clerkPublishableKey.length > 0;
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <I18nProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </I18nProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    {isClerkConfigured ? (
+      <ClerkProvider
+        afterSignOutUrl="/"
+        publishableKey={clerkPublishableKey}
+        signInUrl="/auth"
+        signUpUrl="/auth?mode=register"
+        signInFallbackRedirectUrl="/dashboard"
+        signUpFallbackRedirectUrl="/dashboard"
+      >
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider clerkEnabled>
+            <I18nProvider>
+              <ToastProvider>
+                <RouterProvider router={router} />
+              </ToastProvider>
+            </I18nProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ClerkProvider>
+    ) : (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider clerkEnabled={false}>
+          <I18nProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </I18nProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    )}
   </React.StrictMode>
 );

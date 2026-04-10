@@ -92,7 +92,7 @@ export function EditNameDialog({
         onSubmit={handleSubmit}
       >
         <label className="space-y-2">
-          <span className="text-sm font-semibold text-ink">{title}</span>
+          {/* <span className="text-sm font-semibold text-ink">{title}</span> */}
           <input
             ref={inputRef}
             className={[

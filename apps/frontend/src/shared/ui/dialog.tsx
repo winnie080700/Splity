@@ -66,7 +66,7 @@ export function ModalDialog({
         )}
       >
         <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/96 px-4 py-4 backdrop-blur sm:px-7 sm:py-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{title}</h2>
               {description ? <p className="mt-2 max-w-xl text-sm leading-6 text-muted">{description}</p> : null}

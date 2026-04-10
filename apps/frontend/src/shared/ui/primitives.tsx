@@ -19,7 +19,7 @@ export function PageHeading({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-4 md:flex-row md:items-start md:justify-between", className)}>
+    <div className={cn("flex flex-col gap-4 md:flex-row md:items-center md:justify-between", className)}>
       <div className="max-w-2xl space-y-3">
         {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
         <div className="space-y-2">
@@ -66,7 +66,7 @@ export function StatTile({
 
   return (
     <div className={cn("stat-card", toneClasses, className)}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-muted">{label}</div>
           <div className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{value}</div>
@@ -188,7 +188,7 @@ export function IconActionButton({
     <button
       aria-label={label}
       title={label}
-      className={getIconActionClassName(variant, size, className)}
+      className={getIconActionClassName(variant, size, cn("!border-0 !bg-transparent hover:!border-0", className))}
       type={type}
       {...props}
     >
@@ -215,7 +215,7 @@ export function IconActionLink({
     <Link
       aria-label={label}
       title={label}
-      className={getIconActionClassName(variant, size, className)}
+      className={getIconActionClassName(variant, size, cn("!border-0 !bg-transparent hover:!border-0", className))}
       {...props}
     >
       {icon}

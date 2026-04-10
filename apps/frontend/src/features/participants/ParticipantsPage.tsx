@@ -391,7 +391,7 @@ export function ParticipantsPage() {
         <form id="participants-create-form" className="space-y-4" onSubmit={handleCreateSubmit}>
           <div className="space-y-3">
             {draftNames.map((draftName, index) => (
-              <div key={`participant-draft-${index}`} className="flex items-start gap-3">
+              <div key={`participant-draft-${index}`} className="flex items-center gap-3">
                 <div className="flex h-11 min-w-11 items-center justify-center rounded-2xl bg-slate-100 px-3 text-sm font-semibold text-muted">
                   {String(index + 1).padStart(2, "0")}
                 </div>

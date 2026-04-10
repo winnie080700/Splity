@@ -5,6 +5,7 @@ public sealed class Participant
     public Guid Id { get; set; }
     public Guid GroupId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? Username { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
     public Group? Group { get; set; }

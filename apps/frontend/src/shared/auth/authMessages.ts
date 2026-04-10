@@ -13,6 +13,12 @@ export function getAuthErrorMessage(error: unknown, t: (key: any) => string) {
       return t("auth.errorEmailInvalid");
     case "auth_name_required":
       return t("auth.errorNameRequired");
+    case "auth_username_required":
+      return t("auth.usernameRequired");
+    case "auth_username_invalid":
+      return t("auth.errorUsernameInvalid");
+    case "auth_username_exists":
+      return t("auth.errorUsernameExists");
     case "auth_password_too_short":
       return t("auth.errorPasswordTooShort");
     case "auth_email_exists":

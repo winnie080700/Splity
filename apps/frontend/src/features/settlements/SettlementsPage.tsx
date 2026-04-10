@@ -357,7 +357,7 @@ export function SettlementsPage() {
               const canMarkReceived = actingAsReceiver && isSettlementPaid(transfer.status);
               return (
                 <article key={transfer.transferKey} className="list-card">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="tag bg-amber text-ink">{payerName}</span>

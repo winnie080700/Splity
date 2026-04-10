@@ -5,6 +5,7 @@ import { InlineMessage, LoadingSpinner, SectionCard } from "@/shared/ui/primitiv
 import { CheckIcon, LinkIcon, SparklesIcon, WalletIcon } from "@/shared/ui/icons";
 import { ModalDialog } from "@/shared/ui/dialog";
 import { useI18n } from "@/shared/i18n/I18nProvider";
+import { useAuth } from "@/shared/auth/AuthProvider";
 import { useToast } from "@/shared/ui/toast";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import {
@@ -39,6 +40,7 @@ export function SettlementShareDialog({
   groupStatus?: GroupStatus;
 }) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState<ShareSetupStep>(1);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -131,11 +133,15 @@ export function SettlementShareDialog({
       const existing =
         currentShareQuery.data?.receiverPaymentInfos.find((entry) => entry.participantId === receiver.participantId) ??
         null;
+      const shouldUseSavedProfile = matchesParticipantName(receiver.participantName, user?.name);
+      const savedProfile = shouldUseSavedProfile
+        ? normalizeSavedPaymentProfile(user?.paymentProfile)
+        : createEmptySharePaymentInfo();
 
       return {
         participantId: receiver.participantId,
         participantName: receiver.participantName,
-        paymentInfo: existing?.paymentInfo ?? createEmptySharePaymentInfo()
+        paymentInfo: existing?.paymentInfo ?? savedProfile
       };
     });
 
@@ -150,7 +156,9 @@ export function SettlementShareDialog({
     open,
     receivers,
     settlementQuery.isSuccess,
-    useSavedShareContext
+    useSavedShareContext,
+    user?.name,
+    user?.paymentProfile
   ]);
 
   const receiverInfoCount = receiverInfos.filter((entry) => hasSharePaymentInfo(entry.paymentInfo)).length;
@@ -401,7 +409,7 @@ export function SettlementShareDialog({
                   <span className="tag bg-amber text-ink">{t("settlement.shareRegeneratingState")}</span>
                 ) : null}
               </div>
-              <div className="mt-4 flex items-start gap-3">
+              <div className="mt-4 flex items-center gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
                   <WalletIcon className="h-5 w-5" />
                 </span>
@@ -424,7 +432,7 @@ export function SettlementShareDialog({
 
             {receivers.length === 0 ? (
               <SectionCard className="border border-dashed border-slate-200 bg-slate-50/80 p-5">
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-muted">
                     <SparklesIcon className="h-5 w-5" />
                   </span>
@@ -447,7 +455,7 @@ export function SettlementShareDialog({
 
                   return (
                     <SectionCard key={receiver.participantId} className="border border-slate-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.shareReceiverLabel")}</div>
                           <div className="mt-2 text-xl font-semibold tracking-tight text-ink">{receiver.participantName}</div>
@@ -510,7 +518,7 @@ export function SettlementShareDialog({
                       </label>
 
                       <div className="mt-4 rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="text-sm font-semibold text-ink">{t("settlement.paymentQrLabel")}</div>
                             <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.paymentQrBody")}</p>
@@ -573,7 +581,7 @@ export function SettlementShareDialog({
         {!isBusy && !hasError && currentStep === 2 ? (
           <div className="space-y-5">
             <SectionCard className="border border-slate-200 bg-white p-5">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="tag bg-sky text-brand">{t("settlement.generateLinkTitle")}</span>
@@ -651,7 +659,7 @@ export function SettlementShareDialog({
                   const hasInfo = hasSharePaymentInfo(receiver.paymentInfo);
                   return (
                     <SectionCard key={receiver.participantId} className="border border-slate-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <div className="text-base font-semibold tracking-tight text-ink">{receiver.participantName}</div>
                           <div className="mt-2 text-sm leading-6 text-muted">
@@ -705,6 +713,21 @@ export function SettlementShareDialog({
       </div>
     </ModalDialog>
   );
+}
+
+function normalizeSavedPaymentProfile(paymentProfile: Partial<SettlementSharePaymentInfo> | null | undefined) {
+  return {
+    payeeName: paymentProfile?.payeeName?.trim() ?? "",
+    paymentMethod: paymentProfile?.paymentMethod?.trim() ?? "",
+    accountName: paymentProfile?.accountName?.trim() ?? "",
+    accountNumber: paymentProfile?.accountNumber?.trim() ?? "",
+    notes: paymentProfile?.notes?.trim() ?? "",
+    paymentQrDataUrl: paymentProfile?.paymentQrDataUrl?.trim() ?? ""
+  };
+}
+
+function matchesParticipantName(participantName: string, userName: string | null | undefined) {
+  return participantName.trim().toLocaleLowerCase() === (userName ?? "").trim().toLocaleLowerCase();
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {

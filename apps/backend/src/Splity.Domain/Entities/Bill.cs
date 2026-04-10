@@ -7,6 +7,7 @@ public sealed class Bill
     public Guid Id { get; set; }
     public Guid GroupId { get; set; }
     public string StoreName { get; set; } = string.Empty;
+    public string? ReferenceImageDataUrl { get; set; }
     public DateTime TransactionDateUtc { get; set; }
     public string CurrencyCode { get; set; } = "MYR";
     public SplitMode SplitMode { get; set; }

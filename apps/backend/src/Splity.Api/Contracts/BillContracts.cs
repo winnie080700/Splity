@@ -12,6 +12,7 @@ public sealed record BillContributionRequest(Guid ParticipantId, decimal Amount)
 
 public sealed record CreateBillRequest(
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
     Guid PrimaryPayerParticipantId,
@@ -22,6 +23,7 @@ public sealed record CreateBillRequest(
 
 public sealed record UpdateBillRequest(
     string StoreName,
+    string? ReferenceImageDataUrl,
     DateTime TransactionDateUtc,
     SplitMode SplitMode,
     Guid PrimaryPayerParticipantId,

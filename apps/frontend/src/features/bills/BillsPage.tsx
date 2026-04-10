@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type BillDetailDto, type BillParticipantInput, type FeeType, type SplitMode } from "@api-client";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
@@ -30,6 +30,8 @@ const numeric = (value: string) => value.trim() === "" ? value : (Number.isFinit
 
 export function BillsPage() {
   const { groupId } = useParams<{ groupId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -311,6 +313,22 @@ export function BillsPage() {
     setIsEditorOpen(true);
   };
 
+  useEffect(() => {
+    if (location.hash !== "#create-bill" || isEditorOpen || isLocked || participants.length === 0) {
+      return;
+    }
+
+    openCreateModal();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search,
+        hash: ""
+      },
+      { replace: true }
+    );
+  }, [isEditorOpen, isLocked, location.hash, location.pathname, location.search, navigate, participants.length]);
+
   const closeEditor = () => {
     resetBillDraft();
     setIsEditorOpen(false);
@@ -586,7 +604,7 @@ export function BillsPage() {
           ) : (
             billsQuery.data?.map((bill) => (
               <article key={bill.id} className="list-card">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky text-brand">
@@ -598,7 +616,7 @@ export function BillsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div className="sm:text-right">
                       <div className="text-sm text-muted">{t("bills.total")}</div>
                       <div className="mt-1 text-2xl font-semibold tracking-tight text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
@@ -1143,7 +1161,7 @@ function BillPreviewReceipt({
 
   return (
     <section className="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.88),rgba(255,255,255,0.98))] p-5 shadow-soft">
-      <div className="flex items-start justify-between gap-4 border-b border-dashed border-slate-200 pb-4">
+      <div className="flex items-center justify-between gap-4 border-b border-dashed border-slate-200 pb-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t("bills.preview")}</div>
           <div className="mt-2 text-2xl font-semibold tracking-tight text-ink">{storeName.trim() || t("bills.receiptUntitled")}</div>
@@ -1177,7 +1195,7 @@ function BillPreviewReceipt({
 
               return (
                 <article key={item.id} className="rounded-[22px] border border-slate-200/80 bg-slate-50/90 px-4 py-4">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{t("bills.item")} {String(index + 1).padStart(2, "0")}</div>
                       <div className="mt-2 text-base font-semibold tracking-tight text-ink">{item.description.trim() || t("bills.receiptUnnamedItem")}</div>

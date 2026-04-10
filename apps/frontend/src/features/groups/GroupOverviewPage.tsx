@@ -390,7 +390,7 @@ function OverviewFactCard({
 }) {
   return (
     <div className="rounded-[22px] border border-white/70 bg-white/78 px-4 py-4 shadow-soft">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-brand">
           {icon}
         </span>

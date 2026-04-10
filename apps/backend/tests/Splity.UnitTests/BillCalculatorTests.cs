@@ -21,7 +21,7 @@ public sealed class BillCalculatorTests
                 new ParticipantSplitInput(participantB, 1),
                 new ParticipantSplitInput(participantC, 1)
             },
-            new[] { new BillCalculationItemInput("Groceries", 100m) },
+            new[] { new BillCalculationItemInput("Groceries", 100m, new[] { participantA, participantB, participantC }) },
             new[] { new BillCalculationFeeInput("SST", FeeType.Percentage, 6m) },
             participantA,
             Array.Empty<BillCalculationContributionInput>()));
@@ -53,7 +53,7 @@ public sealed class BillCalculatorTests
                 new ParticipantSplitInput(participantA, 2),
                 new ParticipantSplitInput(participantB, 1)
             },
-            new[] { new BillCalculationItemInput("Dinner", 90m) },
+            new[] { new BillCalculationItemInput("Dinner", 90m, new[] { participantA, participantB }) },
             new[] { new BillCalculationFeeInput("Service", FeeType.Fixed, 9m) },
             participantA,
             new[] { new BillCalculationContributionInput(participantB, 20m) }));

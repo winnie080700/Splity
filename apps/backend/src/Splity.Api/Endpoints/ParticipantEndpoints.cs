@@ -12,7 +12,7 @@ public static class ParticipantEndpoints
 
         group.MapPost("/", async (Guid groupId, CreateParticipantRequest request, IParticipantsService service, CancellationToken ct) =>
             {
-                var result = await service.CreateAsync(groupId, new CreateParticipantInput(request.Name), ct);
+                var result = await service.CreateAsync(groupId, new CreateParticipantInput(request.Name, request.Username), ct);
                 return Results.Created($"/api/groups/{groupId}/participants/{result.Id}", result);
             })
             .WithName("CreateParticipant")
@@ -28,7 +28,7 @@ public static class ParticipantEndpoints
 
         group.MapPut("/{participantId:guid}", async (Guid groupId, Guid participantId, UpdateParticipantRequest request, IParticipantsService service, CancellationToken ct) =>
             {
-                var result = await service.UpdateAsync(groupId, participantId, new UpdateParticipantInput(request.Name), ct);
+                var result = await service.UpdateAsync(groupId, participantId, new UpdateParticipantInput(request.Name, request.Username), ct);
                 return Results.Ok(result);
             })
             .WithName("UpdateParticipant")

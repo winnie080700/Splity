@@ -47,8 +47,10 @@ public sealed class BillsService(
                 x.Id,
                 x.GroupId,
                 x.StoreName,
+                x.ReferenceImageDataUrl,
                 x.TransactionDateUtc,
                 x.SplitMode,
+                x.PrimaryPayerParticipantId,
                 RoundToCurrency(x.Items.Sum(i => i.Amount)),
                 RoundToCurrency(CalculateAppliedFeeTotal(x.Items, x.Fees)),
                 RoundToCurrency(x.Shares.Sum(s => s.TotalShareAmount))))
@@ -162,6 +164,7 @@ public sealed class BillsService(
             Id = Guid.NewGuid(),
             GroupId = groupId,
             StoreName = input.StoreName.Trim(),
+            ReferenceImageDataUrl = NormalizeOptionalLongText(input.ReferenceImageDataUrl),
             TransactionDateUtc = ToUtc(input.TransactionDateUtc),
             CurrencyCode = "MYR",
             SplitMode = input.SplitMode,
@@ -183,6 +186,7 @@ public sealed class BillsService(
     private static void UpdateBillEntity(Bill bill, UpdateBillInput input, BillComputationResult computation)
     {
         bill.StoreName = input.StoreName.Trim();
+        bill.ReferenceImageDataUrl = NormalizeOptionalLongText(input.ReferenceImageDataUrl);
         bill.TransactionDateUtc = ToUtc(input.TransactionDateUtc);
         bill.SplitMode = input.SplitMode;
         bill.PrimaryPayerParticipantId = input.PrimaryPayerParticipantId;
@@ -342,6 +346,7 @@ public sealed class BillsService(
             bill.Id,
             bill.GroupId,
             bill.StoreName,
+            bill.ReferenceImageDataUrl,
             bill.TransactionDateUtc,
             bill.SplitMode,
             bill.PrimaryPayerParticipantId,
@@ -456,6 +461,16 @@ public sealed class BillsService(
     private static decimal RoundToCurrency(decimal amount)
     {
         return Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string? NormalizeOptionalLongText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
     }
 
     private static void ValidateBillInput(string storeName)

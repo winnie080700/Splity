@@ -441,7 +441,7 @@ export function SettlementSharePage() {
             ) : null}
             {currentStep === 2 ? (
               <SectionCard className="overflow-hidden p-6 md:p-7">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-2xl">
                     <h2 className="section-title">
                       {currentRole === "receiver" ? t("settlement.shareSummaryTitleReceiver") : t("settlement.shareSummaryTitlePayer")}
@@ -611,7 +611,7 @@ function PayerPanel({
   return (
     <div className="mt-6 space-y-6">
       <div className="rounded-[28px] border border-brand/15 bg-[linear-gradient(180deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="tag bg-sky text-brand">{t("settlement.shareRolePayer")}</span>
@@ -638,7 +638,7 @@ function PayerPanel({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(22rem,0.72fr)]">
         <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-brand">
               <UsersIcon className="h-5 w-5" />
             </span>
@@ -675,7 +675,7 @@ function PayerPanel({
         </div>
 
         <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
               <CheckIcon className="h-5 w-5" />
             </span>
@@ -810,7 +810,7 @@ function ReceiverPanel({
   return (
     <div className="mt-6 space-y-6">
       <div className="rounded-[28px] border border-success/15 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="tag bg-mint text-success">{t("settlement.shareRoleReceiver")}</span>
@@ -837,7 +837,7 @@ function ReceiverPanel({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(22rem,0.72fr)]">
         <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
               <UsersIcon className="h-5 w-5" />
             </span>
@@ -861,7 +861,7 @@ function ReceiverPanel({
                 const proofExpanded = expandedProofTransferKey === transfer.transferKey;
                 return (
                   <article key={transfer.transferKey} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="text-base font-semibold tracking-tight text-ink">{payerName}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -906,7 +906,7 @@ function ReceiverPanel({
         </div>
 
         <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
               <SparklesIcon className="h-5 w-5" />
             </span>
@@ -957,7 +957,7 @@ function ReceiverProofSection({
 
   return (
     <div className="rounded-[20px] border border-slate-200 bg-white/88 p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.proofReceiverTitle")}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1132,7 +1132,7 @@ function PaymentProofUploader({
 
   return (
     <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold text-ink">{t("settlement.proofLabel")}</div>
           <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.proofBody")}</p>

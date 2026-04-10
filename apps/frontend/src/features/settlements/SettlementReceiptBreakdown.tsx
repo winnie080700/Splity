@@ -17,7 +17,7 @@ export function SettlementReceiptBreakdown({
   return (
     <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,1))] shadow-soft">
       <div className="border-b border-dashed border-slate-200/90 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.08),transparent_55%)] px-5 py-5 md:px-6">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
             <ReceiptIcon className="h-5 w-5" />
           </span>
@@ -47,7 +47,7 @@ export function SettlementReceiptBreakdown({
             {receipt.bills.map((bill) => {
               return (
                 <article key={bill.id} className="rounded-[24px] border border-slate-200 bg-white/92 p-4 shadow-soft md:p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{formatDate(bill.transactionDateUtc)}</div>
                       <h5 className="mt-2 text-lg font-semibold tracking-tight text-ink">{bill.storeName}</h5>
@@ -109,7 +109,7 @@ function ReceiptLine({
   }[tone];
 
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-center justify-between gap-4">
       <div className={`min-w-0 pr-3 ${labelClass}`}>{label}</div>
       <div className={`shrink-0 text-right tabular-nums ${amountClass}`}>{amount}</div>
     </div>

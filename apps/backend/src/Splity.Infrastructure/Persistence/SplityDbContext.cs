@@ -47,17 +47,27 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.ToTable("app_users");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.ClerkUserId).HasColumnName("clerk_user_id").HasMaxLength(100);
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Username).HasColumnName("username").HasMaxLength(50);
             entity.Property(x => x.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
             entity.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(200).IsRequired();
             entity.Property(x => x.PasswordSalt).HasColumnName("password_salt").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.DefaultPaymentPayeeName).HasColumnName("default_payment_payee_name").HasMaxLength(150);
+            entity.Property(x => x.DefaultPaymentMethod).HasColumnName("default_payment_method").HasMaxLength(120);
+            entity.Property(x => x.DefaultPaymentAccountName).HasColumnName("default_payment_account_name").HasMaxLength(150);
+            entity.Property(x => x.DefaultPaymentAccountNumber).HasColumnName("default_payment_account_number").HasMaxLength(120);
+            entity.Property(x => x.DefaultPaymentNotes).HasColumnName("default_payment_notes").HasMaxLength(2000);
+            entity.Property(x => x.DefaultPaymentQrDataUrl).HasColumnName("default_payment_qr_data_url").HasColumnType("longtext");
             entity.Property(x => x.EmailVerifiedAtUtc).HasColumnName("email_verified_at_utc");
             entity.Property(x => x.PendingEmailVerificationCodeHash)
                 .HasColumnName("pending_email_verification_code_hash")
                 .HasMaxLength(128);
             entity.Property(x => x.PendingEmailVerificationExpiresAtUtc).HasColumnName("pending_email_verification_expires_at_utc");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+            entity.HasIndex(x => x.ClerkUserId).IsUnique();
             entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => x.Username).IsUnique();
         });
 
         modelBuilder.Entity<Participant>(entity =>
@@ -67,6 +77,7 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.GroupId).HasColumnName("group_id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Username).HasColumnName("username").HasMaxLength(50);
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
             entity.HasIndex(x => new { x.GroupId, x.Name }).IsUnique();
 
@@ -83,6 +94,7 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.GroupId).HasColumnName("group_id");
             entity.Property(x => x.StoreName).HasColumnName("store_name").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ReferenceImageDataUrl).HasColumnName("reference_image_data_url").HasColumnType("longtext");
             entity.Property(x => x.TransactionDateUtc).HasColumnName("transaction_date_utc").IsRequired();
             entity.Property(x => x.CurrencyCode).HasColumnName("currency_code").HasMaxLength(3).IsRequired();
             entity.Property(x => x.SplitMode).HasColumnName("split_mode").IsRequired();
