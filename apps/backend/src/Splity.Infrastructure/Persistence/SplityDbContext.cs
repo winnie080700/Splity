@@ -78,6 +78,12 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
             entity.Property(x => x.GroupId).HasColumnName("group_id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
             entity.Property(x => x.Username).HasColumnName("username").HasMaxLength(50);
+            entity.Property(x => x.InvitedUserId).HasColumnName("invited_user_id");
+            entity.Property(x => x.InvitationStatus)
+                .HasColumnName("invitation_status")
+                .HasConversion<int>()
+                .HasDefaultValue(ParticipantInvitationStatus.None)
+                .IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
             entity.HasIndex(x => new { x.GroupId, x.Name }).IsUnique();
 
@@ -85,6 +91,11 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
                 .WithMany(x => x.Participants)
                 .HasForeignKey(x => x.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.InvitedUser)
+                .WithMany()
+                .HasForeignKey(x => x.InvitedUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Bill>(entity =>

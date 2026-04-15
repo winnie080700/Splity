@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Splity.Application.Abstractions;
 using Splity.Domain.Entities;
+using Splity.Domain.Enums;
 using Splity.Infrastructure.Persistence;
 
 namespace Splity.Infrastructure.Repositories;
@@ -18,6 +19,25 @@ public sealed class ParticipantRepository(SplityDbContext dbContext) : IParticip
             .FirstOrDefaultAsync(x => x.GroupId == groupId && x.Id == participantId, cancellationToken);
     }
 
+    public Task<Participant?> GetByIdAsync(Guid participantId, CancellationToken cancellationToken)
+    {
+        return dbContext.Participants
+            .Include(x => x.Group)
+            .ThenInclude(x => x!.CreatedByUser)
+            .FirstOrDefaultAsync(x => x.Id == participantId, cancellationToken);
+    }
+
+    public Task<bool> HasAcceptedInvitationAsync(Guid groupId, Guid userId, CancellationToken cancellationToken)
+    {
+        return dbContext.Participants
+            .AsNoTracking()
+            .AnyAsync(
+                x => x.GroupId == groupId
+                && x.InvitedUserId == userId
+                && x.InvitationStatus == ParticipantInvitationStatus.Accepted,
+                cancellationToken);
+    }
+
     public async Task<bool> HasBillReferencesAsync(Guid participantId, CancellationToken cancellationToken)
     {
         return await dbContext.BillItemResponsibilities.AnyAsync(x => x.ParticipantId == participantId, cancellationToken)
@@ -31,6 +51,17 @@ public sealed class ParticipantRepository(SplityDbContext dbContext) : IParticip
             .AsNoTracking()
             .Where(x => x.GroupId == groupId)
             .OrderBy(x => x.Name)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Participant>> ListPendingInvitationsByUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Participants
+            .AsNoTracking()
+            .Include(x => x.Group)
+            .ThenInclude(x => x!.CreatedByUser)
+            .Where(x => x.InvitedUserId == userId && x.InvitationStatus == ParticipantInvitationStatus.Pending)
+            .OrderByDescending(x => x.CreatedAtUtc)
             .ToArrayAsync(cancellationToken);
     }
 

@@ -1,6 +1,7 @@
 using Splity.Api.Contracts;
 using Splity.Application.Models;
 using Splity.Application.Services;
+using System.Security.Claims;
 
 namespace Splity.Api.Endpoints;
 
@@ -8,10 +9,21 @@ public static class BillEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/groups/{groupId:guid}/bills").WithTags("Bills");
+        var group = app.MapGroup("/api/groups/{groupId:guid}/bills")
+            .WithTags("Bills")
+            .RequireAuthorization();
 
-        group.MapPost("/", async (Guid groupId, CreateBillRequest request, IBillsService service, CancellationToken ct) =>
+        group.MapPost("/", async (
+                Guid groupId,
+                CreateBillRequest request,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
+                IBillsService service,
+                CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanEditAsync(groupId, userId, ct);
                 var result = await service.CreateAsync(groupId, ToCreateInput(request), ct);
                 return Results.Created($"/api/groups/{groupId}/bills/{result.Id}", result);
             })
@@ -23,33 +35,66 @@ public static class BillEndpoints
                 string? store,
                 DateTime? fromDate,
                 DateTime? toDate,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
                 IBillsService service,
                 CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanViewAsync(groupId, userId, ct);
                 var result = await service.ListAsync(groupId, store, NormalizeDate(fromDate), NormalizeDate(toDate), ct);
                 return Results.Ok(result);
             })
             .WithName("ListBills")
             .WithSummary("List bills by group with optional store/date filters.");
 
-        group.MapGet("/{billId:guid}", async (Guid groupId, Guid billId, IBillsService service, CancellationToken ct) =>
+        group.MapGet("/{billId:guid}", async (
+                Guid groupId,
+                Guid billId,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
+                IBillsService service,
+                CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanViewAsync(groupId, userId, ct);
                 var result = await service.GetAsync(groupId, billId, ct);
                 return Results.Ok(result);
             })
             .WithName("GetBill")
             .WithSummary("Get a bill detail.");
 
-        group.MapPut("/{billId:guid}", async (Guid groupId, Guid billId, UpdateBillRequest request, IBillsService service, CancellationToken ct) =>
+        group.MapPut("/{billId:guid}", async (
+                Guid groupId,
+                Guid billId,
+                UpdateBillRequest request,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
+                IBillsService service,
+                CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanEditAsync(groupId, userId, ct);
                 var result = await service.UpdateAsync(groupId, billId, ToUpdateInput(request), ct);
                 return Results.Ok(result);
             })
             .WithName("UpdateBill")
             .WithSummary("Update a bill and recompute shares.");
 
-        group.MapDelete("/{billId:guid}", async (Guid groupId, Guid billId, IBillsService service, CancellationToken ct) =>
+        group.MapDelete("/{billId:guid}", async (
+                Guid groupId,
+                Guid billId,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
+                IBillsService service,
+                CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanEditAsync(groupId, userId, ct);
                 await service.DeleteAsync(groupId, billId, ct);
                 return Results.NoContent();
             })

@@ -1,6 +1,7 @@
 using Splity.Api.Contracts;
 using Splity.Application.Models;
 using Splity.Application.Services;
+using System.Security.Claims;
 
 namespace Splity.Api.Endpoints;
 
@@ -8,23 +9,37 @@ public static class SettlementShareEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/groups/{groupId:guid}/settlement-shares", async (
+        var group = app.MapGroup("/api/groups/{groupId:guid}/settlement-shares")
+            .WithTags("Settlement Shares")
+            .RequireAuthorization();
+
+        group.MapGet("/", async (
                 Guid groupId,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
                 ISettlementSharesService service,
                 CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanViewAsync(groupId, userId, ct);
                 var result = await service.GetActiveAsync(groupId, ct);
                 return Results.Ok(result);
             })
             .WithName("GetCurrentSettlementShare")
             .WithSummary("Get the current active settlement share for a group.");
 
-        app.MapPost("/api/groups/{groupId:guid}/settlement-shares", async (
+        group.MapPost("/", async (
                 Guid groupId,
                 CreateSettlementShareRequest request,
+                ClaimsPrincipal user,
+                IAppUserIdentityService identityService,
+                IGroupAccessService accessService,
                 ISettlementSharesService service,
                 CancellationToken ct) =>
             {
+                var userId = await EndpointUserContext.ResolveUserIdAsync(user, identityService, ct);
+                await accessService.EnsureCanEditAsync(groupId, userId, ct);
                 var result = await service.CreateAsync(groupId, ToCreateInput(request), ct);
                 return Results.Ok(result);
             })

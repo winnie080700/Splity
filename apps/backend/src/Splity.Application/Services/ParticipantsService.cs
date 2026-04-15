@@ -8,6 +8,7 @@ namespace Splity.Application.Services;
 
 public sealed class ParticipantsService(
     IGroupRepository groupRepository,
+    IAppUserRepository appUserRepository,
     IParticipantRepository participantRepository,
     IUnitOfWork unitOfWork) : IParticipantsService
 {
@@ -16,26 +17,36 @@ public sealed class ParticipantsService(
         CreateParticipantInput input,
         CancellationToken cancellationToken)
     {
-        await EnsureGroupEditableAsync(groupId, cancellationToken);
+        var group = await EnsureGroupEditableAsync(groupId, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(input.Name))
         {
             throw new DomainValidationException("Participant name is required.");
         }
 
+        var normalizedUsername = NormalizeUsername(input.Username);
+        var invitation = await ResolveInvitationStateAsync(
+            group,
+            normalizedUsername,
+            previousInvitedUserId: null,
+            previousStatus: null,
+            cancellationToken);
+
         var participant = new Participant
         {
             Id = Guid.NewGuid(),
             GroupId = groupId,
             Name = input.Name.Trim(),
-            Username = NormalizeUsername(input.Username),
+            Username = normalizedUsername,
+            InvitedUserId = invitation.InvitedUserId,
+            InvitationStatus = invitation.InvitationStatus,
             CreatedAtUtc = DateTime.UtcNow
         };
 
         await participantRepository.AddAsync(participant, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.Username, participant.CreatedAtUtc);
+        return ToParticipantDto(participant);
     }
 
     public async Task<IReadOnlyCollection<ParticipantDto>> ListAsync(Guid groupId, CancellationToken cancellationToken)
@@ -48,7 +59,7 @@ public sealed class ParticipantsService(
         var participants = await participantRepository.ListByGroupAsync(groupId, cancellationToken);
         return participants
             .OrderBy(x => x.Name)
-            .Select(x => new ParticipantDto(x.Id, x.GroupId, x.Name, x.Username, x.CreatedAtUtc))
+            .Select(ToParticipantDto)
             .ToArray();
     }
 
@@ -58,7 +69,7 @@ public sealed class ParticipantsService(
         UpdateParticipantInput input,
         CancellationToken cancellationToken)
     {
-        await EnsureGroupEditableAsync(groupId, cancellationToken);
+        var group = await EnsureGroupEditableAsync(groupId, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(input.Name))
         {
@@ -72,10 +83,19 @@ public sealed class ParticipantsService(
         }
 
         participant.Name = input.Name.Trim();
-        participant.Username = NormalizeUsername(input.Username);
+        var normalizedUsername = NormalizeUsername(input.Username);
+        var invitation = await ResolveInvitationStateAsync(
+            group,
+            normalizedUsername,
+            participant.InvitedUserId,
+            participant.InvitationStatus,
+            cancellationToken);
+        participant.Username = normalizedUsername;
+        participant.InvitedUserId = invitation.InvitedUserId;
+        participant.InvitationStatus = invitation.InvitationStatus;
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ParticipantDto(participant.Id, participant.GroupId, participant.Name, participant.Username, participant.CreatedAtUtc);
+        return ToParticipantDto(participant);
     }
 
     public async Task DeleteAsync(Guid groupId, Guid participantId, CancellationToken cancellationToken)
@@ -97,7 +117,7 @@ public sealed class ParticipantsService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task EnsureGroupEditableAsync(Guid groupId, CancellationToken cancellationToken)
+    private async Task<Group> EnsureGroupEditableAsync(Guid groupId, CancellationToken cancellationToken)
     {
         var group = await groupRepository.GetAsync(groupId, cancellationToken);
         if (group is null)
@@ -109,6 +129,63 @@ public sealed class ParticipantsService(
         {
             throw new DomainValidationException("This group is locked because settlement has already started.");
         }
+
+        return group;
+    }
+
+    private async Task<(Guid? InvitedUserId, ParticipantInvitationStatus InvitationStatus)> ResolveInvitationStateAsync(
+        Group group,
+        string? normalizedUsername,
+        Guid? previousInvitedUserId,
+        ParticipantInvitationStatus? previousStatus,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedUsername))
+        {
+            return (null, ParticipantInvitationStatus.None);
+        }
+
+        var invitedUser = await appUserRepository.GetByUsernameAsync(normalizedUsername, cancellationToken);
+        if (invitedUser is null)
+        {
+            return (null, ParticipantInvitationStatus.None);
+        }
+
+        if (group.CreatedByUserId.HasValue && invitedUser.Id == group.CreatedByUserId.Value)
+        {
+            return (invitedUser.Id, ParticipantInvitationStatus.Accepted);
+        }
+
+        var hasSameInvitee = previousInvitedUserId.HasValue && previousInvitedUserId.Value == invitedUser.Id;
+        if (hasSameInvitee && previousStatus.HasValue)
+        {
+            return (invitedUser.Id, previousStatus.Value);
+        }
+
+        return (invitedUser.Id, ParticipantInvitationStatus.Pending);
+    }
+
+    private static ParticipantDto ToParticipantDto(Participant participant)
+    {
+        return new ParticipantDto(
+            participant.Id,
+            participant.GroupId,
+            participant.Name,
+            participant.Username,
+            ToInvitationStatusValue(participant.InvitationStatus),
+            participant.CreatedAtUtc);
+    }
+
+    private static string ToInvitationStatusValue(ParticipantInvitationStatus status)
+    {
+        return status switch
+        {
+            ParticipantInvitationStatus.None => "none",
+            ParticipantInvitationStatus.Pending => "pending",
+            ParticipantInvitationStatus.Accepted => "accepted",
+            ParticipantInvitationStatus.Declined => "declined",
+            _ => "none"
+        };
     }
 
     private static string? NormalizeUsername(string? username)

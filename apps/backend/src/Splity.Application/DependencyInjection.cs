@@ -14,7 +14,9 @@ public static class DependencyInjection
         services.AddScoped<IGroupsService, GroupsService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAppUserIdentityService, AppUserIdentityService>();
+        services.AddScoped<IGroupAccessService, GroupAccessService>();
         services.AddScoped<IParticipantsService, ParticipantsService>();
+        services.AddScoped<IInvitationsService, InvitationsService>();
         services.AddScoped<IBillsService, BillsService>();
         services.AddScoped<ISettlementsService, SettlementsService>();
         services.AddScoped<ISettlementSharesService, SettlementSharesService>();

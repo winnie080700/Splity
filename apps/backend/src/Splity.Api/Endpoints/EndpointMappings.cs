@@ -6,6 +6,7 @@ public static class EndpointMappings
     {
         AuthEndpoints.Map(app);
         GroupEndpoints.Map(app);
+        InvitationEndpoints.Map(app);
         ParticipantEndpoints.Map(app);
         BillEndpoints.Map(app);
         SettlementEndpoints.Map(app);

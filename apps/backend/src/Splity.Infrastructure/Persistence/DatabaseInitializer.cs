@@ -143,6 +143,20 @@ public static class DatabaseInitializer
                 command.CommandText = "ALTER TABLE participants ADD COLUMN username VARCHAR(50) NULL";
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "participants", "invited_user_id", cancellationToken))
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE participants ADD COLUMN invited_user_id CHAR(36) NULL";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (!await ColumnExistsAsync(connection, connection.Database, "participants", "invitation_status", cancellationToken))
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "ALTER TABLE participants ADD COLUMN invitation_status INT NOT NULL DEFAULT 0";
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
         }
         finally
         {

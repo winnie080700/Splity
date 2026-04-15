@@ -10,6 +10,7 @@ export type GroupDto = {
   createdAtUtc: string;
   status: GroupStatus;
   createdByUserName?: string | null;
+  canEdit: boolean;
 };
 
 export type GroupStatus = "unresolved" | "settling" | "settled";
@@ -19,6 +20,7 @@ export type GroupSummaryDto = {
   name: string;
   createdAtUtc: string;
   status: GroupStatus;
+  canEdit: boolean;
 };
 
 export type UpdateGroupRequest = {
@@ -59,7 +61,20 @@ export type ParticipantDto = {
   groupId: string;
   name: string;
   username?: string | null;
+  invitationStatus: ParticipantInvitationStatus;
   createdAtUtc: string;
+};
+
+export type ParticipantInvitationStatus = "none" | "pending" | "accepted" | "declined";
+
+export type InvitationDto = {
+  participantId: string;
+  groupId: string;
+  groupName: string;
+  participantName: string;
+  participantUsername?: string | null;
+  invitedByName: string;
+  invitedAtUtc: string;
 };
 
 export type UpdateParticipantRequest = {
@@ -281,6 +296,15 @@ const defaultApiClient = {
     params.set("username", username);
     return request<UserLookupDto | null>(`/api/auth/users/search?${params.toString()}`);
   },
+  listInvitations: () => request<InvitationDto[]>("/api/invitations"),
+  acceptInvitation: (participantId: string) => request<void>(`/api/invitations/${participantId}/accept`, {
+    method: "POST",
+    body: JSON.stringify({})
+  }),
+  declineInvitation: (participantId: string) => request<void>(`/api/invitations/${participantId}/decline`, {
+    method: "POST",
+    body: JSON.stringify({})
+  }),
   createGroup: (name: string) => request<GroupDto>("/api/groups", {
     method: "POST",
     body: JSON.stringify({ name })

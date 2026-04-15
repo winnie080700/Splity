@@ -50,11 +50,29 @@ public sealed class GroupsService(
         return ToGroupDto(group);
     }
 
-    public async Task<IReadOnlyCollection<GroupSummaryDto>> ListByCreatorAsync(Guid creatorUserId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<GroupSummaryDto>> ListAccessibleAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var groups = await groupRepository.ListByCreatorAsync(creatorUserId, cancellationToken);
-        return groups
-            .Select(group => new GroupSummaryDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status)))
+        var createdGroups = await groupRepository.ListByCreatorAsync(userId, cancellationToken);
+        var invitedGroups = await groupRepository.ListByAcceptedInviteeAsync(userId, cancellationToken);
+
+        var summaries = new Dictionary<Guid, GroupSummaryDto>();
+        foreach (var group in createdGroups)
+        {
+            summaries[group.Id] = new GroupSummaryDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status), true);
+        }
+
+        foreach (var group in invitedGroups)
+        {
+            if (summaries.ContainsKey(group.Id))
+            {
+                continue;
+            }
+
+            summaries[group.Id] = new GroupSummaryDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status), false);
+        }
+
+        return summaries.Values
+            .OrderByDescending(group => group.CreatedAtUtc)
             .ToArray();
     }
 
@@ -106,7 +124,7 @@ public sealed class GroupsService(
 
     private static GroupDto ToGroupDto(Group group)
     {
-        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status), group.CreatedByUser?.Name);
+        return new GroupDto(group.Id, group.Name, group.CreatedAtUtc, ToStatusValue(group.Status), group.CreatedByUser?.Name, true);
     }
 
     private static GroupStatus ParseGroupStatus(string? rawStatus)
