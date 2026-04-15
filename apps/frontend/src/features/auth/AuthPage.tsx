@@ -63,7 +63,7 @@ function AuthStatusShell({
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-[#f7f4ed] text-[#161616]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(202,138,4,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(30,58,138,0.08),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)] text-[#0f172a]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-3 py-4 sm:px-6 sm:py-5 lg:px-10">
         <PublicSiteHeader
           brandMode="logo"
@@ -72,13 +72,13 @@ function AuthStatusShell({
 
         <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-0 sm:py-10 lg:py-12">
           <div className="auth-panel-surface w-full max-w-[520px] text-center">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a59c85]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700/80">
               {t("auth.panelEyebrow")}
             </div>
-            <h1 className="landing-display mt-3 text-[3rem] leading-[0.9] text-[#1c1a16] sm:text-[3.5rem]">
+            <h1 className="landing-display mt-3 text-[clamp(2rem,8vw,3.5rem)] leading-[0.92] text-[#0f172a]">
               {title}
             </h1>
-            <p className="mt-4 text-sm leading-7 text-[#7e776a]">
+            <p className="mt-4 text-sm leading-7 text-[#475569]">
               {body}
             </p>
 
@@ -202,7 +202,7 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#f7f4ed]" />;
+    return <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(202,138,4,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(30,58,138,0.08),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)]" />;
   }
 
   if (hasWorkspaceAccess) {
@@ -226,11 +226,11 @@ export function AuthPage() {
         }}
       >
         <div className="space-y-2.5">
-          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.email")}</span>
+          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.email")}</span>
           <input className="auth-input" disabled type="email" />
         </div>
         <div className="space-y-2.5">
-          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.password")}</span>
+          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.password")}</span>
           <input className="auth-input" disabled type="password" />
         </div>
       </AuthPageShell>
@@ -789,7 +789,7 @@ function ClerkAuthPage({
         secondaryAction={mode === "login" && loginStep === "details" ? (
           <div className="flex justify-end pt-1">
             <button
-              className="self-start text-sm font-medium text-[#6e685c] transition hover:text-[#4f641b]"
+              className="self-start text-sm font-medium text-[#64748b] transition hover:text-[#1e3a8a]"
               onClick={() => {
                 resetForgotPasswordModal();
                 setIsForgotPasswordOpen(true);
@@ -802,7 +802,7 @@ function ClerkAuthPage({
         ) : null}
         footerAction={showVerification ? (
           <button
-            className="font-medium text-xs text-[#5d7420] transition hover:text-[#475c1a] w-full"
+            className="font-medium text-xs text-[#1e3a8a] transition hover:text-[#1e40af] w-full"
             onClick={() => {
               if (mode === "login") {
                 setLoginStep("details");
@@ -824,7 +824,7 @@ function ClerkAuthPage({
         {mode === "register" && registerStep === "details" ? (
           <>
             <label className="space-y-2.5">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.name")}</span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.name")}</span>
               <input
                 className="auth-input"
                 value={name}
@@ -837,11 +837,11 @@ function ClerkAuthPage({
             </label>
 
             <label className="space-y-2.5">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.username")}</span>
-              <div className="flex min-h-[52px] items-center gap-2 rounded-[18px] border border-[rgba(212,203,186,0.98)] bg-[rgba(255,253,248,0.96)] px-4">
-                <span className="text-sm font-semibold text-[#5f7520]">@</span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.username")}</span>
+              <div className="flex min-h-[52px] items-center gap-2 rounded-[18px] border border-slate-200 bg-white/95 px-4">
+                <span className="text-sm font-semibold text-[#1e3a8a]">@</span>
                 <input
-                  className="min-h-[44px] flex-1 border-0 bg-transparent px-0 py-0 text-sm text-[#181612] outline-none focus:outline-none focus:ring-0"
+                  className="min-h-[44px] flex-1 border-0 bg-transparent px-0 py-0 text-sm text-[#0f172a] outline-none focus:outline-none focus:ring-0"
                   value={username}
                   placeholder={t("auth.usernamePlaceholder")}
                   onChange={(event) => {
@@ -857,7 +857,7 @@ function ClerkAuthPage({
 
         {showVerification ? (
           <label className="space-y-3">
-            <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">
+            <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">
               {t("settings.verificationCode")}
             </span>
 
@@ -877,12 +877,12 @@ function ClerkAuthPage({
               }}
             />
 
-            <p className="text-xs leading-6 text-[#8d8778]">{t("settings.verificationCodeBody")}</p>
+            <p className="text-xs leading-6 text-[#475569]">{t("settings.verificationCodeBody")}</p>
           </label>
         ) : (
           <>
             <label className="space-y-2.5">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.email")}</span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.email")}</span>
               <input
                 className="auth-input"
                 type="email"
@@ -896,7 +896,7 @@ function ClerkAuthPage({
             </label>
 
             <label className="space-y-2.5">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#807969]">{t("auth.password")}</span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-amber-700/80">{t("auth.password")}</span>
               <input
                 className="auth-input"
                 type="password"
@@ -1058,7 +1058,7 @@ function AuthPageShell({
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-[#f7f4ed] text-[#161616]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(202,138,4,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(30,58,138,0.08),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)] text-[#0f172a]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-3 py-4 sm:px-6 sm:py-5 lg:px-10">
         <PublicSiteHeader
           brandMode="logo"
@@ -1068,11 +1068,11 @@ function AuthPageShell({
         <main className="flex flex-1 items-center px-4 py-10 sm:px-0 sm:py-10 lg:py-12">
           <div className="grid w-full gap-10 sm:gap-12 lg:grid-cols-[1.04fr,0.96fr] lg:items-center">
             <section className="landing-fade-up px-1 sm:px-0 max-w-[680px]" style={{ animationDelay: "140ms" }}>
-              <h1 className="landing-display mt-4 max-w-[12ch] text-[5rem] leading-[0.82] text-[#181612] sm:text-[5rem] lg:text-[5rem]">
+              <h1 className="landing-display mt-4 max-w-[12ch] text-[clamp(2.55rem,12vw,5rem)] leading-[0.84] text-[#0f172a]">
                 {t("auth.heroTitle")}
               </h1>
 
-              <p className="mt-5 max-w-[560px] text-[14px] leading-7 text-[#7e776a] sm:text-[15px]">
+              <p className="mt-5 max-w-[560px] text-[14px] leading-7 text-[#475569] sm:text-[15px]">
                 {t("auth.heroBody")}
               </p>
             </section>
@@ -1080,10 +1080,10 @@ function AuthPageShell({
             <section className="landing-fade-up px-1 sm:px-0" style={{ animationDelay: "220ms" }}>
               <div className="auth-panel-surface mx-auto w-full max-w-[560px]">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a59c85]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700/80">
                     {t("auth.panelEyebrow")}
                   </div>
-                  <h2 className="landing-display mt-3 text-[3rem] leading-[0.88] text-[#1c1a16] sm:text-[3.75rem] w-full">
+                  <h2 className="landing-display mt-3 w-full text-[clamp(2.05rem,8.6vw,3.75rem)] leading-[0.9] text-[#0f172a]">
                     {title}
                   </h2>
                 </div>
@@ -1117,7 +1117,7 @@ function AuthPageShell({
 
                   {footerAction ?? (
                     <button
-                      className="font-medium text-xs text-[#5d7420] transition hover:text-[#475c1a] w-full"
+                      className="font-medium text-xs text-[#1e3a8a] transition hover:text-[#1e40af] w-full"
                       disabled={isSubmitting}
                       onClick={onContinueAsGuest}
                       type="button"
@@ -1128,13 +1128,13 @@ function AuthPageShell({
                 </form>
 
                 {showVerification ? null : (
-                  <div className="mt-6 border-t border-[#ebe4d7] pt-5 text-xs text-[#7d776a]">
+                  <div className="mt-6 border-t border-slate-200/90 pt-5 text-xs text-[#475569]">
                     {mode === "register" ? (
-                      <button className="font-thin text-[#5d7420] transition hover:text-[#475c1a]" onClick={() => onModeChange("login")} type="button">
+                      <button className="font-thin text-[#1e3a8a] transition hover:text-[#1e40af]" onClick={() => onModeChange("login")} type="button">
                         {t("auth.switchToLogin")}
                       </button>
                     ) : (
-                      <button className="font-medium text-[#5d7420] transition hover:text-[#475c1a]" onClick={() => onModeChange("register")} type="button">
+                      <button className="font-medium text-[#1e3a8a] transition hover:text-[#1e40af]" onClick={() => onModeChange("register")} type="button">
                         {t("auth.switchToRegister")}
                       </button>
                     )}

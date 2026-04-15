@@ -12,6 +12,19 @@ import { PencilIcon, PlusIcon, TrashIcon, UsersIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 import { getErrorMessage, getInitials } from "@/shared/utils/format";
 
+function getInvitationBadge(status: string, t: (key: any) => string) {
+  switch (status) {
+    case "pending":
+      return { label: t("participants.statusInvited"), className: "border border-brand/10 bg-brand/5 text-brand" };
+    case "accepted":
+      return { label: t("participants.statusAccepted"), className: "border border-mint/70 bg-mint/60 text-success" };
+    case "declined":
+      return { label: t("participants.statusDeclined"), className: "border border-danger/20 bg-rose-50 text-danger" };
+    default:
+      return { label: t("participants.statusManual"), className: "bg-slate-100 text-muted" };
+  }
+}
+
 export function ParticipantsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const [draftNames, setDraftNames] = useState([""]);
@@ -148,9 +161,11 @@ export function ParticipantsPage() {
   });
 
   const isLocked = groupQuery.data ? isGroupLocked(groupQuery.data.status) : false;
+  const canEditGroup = groupQuery.data?.canEdit ?? false;
+  const isReadOnly = isLocked || !canEditGroup;
 
   function openCreateDialog() {
-    if (isLocked) {
+    if (isReadOnly) {
       return;
     }
 
@@ -197,7 +212,7 @@ export function ParticipantsPage() {
   function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!groupId || createMutation.isPending || isLocked) {
+    if (!groupId || createMutation.isPending || isReadOnly) {
       return;
     }
 
@@ -233,7 +248,7 @@ export function ParticipantsPage() {
           eyebrow={groupQuery.data?.name ?? t("nav.participants")}
           title={groupQuery.data ? `${groupQuery.data.name} · ${t("participants.title")}` : t("participants.title")}
           description={t("participants.subtitle")}
-          actions={!isLocked ? (
+          actions={!isReadOnly ? (
             <button className="button-primary" onClick={openCreateDialog} type="button">
               <PlusIcon className="h-4 w-4" />
               {t("participants.addAction")}
@@ -261,12 +276,12 @@ export function ParticipantsPage() {
         </div>
 
         <div className="mt-6 rounded-[22px] border border-dashed border-slate-200 bg-slate-50/75 px-4 py-4 text-sm leading-6 text-muted">
-          {isLocked ? t("groups.readOnlyParticipants") : t("participants.addDialogBody")}
+          {isReadOnly ? (canEditGroup ? t("groups.readOnlyParticipants") : t("groups.readOnlyMemberHint")) : t("participants.addDialogBody")}
         </div>
 
-        {isLocked ? (
+        {isReadOnly ? (
           <div className="mt-4">
-            <InlineMessage tone="info">{t("groups.readOnlyParticipants")}</InlineMessage>
+            <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlyParticipants") : t("groups.readOnlyMemberHint")}</InlineMessage>
           </div>
         ) : null}
       </SectionCard>
@@ -281,7 +296,7 @@ export function ParticipantsPage() {
             <span className="tag bg-mint text-success">
               {participantsQuery.data?.length ?? 0} {t("nav.participants")}
             </span>
-            {!isLocked ? (
+            {!isReadOnly ? (
               <button className="button-secondary" onClick={openCreateDialog} type="button">
                 {t("participants.addAction")}
               </button>
@@ -321,7 +336,7 @@ export function ParticipantsPage() {
               icon={<UsersIcon className="h-6 w-6" />}
               title={t("participants.emptyTitle")}
               description={t("participants.emptyBody")}
-              action={!isLocked ? (
+              action={!isReadOnly ? (
                 <button className="button-secondary" onClick={openCreateDialog} type="button">
                   {t("participants.addAction")}
                 </button>
@@ -331,39 +346,49 @@ export function ParticipantsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               {participantsQuery.data?.map((participant, index) => (
                 <article key={participant.id} className="list-card">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky text-sm font-semibold text-brand">
-                      {getInitials(participant.name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-base font-semibold tracking-tight text-ink">{participant.name}</div>
-                      <div className="mt-1 text-sm text-muted">#{String(index + 1).padStart(2, "0")}</div>
-                    </div>
-                    {!isLocked ? (
-                      <>
-                        <IconActionButton
-                          icon={<PencilIcon className="h-4 w-4" />}
-                          label={t("participants.editAction")}
-                          onClick={() => {
-                            setEditError(null);
-                            setEditingParticipantId(participant.id);
-                          }}
-                          size="sm"
-                        />
-                        <IconActionButton
-                          className="text-danger hover:border-rose-200 hover:bg-rose-50 hover:text-danger"
-                          icon={<TrashIcon className="h-4 w-4" />}
-                          label={t("participants.deleteAction")}
-                          onClick={() => {
-                            setDeleteError(null);
-                            setDeletingParticipantId(participant.id);
-                          }}
-                          size="sm"
-                        />
-                      </>
-                    ) : null}
-                    <span className="tag bg-slate-100 text-muted">#{participant.id.slice(0, 4)}</span>
-                  </div>
+                  {(() => {
+                    const invitationBadge = getInvitationBadge(participant.invitationStatus, t);
+                    return (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky text-sm font-semibold text-brand">
+                          {getInitials(participant.name)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-base font-semibold tracking-tight text-ink">{participant.name}</div>
+                          <div className="mt-1 flex items-center gap-2 text-sm text-muted">
+                            <span>#{String(index + 1).padStart(2, "0")}</span>
+                            <span className={["tag", invitationBadge.className].join(" ")}>
+                              {invitationBadge.label}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="tag bg-slate-100 text-muted">#{participant.id.slice(0, 4)}</span>
+                        {!isReadOnly ? (
+                          <div className="ml-auto flex items-center gap-2">
+                            <IconActionButton
+                              icon={<PencilIcon className="h-4 w-4" />}
+                              label={t("participants.editAction")}
+                              onClick={() => {
+                                setEditError(null);
+                                setEditingParticipantId(participant.id);
+                              }}
+                              size="sm"
+                            />
+                            <IconActionButton
+                              className="text-danger hover:border-rose-200 hover:bg-rose-50 hover:text-danger"
+                              icon={<TrashIcon className="h-4 w-4" />}
+                              label={t("participants.deleteAction")}
+                              onClick={() => {
+                                setDeleteError(null);
+                                setDeletingParticipantId(participant.id);
+                              }}
+                              size="sm"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                 </article>
               ))}
             </div>

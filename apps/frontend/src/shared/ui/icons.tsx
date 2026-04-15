@@ -188,3 +188,42 @@ export function SettingsIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function MailIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="m4 7 8 6 8-6" />
+    </IconBase>
+  );
+}
+
+export function LogOutIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 21H5.8A2.8 2.8 0 0 1 3 18.2V5.8A2.8 2.8 0 0 1 5.8 3H9" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </IconBase>
+  );
+}
+
+export function DownloadIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5" />
+      <path d="M16.5 12 12 16.5 7.5 12" />
+      <path d="M12 16.5V3" />
+    </IconBase>
+  );
+}
+
+export function ExportIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5" />
+      <path d="M12 16.5V3" />
+      <path d="M7.5 7.5 12 3l4.5 4.5" />
+    </IconBase>
+  );
+}

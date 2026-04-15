@@ -62,15 +62,15 @@ export function PublicSiteHeader({
   return (
     <header className={["landing-fade-up relative", className].filter(Boolean).join(" ")} style={{ animationDelay: "60ms" }}>
       <div className="flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-3 text-[#191813]">
+        <Link to="/" className="flex items-center gap-3 text-[#0f172a]">
           {brandMode === "logo" ? <BrandLogo className="h-9 w-9" /> : null}
           <span className="text-sm font-semibold tracking-[-0.03em]">{t("app.title")}</span>
         </Link>
 
         {hasNav ? (
-          <nav className="hidden items-center gap-8 text-[11px] font-semibold tracking-[0.03em] text-[#4b493f] md:flex">
+          <nav className="hidden items-center gap-8 text-[11px] font-semibold tracking-[0.03em] text-[#475569] md:flex">
             {navItems.map((item) => (
-              <a key={item.href} href={item.href} className="transition hover:text-[#161616]">
+              <a key={item.href} href={item.href} className="transition hover:text-[#0f172a]">
                 {item.label}
               </a>
             ))}
@@ -79,7 +79,7 @@ export function PublicSiteHeader({
 
         <div className="hidden items-center gap-3 md:flex">
           {secondaryLink ? (
-            <Link className="text-[11px] font-semibold tracking-[0.03em] text-[#5d5749] transition hover:text-[#161616]" to={secondaryLink.to}>
+            <Link className="text-[11px] font-semibold tracking-[0.03em] text-[#64748b] transition hover:text-[#0f172a]" to={secondaryLink.to}>
               {secondaryLink.label}
             </Link>
           ) : null}
@@ -104,7 +104,7 @@ export function PublicSiteHeader({
         {hasNav ? (
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#ddd7c8] bg-white/75 text-[#1f1d18] md:hidden"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-[#0f172a] md:hidden"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuLabel}
             onClick={() => setMobileMenuOpen((current) => !current)}
@@ -115,13 +115,13 @@ export function PublicSiteHeader({
       </div>
 
       {hasNav && mobileMenuOpen ? (
-        <div className="mt-3 rounded-[24px] border border-[#dfd8ca] bg-white/90 p-4 shadow-[0_18px_48px_rgba(27,25,20,0.08)] md:hidden">
-          <nav className="flex flex-col gap-3 text-sm font-semibold text-[#2a2822]">
+        <div className="mt-3 rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.08)] md:hidden">
+          <nav className="flex flex-col gap-3 text-sm font-semibold text-[#0f172a]">
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="rounded-full px-1 py-1 transition hover:text-[#627a1e]"
+                className="rounded-full px-1 py-1 transition hover:text-[#1e3a8a]"
                 onClick={closeMobileMenu}
               >
                 {item.label}

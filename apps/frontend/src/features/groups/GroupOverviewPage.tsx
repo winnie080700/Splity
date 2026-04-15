@@ -52,6 +52,8 @@ export function GroupOverviewPage() {
   const bills = billsQuery.data ?? [];
   const transfers = settlementQuery.data?.transfers ?? [];
   const isLocked = group ? isGroupLocked(group.status) : false;
+  const canEditGroup = group?.canEdit ?? false;
+  const isReadOnly = isLocked || !canEditGroup;
   const billsCount = bills.length;
   const participantsCount = participantsQuery.data?.length ?? 0;
   const transfersCount = transfers.length;
@@ -171,7 +173,7 @@ export function GroupOverviewPage() {
                 <>
                   <button
                     className="button-primary w-full justify-center"
-                    disabled={updateStatusMutation.isPending || billsCount === 0}
+                    disabled={updateStatusMutation.isPending || billsCount === 0 || isReadOnly}
                     onClick={() => {
                       setStatusActionError(null);
                       setIsStartSettlementOpen(true);
@@ -186,7 +188,7 @@ export function GroupOverviewPage() {
                 </>
               ) : group.status === "settling" ? (
                 <>
-                  {!isGuest ? (
+                  {!isGuest && !isReadOnly ? (
                     <button
                       className="button-secondary w-full justify-center"
                       disabled={updateStatusMutation.isPending}
@@ -197,12 +199,12 @@ export function GroupOverviewPage() {
                     </button>
                   ) : (
                     <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-                      {t("guest.shareDisabledHint")}
+                      {!canEditGroup ? t("groups.readOnlyMemberHint") : t("guest.shareDisabledHint")}
                     </div>
                   )}
                   <button
                     className="button-primary w-full justify-center"
-                    disabled={updateStatusMutation.isPending}
+                    disabled={updateStatusMutation.isPending || isReadOnly}
                     onClick={() => {
                       setStatusActionError(null);
                       setIsMarkSettledOpen(true);
@@ -219,7 +221,7 @@ export function GroupOverviewPage() {
               )}
 
               {isGuest ? <InlineMessage tone="info">{t("guest.sessionHint")}</InlineMessage> : null}
-              {isLocked ? <InlineMessage tone="info">{t("groups.readOnlyHint")}</InlineMessage> : null}
+              {isReadOnly ? <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlyHint") : t("groups.readOnlyMemberHint")}</InlineMessage> : null}
             </div>
           </article>
         </div>
@@ -318,13 +320,13 @@ export function GroupOverviewPage() {
               />
               <OverviewDataRow
                 label={t("groups.editabilityLabel")}
-                value={isLocked ? t("groups.lockedNow") : t("groups.editableNow")}
+                value={isReadOnly ? t("groups.lockedNow") : t("groups.editableNow")}
               />
             </div>
 
-            {isLocked ? (
+            {isReadOnly ? (
               <div className="mt-5">
-                <InlineMessage tone="info">{t("groups.readOnlyHint")}</InlineMessage>
+                <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlyHint") : t("groups.readOnlyMemberHint")}</InlineMessage>
               </div>
             ) : null}
           </article>
@@ -363,7 +365,7 @@ export function GroupOverviewPage() {
         onConfirm={() => updateStatusMutation.mutate("settled")}
       />
 
-      {!isGuest ? (
+      {!isGuest && canEditGroup ? (
         <SettlementShareDialog
           open={isShareDialogOpen}
           onClose={() => setIsShareDialogOpen(false)}
@@ -373,6 +375,8 @@ export function GroupOverviewPage() {
           fromDate=""
           toDate=""
           hasInvalidDateRange={false}
+          groupStatus={group.status}
+          participants={participantsQuery.data ?? []}
         />
       ) : null}
     </div>

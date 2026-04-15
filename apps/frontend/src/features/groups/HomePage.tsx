@@ -620,6 +620,69 @@ export function DashboardPage() {
     return <ReceiptIcon className="h-5 w-5" />;
   }
 
+  function renderRecentActivity(items: DashboardActivityFeedItem[]) {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-3 md:hidden">
+          {items.map((item) => {
+            const [primaryDescription, secondaryDescription] = item.description.split(" · ");
+            return (
+              <article key={item.id} className="dashboard-activity-item flex-col items-start gap-3 px-4 py-4">
+                <div className="flex w-full items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="dashboard-activity-icon shrink-0">{renderActivityIcon(item.icon)}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-ink">{item.title}</div>
+                      <div className="mt-1 text-xs text-muted">{item.meta}</div>
+                    </div>
+                  </div>
+                  {item.badge ? <DashboardSignalPill label={item.badge.label} tone={item.badge.tone} /> : null}
+                </div>
+                <div className="w-full rounded-[14px] border border-slate-200/80 bg-white/88 px-3 py-2 text-sm text-ink">
+                  {primaryDescription}
+                </div>
+                <div className="w-full text-sm text-muted">{secondaryDescription ?? "—"}</div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="dashboard-activity-table hidden overflow-x-auto md:block">
+          <div className="min-w-[740px]">
+            <div className="dashboard-activity-table-header">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Action</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Title</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Description</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Category</div>
+              <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Date</div>
+            </div>
+            <ul>
+              {items.map((item) => {
+                const [primaryDescription, secondaryDescription] = item.description.split(" · ");
+                return (
+                  <li key={item.id}>
+                    <div className="dashboard-activity-table-row">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="dashboard-activity-icon shrink-0">{renderActivityIcon(item.icon)}</span>
+                        <span className="truncate text-sm font-semibold text-ink">{item.title}</span>
+                      </div>
+                      <div className="truncate text-sm text-ink">{primaryDescription}</div>
+                      <div className="truncate text-sm text-muted">{secondaryDescription ?? "—"}</div>
+                      <div>
+                        {item.badge ? <DashboardSignalPill label={item.badge.label} tone={item.badge.tone} /> : null}
+                      </div>
+                      <div className="text-right text-[11px] text-muted">{item.meta}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 xl:space-y-8">
       <section className="dashboard-hero-panel overflow-hidden p-6 md:p-7 lg:p-8">
@@ -720,68 +783,16 @@ export function DashboardPage() {
           renderDashboardError(groupsQuery.error)
         ) : isBillsLoading || isSettlementLoading ? (
           stableRecentActivityState.items.length === 0 ? (
-            <p className="text-sm text-[#7c7567]">{t("dashboard.activityEmptyTitle")}</p>
+            <p className="text-sm text-muted">{t("dashboard.activityEmptyTitle")}</p>
           ) : (
-            <div className="dashboard-activity-table">
-              <div className="dashboard-activity-table-header">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Action</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Title</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Description</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Category</div>
-                <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Date</div>
-              </div>
-              <ul>
-                {stableRecentActivityState.items.map((item) => (
-                  <li key={item.id}>
-                    <div className="dashboard-activity-table-row">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="dashboard-activity-icon shrink-0">{renderActivityIcon(item.icon)}</span>
-                        <span className="truncate text-sm font-semibold text-[#1f1c16]">{item.title}</span>
-                      </div>
-                      <div className="truncate text-sm text-[#1f1c16]">{item.description.split(" · ")[0]}</div>
-                      <div className="truncate text-sm text-[#7c7567]">{item.description.split(" · ")[1] ?? "—"}</div>
-                      <div>
-                        {item.badge ? <DashboardSignalPill label={item.badge.label} tone={item.badge.tone} /> : null}
-                      </div>
-                      <div className="text-right text-[11px] text-[#918970]">{item.meta}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            renderRecentActivity(stableRecentActivityState.items)
           )
         ) : billQueryError ? (
           renderDashboardError(billQueryError)
         ) : recentActivityFeed.length === 0 ? (
-          <p className="text-sm text-[#7c7567]">{t("dashboard.activityEmptyTitle")}</p>
+          <p className="text-sm text-muted">{t("dashboard.activityEmptyTitle")}</p>
         ) : (
-          <div className="dashboard-activity-table">
-            <div className="dashboard-activity-table-header">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Action</div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Title</div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Description</div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Category</div>
-              <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-[#918970]">Date</div>
-            </div>
-            <ul>
-              {recentActivityFeed.map((item) => (
-                <li key={item.id}>
-                  <div className="dashboard-activity-table-row">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="dashboard-activity-icon shrink-0">{renderActivityIcon(item.icon)}</span>
-                      <span className="truncate text-sm font-semibold text-[#1f1c16]">{item.title}</span>
-                    </div>
-                    <div className="truncate text-sm text-[#1f1c16]">{item.description.split(" · ")[0]}</div>
-                    <div className="truncate text-sm text-[#7c7567]">{item.description.split(" · ")[1] ?? "—"}</div>
-                    <div>
-                      {item.badge ? <DashboardSignalPill label={item.badge.label} tone={item.badge.tone} /> : null}
-                    </div>
-                    <div className="text-right text-[11px] text-[#918970]">{item.meta}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+          renderRecentActivity(recentActivityFeed)
         )}
       </DashboardSection>
     </div>

@@ -394,7 +394,7 @@ export function SettingsPage() {
                       <div className="settings-data-label">{t("auth.name")}</div>
                       {isEditingName ? (
                         <input
-                          className="auth-input mt-3 max-w-[420px]"
+                          className="auth-input mt-3 w-full sm:max-w-[420px]"
                           value={name}
                           onChange={(event) => {
                             setName(event.target.value);
@@ -598,7 +598,7 @@ export function SettingsPage() {
                     <div className="settings-row-copy">
                       <div className="settings-data-label">{t("settlement.paymentQrLabel")}</div>
                       {paymentProfile.paymentQrDataUrl ? (
-                        <div className="mt-4 max-w-[280px] rounded-[20px] border border-[#ebe4d7] bg-white p-3">
+                        <div className="mt-4 w-full sm:max-w-[280px] rounded-[20px] border border-[#ebe4d7] bg-white p-3">
                           <div className="settings-data-label">{t("settlement.paymentQrPreview")}</div>
                           <div className="mt-3 flex justify-center rounded-[18px] bg-[#faf6ee] p-3">
                             <img
@@ -678,7 +678,7 @@ export function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="flex w-full max-w-[240px] justify-end">
+                    <div className="flex w-full justify-start sm:max-w-[240px] sm:justify-end">
                       <AnimatedPillSwitch
                         ariaLabel={t("lang.language")}
                         value={language}

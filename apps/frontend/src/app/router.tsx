@@ -12,12 +12,13 @@ import { BillsPage } from "@/features/bills/BillsPage";
 import { SettlementsPage } from "@/features/settlements/SettlementsPage";
 import { SettlementSharePage } from "@/features/settlements/SettlementSharePage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { InvitationsPage } from "@/features/invitations/InvitationsPage";
 
 function RootEntry() {
   const { hasWorkspaceAccess, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#f7f4ed]" />;
+    return <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(202,138,4,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(30,58,138,0.08),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)]" />;
   }
 
   return hasWorkspaceAccess ? <Navigate to="/dashboard" replace /> : <HomePage />;
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth><AppShell /></RequireAuth>,
     children: [
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "invitations", element: <InvitationsPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "groups", element: <GroupsListPage /> },
       { path: "groups/:groupId", element: <GroupDetailPage /> },

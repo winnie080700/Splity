@@ -1,34 +1,30 @@
+import { useState } from "react";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import { type SettlementReceiptData, type SettlementReceiptLineTone } from "@/features/settlements/receipt";
 import { EmptyState, InlineMessage, LoadingState } from "@/shared/ui/primitives";
-import { ReceiptIcon } from "@/shared/ui/icons";
+import { ChevronDownIcon, ReceiptIcon } from "@/shared/ui/icons";
 
 export function SettlementReceiptBreakdown({
   receipt,
   isLoading,
   error,
-  t
+  t,
+  className = "",
+  collapsible = false,
+  defaultExpanded = true
 }: {
   receipt: SettlementReceiptData;
   isLoading: boolean;
   error: unknown;
   t: (key: any) => string;
+  className?: string;
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
 }) {
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,1))] shadow-soft">
-      <div className="border-b border-dashed border-slate-200/90 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.08),transparent_55%)] px-5 py-5 md:px-6">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
-            <ReceiptIcon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t("settlement.shareBillsCovered")}</div>
-            <h4 className="mt-2 text-lg font-semibold tracking-tight text-ink">{t("settlement.shareReceiptTitle")}</h4>
-            <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiptBody")}</p>
-          </div>
-        </div>
-      </div>
-
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const canCollapse = collapsible && !isLoading && !error && receipt.bills.length > 0;
+  const body = (
+    <>
       <div className="px-4 py-4 md:px-5 md:py-5">
         {isLoading ? (
           <LoadingState lines={3} />
@@ -83,6 +79,48 @@ export function SettlementReceiptBreakdown({
           </div>
         </div>
       ) : null}
+    </>
+  );
+
+  return (
+    <section className={`overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,1))] shadow-soft ${className}`}>
+      <div className="border-b border-dashed border-slate-200/90 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.08),transparent_55%)] px-5 py-5 md:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
+              <ReceiptIcon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t("settlement.shareBillsCovered")}</div>
+              <h4 className="mt-2 text-lg font-semibold tracking-tight text-ink">{t("settlement.shareReceiptTitle")}</h4>
+              <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiptBody")}</p>
+            </div>
+          </div>
+          {canCollapse ? (
+            <button
+              aria-label={isExpanded ? "Collapse receipt details" : "Expand receipt details"}
+              aria-expanded={isExpanded}
+              className="icon-action icon-action-secondary icon-action-sm shrink-0 rounded-full"
+              onClick={() => setIsExpanded((current) => !current)}
+              type="button"
+            >
+              <ChevronDownIcon className={`h-4 w-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isExpanded ? "rotate-180" : ""}`} />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {!canCollapse ? (
+        body
+      ) : (
+        <div
+          className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+        >
+          <div className={`overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${isExpanded ? "translate-y-0" : "-translate-y-2"}`}>
+            {body}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

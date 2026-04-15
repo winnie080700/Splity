@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type BillDetailDto, type SettlementTransferDto, type SettlementTransferStatus } from "@api-client";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
@@ -285,9 +285,9 @@ export function SettlementSharePage() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.16),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-[88rem] flex-1 space-y-6">
-        <SectionCard className="overflow-hidden p-6 md:p-7">
+    <div className="settlement-share-page flex min-h-screen flex-col bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.16),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef4ff_100%)] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[78rem] flex-1 space-y-6">
+        <SectionCard className="settlement-share-hero-card overflow-hidden p-6 md:p-7">
           <PageHeading
             eyebrow={t("settlement.sharePageEyebrow")}
             title={groupQuery.data ? `${groupQuery.data.name} · ${t("settlement.transferPlan")}` : t("settlement.transferPlan")}
@@ -302,7 +302,7 @@ export function SettlementSharePage() {
                 <div
                   key={item.step}
                   className={[
-                    "rounded-[24px] border px-4 py-4 transition",
+                    "settlement-share-step-card rounded-[24px] border px-4 py-4 transition",
                     active
                       ? "border-brand/20 bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] shadow-soft"
                       : complete
@@ -312,8 +312,12 @@ export function SettlementSharePage() {
                 >
                   <div className="flex items-center gap-3">
                     <span className={[
-                      "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold",
-                      active ? "bg-brand text-white" : complete ? "bg-success text-white" : "bg-slate-100 text-muted"
+                      "flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold",
+                      active
+                        ? "border-brand/20 bg-brand/10 text-brand"
+                        : complete
+                          ? "border-mint/40 bg-mint/70 text-success"
+                          : "border-slate-200 bg-slate-100 text-muted"
                     ].join(" ")}>
                       {complete ? <CheckIcon className="h-4 w-4" /> : item.step}
                     </span>
@@ -337,7 +341,7 @@ export function SettlementSharePage() {
         ) : (
           <>
             {currentStep === 1 ? (
-              <SectionCard className="p-6 md:p-7">
+              <SectionCard className="settlement-share-surface-card p-6 md:p-7">
                 <div className="max-w-2xl">
                   <h2 className="section-title">{t("settlement.shareIdentityTitle")}</h2>
                   <p className="mt-3 section-copy">{t("settlement.shareIdentityBody")}</p>
@@ -376,7 +380,7 @@ export function SettlementSharePage() {
                       <button
                         key={participant.id}
                         className={[
-                          "flex min-h-[88px] w-full items-center justify-between rounded-[24px] border px-5 py-4 text-left transition",
+                          "settlement-share-identity-card flex min-h-[88px] w-full items-center justify-between rounded-[24px] border px-5 py-4 text-left transition",
                           active
                             ? "border-brand/20 bg-brand/5 shadow-soft ring-2 ring-brand/10"
                             : "border-slate-200 bg-white/92 hover:-translate-y-0.5 hover:border-brand/20 hover:bg-white"
@@ -401,8 +405,8 @@ export function SettlementSharePage() {
                           ) : null}
                         </div>
                         <span className={[
-                          "flex h-10 w-10 items-center justify-center rounded-full",
-                          active ? "bg-brand text-white" : "bg-slate-100 text-muted"
+                          "flex h-10 w-10 items-center justify-center rounded-full border",
+                          active ? "border-brand/20 bg-brand/10 text-brand" : "border-slate-200 bg-slate-100 text-muted"
                         ].join(" ")}>
                           {active ? <CheckIcon className="h-4 w-4" /> : <UsersIcon className="h-4 w-4" />}
                         </span>
@@ -440,12 +444,10 @@ export function SettlementSharePage() {
               </SectionCard>
             ) : null}
             {currentStep === 2 ? (
-              <SectionCard className="overflow-hidden p-6 md:p-7">
+              <SectionCard className="settlement-share-surface-card overflow-hidden p-6 md:p-7">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-2xl">
-                    <h2 className="section-title">
-                      {currentRole === "receiver" ? t("settlement.shareSummaryTitleReceiver") : t("settlement.shareSummaryTitlePayer")}
-                    </h2>
+                    <h2 className="section-title">{`Hi ${selectedParticipant?.name ?? t("settlement.shareUnknownParticipant")}`}</h2>
                     <p className="mt-3 section-copy">
                       {currentRole === "receiver" ? t("settlement.shareSummaryBodyReceiver") : t("settlement.shareSummaryBodyPayer")}
                     </p>
@@ -459,13 +461,11 @@ export function SettlementSharePage() {
                 </div>
                 {currentRole === "payer" ? (
                   <PayerPanel
-                    groupName={groupQuery.data?.name ?? "..."}
                     isReadOnly={isShareReadOnly}
                     receipt={payerReceipt}
                     receiptError={billDetailsQuery.error}
                     receiptLoading={billDetailsQuery.isPending}
                     outgoingTransfers={outgoingTransfers}
-                    selectedParticipantName={selectedParticipant?.name ?? t("settlement.shareUnknownParticipant")}
                     receiverPaymentInfos={receiverPaymentInfos}
                     participantNameById={participantNameById}
                     recipientNames={recipientNames}
@@ -483,13 +483,11 @@ export function SettlementSharePage() {
 
                 {currentRole === "receiver" ? (
                   <ReceiverPanel
-                    groupName={groupQuery.data?.name ?? "..."}
                     incomingTransfers={incomingTransfers}
                     isReadOnly={isShareReadOnly}
                     receipt={receiverReceipt}
                     receiptError={billDetailsQuery.error}
                     receiptLoading={billDetailsQuery.isPending}
-                    readyToConfirmTransfers={readyToConfirmTransfers}
                     participantNameById={participantNameById}
                     selectedParticipantName={selectedParticipant?.name ?? t("settlement.shareUnknownParticipant")}
                     totalToReceive={totalToReceive}
@@ -513,7 +511,7 @@ export function SettlementSharePage() {
               </SectionCard>
             ) : null}
             {currentStep === 3 ? (
-              <SectionCard className="overflow-hidden border border-mint/90 bg-[linear-gradient(180deg,rgba(240,253,244,0.92),rgba(255,255,255,0.98))] p-6 md:p-8">
+              <SectionCard className="settlement-share-success-card overflow-hidden border border-mint/90 bg-[linear-gradient(180deg,rgba(240,253,244,0.92),rgba(255,255,255,0.98))] p-6 md:p-8">
                 <div className="mx-auto max-w-2xl text-center">
                   <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-success shadow-soft ring-8 ring-mint/70">
                     <CheckIcon className="h-9 w-9" />
@@ -548,21 +546,19 @@ export function SettlementSharePage() {
           </>
         )}
       </div>
-      <div className="mx-auto mt-8 w-full max-w-[88rem]">
-        <PublicSiteFooter />
+      <div className="mx-auto mt-8 w-full max-w-[78rem]">
+        <PublicSiteFooter className="settlement-share-footer" />
       </div>
     </div>
   );
 }
 
 function PayerPanel({
-  groupName,
   isReadOnly,
   receipt,
   receiptError,
   receiptLoading,
   outgoingTransfers,
-  selectedParticipantName,
   receiverPaymentInfos,
   participantNameById,
   recipientNames,
@@ -576,13 +572,11 @@ function PayerPanel({
   canMarkPaid,
   t
 }: {
-  groupName: string;
   isReadOnly: boolean;
   receipt: ReturnType<typeof buildSettlementReceiptData>;
   receiptError: unknown;
   receiptLoading: boolean;
   outgoingTransfers: SettlementTransferDto[];
-  selectedParticipantName: string;
   receiverPaymentInfos: SettlementShareReceiverPaymentInfo[];
   participantNameById: Record<string, string>;
   recipientNames: string[];
@@ -610,158 +604,158 @@ function PayerPanel({
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="rounded-[28px] border border-brand/15 bg-[linear-gradient(180deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="tag bg-sky text-brand">{t("settlement.shareRolePayer")}</span>
-              <span className={`tag ${payerStatusTone}`}>{payerStatus}</span>
-            </div>
-            <div>
-              <h3 className="text-2xl font-semibold tracking-tight text-ink">{t("settlement.sharePayerHeading")}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.sharePayerBody")}</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SummaryInfoCard label={t("settlement.sharePayerIdentity")} value={selectedParticipantName} />
-              <SummaryInfoCard label={t("participants.groupLabel")} value={groupName} />
-            </div>
-          </div>
-          <div className="min-w-0 rounded-[24px] bg-white/92 px-5 py-5 shadow-soft lg:w-[360px] xl:w-[388px]">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.sharePayerAmountLabel")}</div>
-            <div className="mt-3 text-4xl font-semibold tracking-tight text-ink">{formatCurrency(totalToPay)}</div>
-            <div className="mt-3 text-sm leading-6 text-muted">
-              {payerDisplayStatus === "unpaid" ? t("settlement.sharePayerAmountHelpUnpaid") : t("settlement.sharePayerAmountHelpPaid")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(22rem,0.72fr)]">
-        <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-brand">
-              <UsersIcon className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.sharePayerReceiverTitle")}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.sharePayerReceiverBody")}</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <InfoRow label={t("settlement.sharePayTo")} value={receiverLabel} />
-            <InfoRow label={t("settlement.sharePayerStatus")} value={payerStatus} />
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {outgoingTransfers.length === 0 ? (
-              <InlineMessage tone="info">{t("settlement.shareMissingPaymentInfo")}</InlineMessage>
-            ) : (
-              outgoingTransfers.map((transfer) => {
-                const receiverName = getParticipantName(participantNameById, transfer.toParticipantId);
-                const receiverInfo = receiverPaymentInfos.find((entry) => entry.participantId === transfer.toParticipantId)
-                  ?? fallbackReceiverInfo;
-                return (
-                  <ReceiverPaymentInfoCard
-                    key={transfer.transferKey}
-                    receiverName={receiverName}
-                    paymentInfo={receiverInfo?.paymentInfo ?? null}
-                    t={t}
-                  />
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
-              <CheckIcon className="h-5 w-5" />
-            </span>
-            <div>
-              <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.sharePayerActionTitle")}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted">{helperLabel}</p>
-            </div>
-          </div>
-
-          {outgoingTransfers.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState icon={<UsersIcon className="h-6 w-6" />} title={t("settlement.shareNoPaymentTitle")} description={t("settlement.shareNoPaymentBody")} />
-            </div>
-          ) : (
-            <div className="mt-5 space-y-3">
-              <SummaryInfoCard label={t("settlement.shareTransferBreakdown")} value={formatCurrency(totalPendingAmount || totalToPay)} />
-              <div className="space-y-3">
-                {outgoingTransfers.map((transfer) => {
-                  const receiverName = getParticipantName(participantNameById, transfer.toParticipantId);
-                  return (
-                    <div key={transfer.transferKey} className="rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-ink">{receiverName}</div>
-                          <div className="mt-2">
-                        <TransferStatusTag status={transfer.status} t={t} />
-                          </div>
-                        </div>
-                        <div className="text-right text-lg font-semibold tracking-tight text-ink">{formatCurrency(transfer.amount)}</div>
-                      </div>
-                    </div>
-                  );
-                })}
+      <div className="settlement-share-role-hero rounded-[28px] border border-brand/15 bg-[linear-gradient(180deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start xl:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="tag bg-sky text-brand">{t("settlement.shareRolePayer")}</span>
+                <span className={`tag ${payerStatusTone}`}>{payerStatus}</span>
+              </div>
+              <div>
+                <h3 className="text-2xl font-semibold tracking-tight text-ink">{t("settlement.sharePayerHeading")}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.sharePayerBody")}</p>
               </div>
             </div>
-          )}
-
-          {outgoingTransfers.length > 0 ? (
-            <div className="mt-5">
-              <PaymentProofUploader
-                proofScreenshotDataUrl={proofScreenshotDataUrl}
-                disabled={isBusy || isReadOnly}
-                onChange={onProofChange}
-                t={t}
-              />
+            <div className="min-w-0 md:pt-1 md:text-right">
+              <div className="text-4xl font-semibold tracking-tight text-ink">{formatCurrency(totalToPay)}</div>
+              <div className="mt-3 text-sm leading-6 text-muted">
+                {payerDisplayStatus === "unpaid" ? t("settlement.sharePayerAmountHelpUnpaid") : t("settlement.sharePayerAmountHelpPaid")}
+              </div>
             </div>
-          ) : null}
-
-          {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
-          {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
-
-          <div className="mt-6 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-            {isReadOnly
-              ? t("groups.readOnlySharePage")
-              : payerDisplayStatus === "unpaid"
-              ? t("settlement.shareMarkPaidHelp")
-              : outgoingTransfers.every((transfer) => isSettlementReceived(transfer.status))
-                ? t("settlement.sharePayerReceivedHelp")
-                : t("settlement.sharePayerDoneHelp")}
           </div>
 
-          <div className="mt-6 flex flex-wrap justify-between gap-3">
-            <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
-            {outgoingTransfers.length > 0 && canMarkPaid && !isReadOnly ? (
-              <button className="button-primary" disabled={isBusy} onClick={onMarkPaid} type="button">
-                {isBusy ? <LoadingSpinner /> : null}
-                {t("settlement.markPaid")}
-              </button>
-            ) : null}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="settlement-share-payment-card rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-ink">{t("settlement.sharePayerStatus")}</div>
+                  <div className="mt-1 text-sm text-muted">{helperLabel}</div>
+                </div>
+                <span className={`tag ${payerStatusTone}`}>{payerStatus}</span>
+              </div>
+
+              {outgoingTransfers.length > 0 && canMarkPaid && !isReadOnly ? (
+                <div className="mt-4 flex justify-end">
+                  <button className="button-primary" disabled={isBusy} onClick={onMarkPaid} type="button">
+                    {isBusy ? <LoadingSpinner /> : null}
+                    {t("settlement.markPaid")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <PaymentProofUploader
+              proofScreenshotDataUrl={proofScreenshotDataUrl}
+              disabled={isBusy || isReadOnly}
+              onChange={onProofChange}
+              t={t}
+            />
           </div>
         </div>
       </div>
 
-      <SettlementReceiptBreakdown receipt={receipt} isLoading={receiptLoading} error={receiptError} t={t} />
+      <div className="settlement-share-surface-panel w-full max-w-none rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-brand">
+            <UsersIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.sharePayerReceiverTitle")}</h4>
+            <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.sharePayerReceiverBody")}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <InfoRow label={t("settlement.sharePayTo")} value={receiverLabel} />
+          <InfoRow label={t("settlement.sharePayerStatus")} value={payerStatus} />
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {outgoingTransfers.length === 0 ? (
+            <InlineMessage tone="info">{t("settlement.shareMissingPaymentInfo")}</InlineMessage>
+          ) : (
+            outgoingTransfers.map((transfer) => {
+              const receiverName = getParticipantName(participantNameById, transfer.toParticipantId);
+              const receiverInfo = receiverPaymentInfos.find((entry) => entry.participantId === transfer.toParticipantId)
+                ?? fallbackReceiverInfo;
+              return (
+                <ReceiverPaymentInfoCard
+                  key={transfer.transferKey}
+                  receiverName={receiverName}
+                  paymentInfo={receiverInfo?.paymentInfo ?? null}
+                  t={t}
+                />
+              );
+            })
+          )}
+        </div>
+
+        {outgoingTransfers.length === 0 ? (
+          <div className="mt-6">
+            <EmptyState icon={<UsersIcon className="h-6 w-6" />} title={t("settlement.shareNoPaymentTitle")} description={t("settlement.shareNoPaymentBody")} />
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <SummaryInfoCard label={t("settlement.shareTransferBreakdown")} value={formatCurrency(totalPendingAmount || totalToPay)} />
+            <div className="space-y-3">
+              {outgoingTransfers.map((transfer) => {
+                const receiverName = getParticipantName(participantNameById, transfer.toParticipantId);
+                return (
+                  <div key={transfer.transferKey} className="settlement-share-transfer-card rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-ink">{receiverName}</div>
+                        <div className="mt-2">
+                          <TransferStatusTag status={transfer.status} t={t} />
+                        </div>
+                      </div>
+                      <div className="text-right text-lg font-semibold tracking-tight text-ink">{formatCurrency(transfer.amount)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
+        {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
+
+        <div className="settlement-share-note mt-6 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
+          {isReadOnly
+            ? t("groups.readOnlySharePage")
+            : payerDisplayStatus === "unpaid"
+            ? t("settlement.shareMarkPaidHelp")
+            : outgoingTransfers.every((transfer) => isSettlementReceived(transfer.status))
+              ? t("settlement.sharePayerReceivedHelp")
+              : t("settlement.sharePayerDoneHelp")}
+        </div>
+      </div>
+
+      <SettlementReceiptBreakdown
+        receipt={receipt}
+        isLoading={receiptLoading}
+        error={receiptError}
+        t={t}
+        className="settlement-share-receipt"
+        collapsible
+        defaultExpanded={false}
+      />
+
+      <div className="flex justify-start">
+        <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
+      </div>
     </div>
   );
 }
 
 function ReceiverPanel({
-  groupName,
   incomingTransfers,
   isReadOnly,
   receipt,
   receiptError,
   receiptLoading,
-  readyToConfirmTransfers,
   participantNameById,
   selectedParticipantName,
   totalToReceive,
@@ -771,13 +765,11 @@ function ReceiverPanel({
   onMarkReceived,
   t
 }: {
-  groupName: string;
   incomingTransfers: SettlementTransferDto[];
   isReadOnly: boolean;
   receipt: ReturnType<typeof buildSettlementReceiptData>;
   receiptError: unknown;
   receiptLoading: boolean;
-  readyToConfirmTransfers: SettlementTransferDto[];
   participantNameById: Record<string, string>;
   selectedParticipantName: string;
   totalToReceive: number;
@@ -788,8 +780,6 @@ function ReceiverPanel({
   t: (key: any) => string;
 }) {
   const [expandedProofTransferKey, setExpandedProofTransferKey] = useState<string | null>(null);
-  const settledCount = incomingTransfers.filter((transfer) => isSettlementReceived(transfer.status)).length;
-  const unpaidCount = incomingTransfers.filter((transfer) => isSettlementUnpaid(transfer.status)).length;
   const paidWaitingCount = incomingTransfers.filter((transfer) => isSettlementPaid(transfer.status)).length;
   const sortedTransfers = incomingTransfers
     .slice()
@@ -809,8 +799,8 @@ function ReceiverPanel({
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="rounded-[28px] border border-success/15 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="settlement-share-role-hero settlement-share-role-hero-receiver rounded-[28px] border border-success/15 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.98))] p-5 shadow-soft md:p-6">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="tag bg-mint text-success">{t("settlement.shareRoleReceiver")}</span>
@@ -822,12 +812,9 @@ function ReceiverPanel({
               <h3 className="text-2xl font-semibold tracking-tight text-ink">{t("settlement.shareReceiverTitle")}</h3>
               <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiverBody")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SummaryInfoCard label={t("settlement.shareReceiverIdentity")} value={selectedParticipantName} />
-              <SummaryInfoCard label={t("participants.groupLabel")} value={groupName} />
-            </div>
+            <div className="text-sm leading-6 text-muted">{selectedParticipantName}</div>
           </div>
-          <div className="min-w-0 rounded-[24px] bg-white/92 px-5 py-5 shadow-soft lg:w-[360px] xl:w-[388px]">
+          <div className="settlement-share-amount-panel min-w-0 w-full rounded-[24px] bg-white/92 px-5 py-5 shadow-soft sm:max-w-[24rem] md:w-auto md:min-w-[18rem]">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.shareReceiverAmountLabel")}</div>
             <div className="mt-3 text-4xl font-semibold tracking-tight text-ink">{formatCurrency(totalToReceive)}</div>
             <div className="mt-3 text-sm leading-6 text-muted">{t("settlement.shareReceiverAmountHelp")}</div>
@@ -835,24 +822,24 @@ function ReceiverPanel({
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(22rem,0.72fr)]">
-        <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
-              <UsersIcon className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.shareReceiverListTitle")}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiverListBody")}</p>
-            </div>
+      <div className="settlement-share-surface-panel rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
+            <UsersIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.shareReceiverListTitle")}</h4>
+            <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiverListBody")}</p>
           </div>
+        </div>
 
-          {incomingTransfers.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState icon={<SparklesIcon className="h-6 w-6" />} title={t("settlement.shareNoReceivableTitle")} description={t("settlement.shareNoReceivableBody")} />
-            </div>
-          ) : (
-            <div className="mt-6 space-y-3">
+        {incomingTransfers.length === 0 ? (
+          <div className="mt-6">
+            <EmptyState icon={<SparklesIcon className="h-6 w-6" />} title={t("settlement.shareNoReceivableTitle")} description={t("settlement.shareNoReceivableBody")} />
+          </div>
+        ) : (
+          <div className="mt-6 space-y-3">
+            <div className="space-y-3 md:hidden">
               {sortedTransfers.map((transfer) => {
                 const payerName = getParticipantName(participantNameById, transfer.fromParticipantId);
                 const canMarkReceived = isSettlementPaid(transfer.status) && !isReadOnly;
@@ -860,132 +847,169 @@ function ReceiverPanel({
                 const hasProof = Boolean(transfer.proofScreenshotDataUrl);
                 const proofExpanded = expandedProofTransferKey === transfer.transferKey;
                 return (
-                  <article key={transfer.transferKey} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <article key={transfer.transferKey} className="settlement-share-transfer-card rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-base font-semibold tracking-tight text-ink">{payerName}</div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <TransferStatusTag status={transfer.status} t={t} />
-                          <span className="text-sm text-muted">{receiverStatusHint(transfer.status, t)}</span>
-                        </div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Name</div>
+                        <div className="mt-2 text-sm font-semibold text-ink">{payerName}</div>
                       </div>
-                      <div className="text-left sm:text-right">
-                        <div className="text-sm text-muted">{t("settlement.shareReceiverAmountDue")}</div>
-                        <div className="mt-1 text-xl font-semibold tracking-tight text-ink">{formatCurrency(transfer.amount)}</div>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Amount</div>
+                        <div className="mt-2 text-lg font-semibold tracking-tight text-ink tabular-nums">{formatCurrency(transfer.amount)}</div>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <ReceiverProofSection
-                        status={transfer.status}
-                        proofScreenshotDataUrl={transfer.proofScreenshotDataUrl}
-                        isExpanded={proofExpanded}
-                        onToggle={() => setExpandedProofTransferKey((current) => current === transfer.transferKey ? null : transfer.transferKey)}
-                        t={t}
-                      />
-                    </div>
-                    <div className="mt-4 flex flex-col gap-3 border-t border-slate-200/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-sm leading-6 text-muted">
-                        {receiverActionHint(transfer.status, hasProof, t)}
+
+                    <div className="mt-4 space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Status</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <TransferStatusTag status={transfer.status} t={t} />
+                        <span className="text-sm text-muted">{receiverStatusHint(transfer.status, t)}</span>
                       </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Proof</div>
+                      {hasProof ? (
+                        <button
+                          className="button-secondary min-h-[40px] px-3 py-2 text-sm"
+                          onClick={() => setExpandedProofTransferKey((current) => current === transfer.transferKey ? null : transfer.transferKey)}
+                          type="button"
+                        >
+                          {proofExpanded ? t("settlement.proofHide") : t("settlement.proofView")}
+                        </button>
+                      ) : (
+                        <span className="text-sm text-muted">-</span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                       {canMarkReceived ? (
-                        <button className="button-primary" disabled={isTransferPending} onClick={() => onMarkReceived(transfer)} type="button">
+                        <button className="button-primary min-h-[40px] px-3 py-2 text-sm" disabled={isTransferPending} onClick={() => onMarkReceived(transfer)} type="button">
                           {isTransferPending ? <LoadingSpinner /> : null}
                           {t("settlement.markReceived")}
                         </button>
+                      ) : isSettlementReceived(transfer.status) ? (
+                        <span className="tag bg-mint text-success">{t("settlement.shareReceiverConfirmed")}</span>
                       ) : (
-                        <span className={`tag ${isSettlementReceived(transfer.status) ? "bg-mint text-success" : "bg-slate-100 text-muted"}`}>
-                          {isSettlementReceived(transfer.status) ? t("settlement.shareReceiverConfirmed") : t("settlement.shareWaitingForPayer")}
-                        </span>
+                        <span className="text-sm text-muted">-</span>
                       )}
                     </div>
+
+                    {hasProof && proofExpanded ? (
+                      <div className="mt-4 rounded-[22px] border border-slate-200 bg-white/88 p-4 shadow-soft">
+                        <TransferProofCard proofScreenshotDataUrl={transfer.proofScreenshotDataUrl!} t={t} />
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}
             </div>
-          )}
-        </div>
 
-        <div className="rounded-[26px] border border-slate-200 bg-white/94 p-5 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint/60 text-success">
-              <SparklesIcon className="h-5 w-5" />
-            </span>
-            <div>
-              <h4 className="text-lg font-semibold tracking-tight text-ink">{t("settlement.shareReceiverSummaryTitle")}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareReceiverSummaryBody")}</p>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full min-w-[760px] border-separate border-spacing-y-3">
+                <thead>
+                  <tr>
+                    <th className="px-4 pb-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted">Name</th>
+                    <th className="px-4 pb-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted">Amount</th>
+                    <th className="px-4 pb-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted">Status</th>
+                    <th className="px-4 pb-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted">Proof</th>
+                    <th className="px-4 pb-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTransfers.map((transfer) => {
+                    const payerName = getParticipantName(participantNameById, transfer.fromParticipantId);
+                    const canMarkReceived = isSettlementPaid(transfer.status) && !isReadOnly;
+                    const isTransferPending = pendingTransferKeys.includes(transfer.transferKey);
+                    const hasProof = Boolean(transfer.proofScreenshotDataUrl);
+                    const proofExpanded = expandedProofTransferKey === transfer.transferKey;
+                    return (
+                      <Fragment key={transfer.transferKey}>
+                        <tr className="settlement-share-transfer-card align-top">
+                          <td className="rounded-l-[22px] border-y border-l border-slate-200 bg-slate-50/80 px-4 py-4 text-sm font-semibold text-ink">
+                            {payerName}
+                          </td>
+                          <td className="border-y border-slate-200 bg-slate-50/80 px-4 py-4 text-sm font-semibold text-ink tabular-nums">
+                            {formatCurrency(transfer.amount)}
+                          </td>
+                          <td className="border-y border-slate-200 bg-slate-50/80 px-4 py-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <TransferStatusTag status={transfer.status} t={t} />
+                              <span className="text-sm text-muted">{receiverStatusHint(transfer.status, t)}</span>
+                            </div>
+                          </td>
+                          <td className="border-y border-slate-200 bg-slate-50/80 px-4 py-4">
+                            {hasProof ? (
+                              <button
+                                className="button-secondary min-h-[40px] px-3 py-2 text-sm"
+                                onClick={() => setExpandedProofTransferKey((current) => current === transfer.transferKey ? null : transfer.transferKey)}
+                                type="button"
+                              >
+                                {proofExpanded ? t("settlement.proofHide") : t("settlement.proofView")}
+                              </button>
+                            ) : (
+                              <span className="text-sm text-muted">-</span>
+                            )}
+                          </td>
+                          <td className="rounded-r-[22px] border-y border-r border-slate-200 bg-slate-50/80 px-4 py-4">
+                            {canMarkReceived ? (
+                              <button className="button-primary min-h-[40px] px-3 py-2 text-sm" disabled={isTransferPending} onClick={() => onMarkReceived(transfer)} type="button">
+                                {isTransferPending ? <LoadingSpinner /> : null}
+                                {t("settlement.markReceived")}
+                              </button>
+                            ) : isSettlementReceived(transfer.status) ? (
+                              <span className="tag bg-mint text-success">{t("settlement.shareReceiverConfirmed")}</span>
+                            ) : (
+                              <span className="text-sm text-muted">-</span>
+                            )}
+                          </td>
+                        </tr>
+                        {hasProof && proofExpanded ? (
+                          <tr>
+                            <td colSpan={5} className="px-0 pt-0">
+                              <div className="rounded-[22px] border border-slate-200 bg-white/88 p-4 shadow-soft">
+                                <TransferProofCard proofScreenshotDataUrl={transfer.proofScreenshotDataUrl!} t={t} />
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
+        )}
 
-          <div className="mt-5 grid gap-3">
-            <SummaryInfoCard label={t("settlement.shareReceiverPayers")} value={String(incomingTransfers.length).padStart(2, "0")} />
-            <SummaryInfoCard label={t("settlement.shareAwaitingReview")} value={String(readyToConfirmTransfers.length).padStart(2, "0")} />
-            <SummaryInfoCard label={t("settlement.shareReceiverUnpaidCount")} value={String(unpaidCount).padStart(2, "0")} />
-            <SummaryInfoCard label={t("settlement.shareSettledCount")} value={String(settledCount).padStart(2, "0")} />
-          </div>
+        {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
+        {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
 
-          {actionError ? <div className="mt-5"><InlineMessage tone="error">{actionError}</InlineMessage></div> : null}
-          {isReadOnly ? <div className="mt-5"><InlineMessage tone="info">{t("groups.readOnlySharePage")}</InlineMessage></div> : null}
-
-          <div className="mt-5 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-            {isReadOnly ? t("groups.readOnlySharePage") : t("settlement.shareMarkReceivedHelp")}
-          </div>
-          <div className="mt-6 flex justify-start">
-            <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
-          </div>
+        <div className="settlement-share-note mt-5 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
+          {isReadOnly ? t("groups.readOnlySharePage") : t("settlement.shareMarkReceivedHelp")}
         </div>
       </div>
 
-      <SettlementReceiptBreakdown receipt={receipt} isLoading={receiptLoading} error={receiptError} t={t} />
-    </div>
-  );
-}
+      <SettlementReceiptBreakdown
+        receipt={receipt}
+        isLoading={receiptLoading}
+        error={receiptError}
+        t={t}
+        className="settlement-share-receipt"
+        collapsible
+        defaultExpanded={false}
+      />
 
-function ReceiverProofSection({
-  status,
-  proofScreenshotDataUrl,
-  isExpanded,
-  onToggle,
-  t
-}: {
-  status: SettlementTransferStatus;
-  proofScreenshotDataUrl?: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-  t: (key: any) => string;
-}) {
-  const hasProof = Boolean(proofScreenshotDataUrl);
-
-  return (
-    <div className="rounded-[20px] border border-slate-200 bg-white/88 p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.proofReceiverTitle")}</div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className={`tag ${hasProof ? "bg-sky text-brand" : "bg-slate-100 text-muted"}`}>
-              {hasProof ? t("settlement.proofAttached") : t("settlement.proofMissing")}
-            </span>
-            <span className="text-sm leading-6 text-muted">{receiverProofHint(status, hasProof, t)}</span>
-          </div>
-        </div>
-        {hasProof ? (
-          <button className="button-secondary" onClick={onToggle} type="button">
-            {isExpanded ? t("settlement.proofHide") : t("settlement.proofView")}
-          </button>
-        ) : null}
+      <div className="flex justify-start">
+        <button className="button-secondary" onClick={onBack} type="button">{t("settlement.shareBack")}</button>
       </div>
-
-      {hasProof && isExpanded ? (
-        <div className="mt-4">
-          <TransferProofCard proofScreenshotDataUrl={proofScreenshotDataUrl!} t={t} />
-        </div>
-      ) : null}
     </div>
   );
 }
 
 function SummaryInfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-4 text-left">
+    <div className="settlement-share-summary-card rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-4 text-left">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
       <div className="mt-2 text-base font-semibold text-ink">{value}</div>
     </div>
@@ -1004,7 +1028,7 @@ function ReceiverPaymentInfoCard({
   const paymentTextAvailable = hasSharePaymentTextInfo(paymentInfo);
 
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
+    <div className="settlement-share-payment-card rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-ink">{receiverName}</div>
@@ -1024,7 +1048,7 @@ function ReceiverPaymentInfoCard({
               {paymentInfo.accountName ? <InfoRow label={t("settlement.accountName")} value={paymentInfo.accountName} /> : null}
               {paymentInfo.accountNumber ? <InfoRow label={t("settlement.accountNumber")} value={paymentInfo.accountNumber} /> : null}
               {paymentInfo.notes ? (
-                <div className="rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 md:col-span-2">
+                <div className="settlement-share-media-panel rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 md:col-span-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.notes")}</div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{paymentInfo.notes}</div>
                 </div>
@@ -1037,13 +1061,13 @@ function ReceiverPaymentInfoCard({
           ) : null}
 
           {!paymentTextAvailable && !paymentInfo.paymentQrDataUrl ? (
-            <div className="rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
+            <div className="settlement-share-media-panel rounded-[20px] border border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
               {t("settlement.shareMissingPaymentInfo")}
             </div>
           ) : null}
         </div>
       ) : (
-        <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
+        <div className="settlement-share-note mt-4 rounded-[20px] border border-dashed border-slate-200 bg-white/90 px-4 py-3 text-sm leading-6 text-muted">
           {t("settlement.shareMissingPaymentInfo")}
         </div>
       )}
@@ -1065,7 +1089,7 @@ function PaymentQrPanel({
   }, [paymentQrDataUrl]);
 
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,1))] p-4">
+    <div className="settlement-share-media-panel rounded-[22px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,1))] p-4">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.paymentQrSectionTitle")}</div>
       <div className="mt-2 text-sm leading-6 text-muted">{t("settlement.paymentQrSectionBody")}</div>
 
@@ -1131,7 +1155,7 @@ function PaymentProofUploader({
   }
 
   return (
-    <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 p-4">
+    <div className="settlement-share-proof-uploader rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold text-ink">{t("settlement.proofLabel")}</div>
@@ -1191,7 +1215,7 @@ function TransferProofCard({
   }, [proofScreenshotDataUrl]);
 
   return (
-    <div className="rounded-[20px] border border-slate-200 bg-white/90 p-3">
+    <div className="settlement-share-proof-card rounded-[20px] border border-slate-200 bg-white/90 p-3">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{previewLabel ?? t("settlement.proofReceiverTitle")}</div>
       <div className="mt-2 text-sm leading-6 text-muted">{t("settlement.proofReceiverBody")}</div>
       {imageError ? (
@@ -1256,7 +1280,7 @@ function getRoleLabel(role: ShareRole, t: (key: any) => string) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3">
+    <div className="settlement-share-info-row rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
       <div className="mt-2 text-sm font-medium text-ink">{value}</div>
     </div>
@@ -1289,24 +1313,4 @@ function receiverStatusHint(status: SettlementTransferStatus, t: (key: any) => s
     1: t("settlement.shareReceiverStatusPaid"),
     2: t("settlement.shareReceiverStatusReceived")
   }[status]);
-}
-
-function receiverProofHint(status: SettlementTransferStatus, hasProof: boolean, t: (key: any) => string) {
-  return ({
-    [SETTLEMENT_STATUS.unpaid]: hasProof ? t("settlement.proofStatusUnpaidAttached") : t("settlement.proofStatusUnpaidMissing"),
-    [SETTLEMENT_STATUS.paid]: hasProof ? t("settlement.proofStatusPaidAttached") : t("settlement.proofStatusPaidMissing"),
-    [SETTLEMENT_STATUS.received]: hasProof ? t("settlement.proofStatusReceivedAttached") : t("settlement.proofStatusReceivedMissing")
-  }[status]);
-}
-
-function receiverActionHint(status: SettlementTransferStatus, hasProof: boolean, t: (key: any) => string) {
-  if (isSettlementPaid(status)) {
-    return hasProof ? t("settlement.proofStatusPaidAttached") : t("settlement.proofStatusPaidMissing");
-  }
-
-  if (isSettlementReceived(status)) {
-    return hasProof ? t("settlement.proofStatusReceivedAttached") : t("settlement.proofStatusReceivedMissing");
-  }
-
-  return hasProof ? t("settlement.proofStatusUnpaidAttached") : t("settlement.proofStatusUnpaidMissing");
 }

@@ -87,6 +87,8 @@ export function BillsPage() {
 
   const participants = participantsQuery.data ?? [];
   const isLocked = groupQuery.data ? isGroupLocked(groupQuery.data.status) : false;
+  const canEditGroup = groupQuery.data?.canEdit ?? false;
+  const isReadOnly = isLocked || !canEditGroup;
   const primaryPayer = primaryPayerParticipantId || participants[0]?.id || "";
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + (Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0), 0),
@@ -305,7 +307,7 @@ export function BillsPage() {
   };
 
   const openCreateModal = () => {
-    if (isLocked) {
+    if (isReadOnly) {
       return;
     }
 
@@ -314,7 +316,7 @@ export function BillsPage() {
   };
 
   useEffect(() => {
-    if (location.hash !== "#create-bill" || isEditorOpen || isLocked || participants.length === 0) {
+    if (location.hash !== "#create-bill" || isEditorOpen || isReadOnly || participants.length === 0) {
       return;
     }
 
@@ -327,7 +329,7 @@ export function BillsPage() {
       },
       { replace: true }
     );
-  }, [isEditorOpen, isLocked, location.hash, location.pathname, location.search, navigate, participants.length]);
+  }, [isEditorOpen, isReadOnly, location.hash, location.pathname, location.search, navigate, participants.length]);
 
   const closeEditor = () => {
     resetBillDraft();
@@ -380,7 +382,7 @@ export function BillsPage() {
   };
 
   async function handleEditBill(billId: string) {
-    if (!groupId || isBillActionBusy || isLocked) {
+    if (!groupId || isBillActionBusy || isReadOnly) {
       return;
     }
 
@@ -428,7 +430,7 @@ export function BillsPage() {
   }
 
   function validateBillDraft() {
-    if (!groupId || isSubmitting || isLocked) {
+    if (!groupId || isSubmitting || isReadOnly) {
       return false;
     }
 
@@ -544,7 +546,7 @@ export function BillsPage() {
           eyebrow={groupQuery.data?.name ?? t("nav.bills")}
           title={t("bills.title")}
           description={t("bills.moduleBody")}
-          actions={!isLocked ? (
+          actions={!isReadOnly ? (
             <button className="button-primary" disabled={isBillActionBusy} onClick={openCreateModal} type="button">
               <PlusIcon className="h-4 w-4" />
               {t("bills.create")}
@@ -565,9 +567,9 @@ export function BillsPage() {
           </div>
         ) : null}
 
-        {isLocked ? (
+        {isReadOnly ? (
           <div className="mt-6">
-            <InlineMessage tone="info">{t("groups.readOnlyBills")}</InlineMessage>
+            <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlyBills") : t("groups.readOnlyMemberHint")}</InlineMessage>
           </div>
         ) : null}
       </SectionCard>
@@ -599,7 +601,7 @@ export function BillsPage() {
               icon={<ReceiptIcon className="h-6 w-6" />}
               title={t("bills.empty")}
               description={t("bills.emptyBody")}
-              action={!isLocked ? <button className="button-secondary" onClick={openCreateModal} type="button">{t("bills.create")}</button> : undefined}
+              action={!isReadOnly ? <button className="button-secondary" onClick={openCreateModal} type="button">{t("bills.create")}</button> : undefined}
             />
           ) : (
             billsQuery.data?.map((bill) => (
@@ -621,7 +623,7 @@ export function BillsPage() {
                       <div className="text-sm text-muted">{t("bills.total")}</div>
                       <div className="mt-1 text-2xl font-semibold tracking-tight text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
                     </div>
-                    {!isLocked ? (
+                    {!isReadOnly ? (
                       <div className="flex gap-2">
                         <IconActionButton
                           icon={loadingBillId === bill.id ? <LoadingSpinner /> : <PencilIcon className="h-4 w-4" />}

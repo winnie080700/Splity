@@ -7,6 +7,7 @@ import {
   type BillParticipantInput,
   type CreateBillRequest,
   type FeeType,
+  type ParticipantInvitationStatus,
   type SplitMode
 } from "@api-client";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -14,6 +15,9 @@ import { Link, useParams } from "react-router-dom";
 import { buildSettlementReceiptData } from "@/features/settlements/receipt";
 import { SettlementReceiptBreakdown } from "@/features/settlements/SettlementReceiptBreakdown";
 import { prepareSettlementProofImageDataUrl } from "@/features/settlements/share";
+import { downloadAllReceiptsImage, downloadReceiptImage } from "@/features/settlements/summaryImage";
+import { SettlementShareDialog } from "@/features/settlements/SettlementShareDialog";
+import { useAuth } from "@/shared/auth/AuthProvider";
 import { formatGroupCreatedAt, GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { CustomSelect } from "@/shared/ui/CustomSelect";
@@ -34,7 +38,10 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
+  DownloadIcon,
   EyeIcon,
+  ExportIcon,
+  LinkIcon,
   PencilIcon,
   PlusIcon,
   ReceiptIcon,
@@ -93,9 +100,23 @@ function getParticipantHandle(name: string, username?: string | null) {
   return `@${name.trim().toLowerCase().replace(/\s+/g, "")}`;
 }
 
+function getParticipantInvitationMeta(status: ParticipantInvitationStatus) {
+  switch (status) {
+    case "pending":
+      return { labelKey: "participants.statusInvited", className: "border border-brand/10 bg-brand/5 text-brand" };
+    case "declined":
+      return { labelKey: "participants.statusDeclined", className: "border border-danger/20 bg-rose-50 text-danger" };
+    case "accepted":
+      return { labelKey: "participants.statusAccepted", className: "border border-mint/60 bg-mint/70 text-success" };
+    default:
+      return { labelKey: "participants.statusManual", className: "bg-slate-100 text-muted" };
+  }
+}
+
 export function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const queryClient = useQueryClient();
+  const { isGuest } = useAuth();
   const { t, language } = useI18n();
   const { showToast } = useToast();
 
@@ -115,6 +136,12 @@ export function GroupDetailPage() {
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
   const [deleteBillError, setDeleteBillError] = useState<string | null>(null);
   const [settlementReceiptParticipantId, setSettlementReceiptParticipantId] = useState<string | null>(null);
+  const [downloadingReceiptIds, setDownloadingReceiptIds] = useState<Set<string>>(new Set());
+  const [isExportingAllReceipts, setIsExportingAllReceipts] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isStartSettlementOpen, setIsStartSettlementOpen] = useState(false);
+  const [isMarkSettledOpen, setIsMarkSettledOpen] = useState(false);
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
   const [billEditorStep, setBillEditorStep] = useState<BillEditorStep>(1);
   const [storeName, setStoreName] = useState("");
   const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
@@ -158,6 +185,13 @@ export function GroupDetailPage() {
     enabled: Boolean(groupId)
   });
 
+  const currentShareQuery = useQuery({
+    queryKey: ["current-settlement-share", groupId],
+    queryFn: () => apiClient.getCurrentSettlementShare(groupId!),
+    enabled: Boolean(groupId),
+    retry: false
+  });
+
   const searchedUserQuery = useQuery({
     queryKey: ["user-search", searchedUsername],
     queryFn: () => apiClient.searchUserByUsername(searchedUsername),
@@ -171,12 +205,7 @@ export function GroupDetailPage() {
   });
 
   const settlementReceiptBillsQuery = useQuery({
-    queryKey: [
-      "group-detail-bill-details",
-      groupId,
-      settlementReceiptParticipantId,
-      (billsQuery.data ?? []).map((bill) => bill.id).join(",")
-    ],
+    queryKey: getSettlementReceiptBillsQueryKey(groupId, settlementReceiptParticipantId, billsQuery.data ?? []),
     queryFn: async () => {
       const currentBills = billsQuery.data ?? [];
       return Promise.all(currentBills.map((bill) => apiClient.getBill(groupId!, bill.id)));
@@ -191,7 +220,9 @@ export function GroupDetailPage() {
   const transfers = settlement?.transfers ?? [];
   const netBalances = settlement?.netBalances ?? [];
   const isLocked = group ? isGroupLocked(group.status) : false;
-  const canCreateBills = !isLocked && participants.length > 0;
+  const canEditGroup = group?.canEdit ?? false;
+  const isReadOnly = !canEditGroup || isLocked;
+  const canCreateBills = !isReadOnly && participants.length > 0;
   const participantNameById = useMemo(
     () => Object.fromEntries(participants.map((participant) => [participant.id, participant.name])),
     [participants]
@@ -323,11 +354,9 @@ export function GroupDetailPage() {
 
       return apiClient.createBill(groupId, buildBillPayload());
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
-        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
-      ]);
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bills", groupId] });
+      void queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
       closeBillEditor(true);
       showToast({ title: t("bills.create"), description: t("feedback.saved"), tone: "success" });
     },
@@ -346,11 +375,9 @@ export function GroupDetailPage() {
 
       return apiClient.updateBill(groupId, editingBillId, buildBillPayload());
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["bills", groupId] }),
-        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
-      ]);
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bills", groupId] });
+      void queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
       closeBillEditor(true);
       showToast({ title: t("bills.editTitle"), description: t("feedback.saved"), tone: "success" });
     },
@@ -390,6 +417,34 @@ export function GroupDetailPage() {
     }
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: "settling" | "settled") => apiClient.updateGroupStatus(groupId!, { status }),
+    onSuccess: async (nextGroup, nextStatus) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["group", groupId] }),
+        queryClient.invalidateQueries({ queryKey: ["groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["settlements", groupId] })
+      ]);
+      setStatusActionError(null);
+      setIsStartSettlementOpen(false);
+      setIsMarkSettledOpen(false);
+      showToast({
+        title: nextStatus === "settling" ? t("groups.startSettlementAction") : t("groups.markSettledAction"),
+        description: t("feedback.saved"),
+        tone: "success"
+      });
+
+      if (nextGroup.status === "settling" && !isGuest) {
+        setIsShareDialogOpen(true);
+      }
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error);
+      setStatusActionError(message);
+      showToast({ title: t("feedback.requestFailed"), description: message, tone: "error" });
+    }
+  });
+
   function clearCreateError() {
     if (createError) {
       setCreateError(null);
@@ -397,7 +452,7 @@ export function GroupDetailPage() {
   }
 
   function openCreateDialog() {
-    if (isLocked) {
+    if (isReadOnly) {
       return;
     }
 
@@ -416,6 +471,96 @@ export function GroupDetailPage() {
     setInputValue("");
     setCreateError(null);
     setIsCreateDialogOpen(false);
+  }
+
+  async function handleDownloadReceipt(participantId: string) {
+    if (!groupId) {
+      return;
+    }
+
+    setDownloadingReceiptIds((current) => new Set(current).add(participantId));
+
+    try {
+      const allBills = await queryClient.fetchQuery({
+        queryKey: getSettlementReceiptBillsQueryKey(groupId, participantId, billsQuery.data ?? []),
+        queryFn: async () => Promise.all((billsQuery.data ?? []).map((bill) => apiClient.getBill(groupId, bill.id)))
+      });
+      const participant = participants.find((entry) => entry.id === participantId);
+      const participantBalance = netBalances.find((entry) => entry.participantId === participantId)?.netAmount ?? 0;
+      const receipt = buildSettlementReceiptData({
+        bills: allBills,
+        participantId,
+        perspective: participantBalance < 0 ? "payable" : "receivable",
+        expectedTotalAmount: Math.abs(participantBalance),
+        t
+      });
+
+      await downloadReceiptImage({
+        fileName: createSummaryImageFileName(),
+        participantId,
+        participantName: participant?.name ?? participantId,
+        receipt,
+        balances: netBalances,
+        transfers,
+        receiverPaymentInfos: currentShareQuery.data?.receiverPaymentInfos ?? [],
+        formatCurrency
+      });
+    }
+    catch (error) {
+      showToast({ title: t("feedback.requestFailed"), description: getErrorMessage(error), tone: "error" });
+    }
+    finally {
+      setDownloadingReceiptIds((current) => {
+        const next = new Set(current);
+        next.delete(participantId);
+        return next;
+      });
+    }
+  }
+
+  async function handleExportAllReceipts() {
+    if (!groupId || !group || isExportingAllReceipts) {
+      return;
+    }
+
+    setIsExportingAllReceipts(true);
+    try {
+      const allBills = await queryClient.fetchQuery({
+        queryKey: getSettlementReceiptBillsQueryKey(groupId, null, billsQuery.data ?? []),
+        queryFn: async () => Promise.all((billsQuery.data ?? []).map((bill) => apiClient.getBill(groupId, bill.id)))
+      });
+
+      await downloadAllReceiptsImage({
+        fileName: createSummaryImageFileName(),
+        groupName: group.name,
+        participants: participants.map((participant) => {
+          const participantBalance = netBalances.find((entry) => entry.participantId === participant.id)?.netAmount ?? 0;
+          return {
+            participantId: participant.id,
+            participantName: participant.name,
+            receipt: buildSettlementReceiptData({
+              bills: allBills,
+              participantId: participant.id,
+              perspective: participantBalance < 0 ? "payable" : "receivable",
+              expectedTotalAmount: Math.abs(participantBalance),
+              t
+            })
+          };
+        }),
+        balances: netBalances,
+        transfers,
+        receiverPaymentInfos: currentShareQuery.data?.receiverPaymentInfos ?? [],
+        formatCurrency
+      });
+
+      showToast({ title: t("settlement.exportAllReceipts"), description: t("feedback.saved"), tone: "success" });
+    }
+    catch (error) {
+      showToast({ title: t("feedback.requestFailed"), description: getErrorMessage(error), tone: "error" });
+    }
+    finally {
+      setIsExportingAllReceipts(false);
+    }
   }
 
   function addEntryFromInput() {
@@ -474,7 +619,7 @@ export function GroupDetailPage() {
   }
 
   function handleCreateSave() {
-    if (!groupId || createParticipantMutation.isPending || isLocked) {
+    if (!groupId || createParticipantMutation.isPending || isReadOnly) {
       return;
     }
 
@@ -616,7 +761,7 @@ export function GroupDetailPage() {
   }
 
   async function openBillEditorForEdit(billId: string) {
-    if (!groupId || isLocked) {
+    if (!groupId || isReadOnly) {
       return;
     }
 
@@ -749,7 +894,7 @@ export function GroupDetailPage() {
   }
 
   function validateBillEditor(step: 1 | 2 | 3) {
-    if (!groupId || createBillMutation.isPending || isLocked) {
+    if (!groupId || createBillMutation.isPending || isReadOnly) {
       return false;
     }
 
@@ -968,7 +1113,7 @@ export function GroupDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="group-detail-page space-y-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
         <Link className="inline-flex items-center gap-2 font-medium text-ink" to="/groups">
           <ChevronLeftIcon className="h-4 w-4" />
@@ -979,14 +1124,13 @@ export function GroupDetailPage() {
       </div>
 
       <SectionCard className="p-4 md:p-6">
-        <div>
-          <h2 className="section-title">{t("groups.overviewSectionTitle")}</h2>
-          <p className="mt-2 section-copy">{t("groups.overviewBody")}</p>
+        <div className="group-detail-kicker text-[10px] font-semibold uppercase tracking-[0.18em]">
+          {t("groups.overviewSectionTitle")}
         </div>
 
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <StatTile label={t("groups.participantCount")} value={String(participants.length)} icon={<UsersIcon className="h-5 w-5" />} />
-          <StatTile label={t("groups.billCount")} value={String(bills.length)} icon={<ReceiptIcon className="h-5 w-5" />} tone="brand" />
+          <StatTile label={t("groups.billCount")} value={String(bills.length)} icon={<ReceiptIcon className="h-5 w-5" />} />
           <StatTile label={t("groups.createdOnLabel")} value={formatGroupCreatedAt(group.createdAtUtc, language)} icon={<CalendarIcon className="h-5 w-5" />} />
           <div className="stat-card">
             <div className="flex items-center justify-between gap-3">
@@ -1008,19 +1152,18 @@ export function GroupDetailPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="section-title">{t("groups.participantsSectionTitle")}</h2>
-            <p className="mt-2 section-copy">{t("participants.listBody")}</p>
           </div>
           <IconActionButton
-            disabled={isLocked}
+            disabled={isReadOnly}
             icon={<PlusIcon className="h-5 w-5" />}
             label={t("participants.addAction")}
             onClick={openCreateDialog}
           />
         </div>
 
-        {isLocked ? (
+        {isReadOnly ? (
           <div className="mt-4">
-            <InlineMessage tone="info">{t("groups.readOnlyHint")}</InlineMessage>
+            <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlyHint") : t("groups.readOnlyMemberHint")}</InlineMessage>
           </div>
         ) : null}
 
@@ -1030,45 +1173,46 @@ export function GroupDetailPage() {
               icon={<UsersIcon className="h-6 w-6" />}
               title={t("participants.emptyTitle")}
               description={t("participants.emptyBody")}
-              action={!isLocked ? (
+              action={!isReadOnly ? (
                 <button className="button-secondary" onClick={openCreateDialog} type="button">
                   {t("participants.addAction")}
                 </button>
-                ) : undefined}
-              />
-            ) : (
+              ) : undefined}
+            />
+          ) : (
             <div className="max-h-[340px] overflow-y-auto pr-1">
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {participants.map((participant) => (
                   <li key={participant.id}>
-                    <article className="flex min-h-[58px] items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                      <div className="min-w-0 flex flex-1 items-center gap-2 text-sm">
+                    <article className="group-detail-chip flex min-h-[58px] items-center gap-3 rounded-[20px] border border-slate-200 bg-white/82 px-4 py-3 shadow-sm">
+                      <div className="min-w-0 flex flex-1 flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2">
                         <span className="truncate font-semibold text-ink">{participant.name}</span>
-                        <span className="shrink-0 text-muted">-</span>
+                        <span className="hidden shrink-0 text-muted sm:inline">-</span>
                         <span className="truncate text-muted">{getParticipantHandle(participant.name, participant.username)}</span>
+                        <span className={["tag shrink-0", getParticipantInvitationMeta(participant.invitationStatus).className].join(" ")}>
+                          {t(getParticipantInvitationMeta(participant.invitationStatus).labelKey as any)}
+                        </span>
                       </div>
-                      {!isLocked ? (
+                      {!isReadOnly ? (
                         <div className="flex shrink-0 items-center gap-2 text-xs font-semibold">
-                          <button
-                            className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
+                          <IconActionButton
+                            icon={<PencilIcon className="h-4 w-4 text-brand" />}
+                            label={t("participants.editAction")}
                             onClick={() => {
                               setEditError(null);
                               setEditingParticipantId(participant.id);
                             }}
-                            type="button"
-                          >
-                            {t("participants.editAction")}
-                          </button>
-                          <button
-                            className="rounded-full px-2.5 py-1 text-danger transition hover:bg-rose-50"
+                            size="sm"
+                          />
+                          <IconActionButton
+                            icon={<TrashIcon className="h-4 w-4 text-danger" />}
+                            label={t("common.delete")}
                             onClick={() => {
                               setDeleteError(null);
                               setDeletingParticipantId(participant.id);
                             }}
-                            type="button"
-                          >
-                            {t("common.delete")}
-                          </button>
+                            size="sm"
+                          />
                         </div>
                       ) : null}
                     </article>
@@ -1084,7 +1228,6 @@ export function GroupDetailPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="section-title">{t("groups.billsSectionTitle")}</h2>
-            <p className="mt-2 section-copy">{t("bills.moduleBody")}</p>
           </div>
           <IconActionButton
             disabled={!canCreateBills}
@@ -1094,7 +1237,7 @@ export function GroupDetailPage() {
           />
         </div>
 
-        {!canCreateBills && !isLocked ? (
+        {!canCreateBills && !isReadOnly ? (
           <div className="mt-4">
             <InlineMessage tone="info">{t("bills.noParticipantsBody")}</InlineMessage>
           </div>
@@ -1113,75 +1256,182 @@ export function GroupDetailPage() {
               ) : undefined}
             />
           ) : (
-            <div className="dashboard-activity-table overflow-x-auto">
-              <div className="dashboard-activity-table-header group-bills-table-header min-w-[560px] sm:min-w-[960px]">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.date")}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.store")}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.splitMode")}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.primaryPayer")}</div>
-                <div className="hidden text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("bills.subtotal")}</div>
-                <div className="hidden text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("bills.fees")}</div>
-                <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.total")}</div>
-                <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnActions")}</div>
-              </div>
-              <ul className="min-w-[560px] sm:min-w-[960px]">
+            <div className="space-y-3">
+              <div className="space-y-3 xl:hidden">
                 {bills.map((bill) => (
-                  <li key={bill.id}>
-                    <div className="dashboard-activity-table-row group-bills-table-row">
-                      <div className="text-sm text-muted">{formatDate(bill.transactionDateUtc, language)}</div>
-                      <div className="truncate text-sm font-semibold text-ink">{bill.storeName}</div>
-                      <div className="text-sm text-muted">{bill.splitMode === 2 ? t("bills.weighted") : t("bills.equal")}</div>
-                      <div className="truncate text-sm text-ink">{participantNameById[bill.primaryPayerParticipantId] ?? "-"}</div>
-                      <div className="hidden text-right text-sm text-ink sm:block">{formatCurrency(bill.subtotalAmount)}</div>
-                      <div className="hidden text-right text-sm text-ink sm:block">{formatCurrency(bill.totalFeeAmount)}</div>
-                      <div className="text-right text-sm font-semibold text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
-                      <div className="flex justify-end gap-2 text-xs font-semibold">
-                        <button
-                          className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
-                          onClick={() => setViewingBillId(bill.id)}
-                          type="button"
-                        >
-                          {t("common.view")}
-                        </button>
-                        {!isLocked ? (
-                          <>
-                            <button
-                              className="rounded-full px-2.5 py-1 text-brand transition hover:bg-brand/5 hover:text-ink"
-                              onClick={() => void openBillEditorForEdit(bill.id)}
-                              type="button"
-                            >
-                              {t("bills.editAction")}
-                            </button>
-                            <button
-                              className="rounded-full px-2.5 py-1 text-danger transition hover:bg-rose-50"
-                              onClick={() => {
-                                setDeleteBillError(null);
-                                setDeletingBillId(bill.id);
-                              }}
-                              type="button"
-                            >
-                              {t("common.delete")}
-                            </button>
-                          </>
-                        ) : null}
+                  <article key={bill.id} className="list-card">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-ink">{bill.storeName}</div>
+                        <div className="mt-2 text-xs text-muted">{formatDate(bill.transactionDateUtc, language)}</div>
+                      </div>
+                      <span className="tag bg-slate-100 text-muted">{bill.splitMode === 2 ? t("bills.weighted") : t("bills.equal")}</span>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <div className="rounded-[14px] border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.primaryPayer")}</div>
+                        <div className="mt-1 truncate text-sm font-semibold text-ink">{participantNameById[bill.primaryPayerParticipantId] ?? "-"}</div>
+                      </div>
+                      <div className="rounded-[14px] border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.total")}</div>
+                        <div className="mt-1 text-sm font-semibold text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
                       </div>
                     </div>
-                  </li>
+
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <IconActionButton
+                        icon={<EyeIcon className="h-4 w-4" />}
+                        label={t("common.view")}
+                        onClick={() => setViewingBillId(bill.id)}
+                        size="sm"
+                      />
+                      <IconActionButton
+                        disabled={isReadOnly}
+                        icon={<PencilIcon className="h-4 w-4 text-brand" />}
+                        label={t("bills.editAction")}
+                        onClick={() => void openBillEditorForEdit(bill.id)}
+                        size="sm"
+                      />
+                      <IconActionButton
+                        disabled={isReadOnly}
+                        icon={<TrashIcon className="h-4 w-4 text-danger" />}
+                        label={t("common.delete")}
+                        onClick={() => {
+                          setDeleteBillError(null);
+                          setDeletingBillId(bill.id);
+                        }}
+                        size="sm"
+                      />
+                    </div>
+                  </article>
                 ))}
-              </ul>
+              </div>
+
+              <div className="dashboard-activity-table hidden overflow-x-auto xl:block">
+                <div className="dashboard-activity-table-header group-bills-table-header min-w-[980px]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.date")}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.store")}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.splitMode")}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.primaryPayer")}</div>
+                  <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.subtotal")}</div>
+                  <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.fees")}</div>
+                  <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.total")}</div>
+                  <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnActions")}</div>
+                </div>
+                <ul className="min-w-[980px]">
+                  {bills.map((bill) => (
+                    <li key={bill.id}>
+                      <div className="dashboard-activity-table-row group-bills-table-row">
+                        <div className="text-sm text-muted">{formatDate(bill.transactionDateUtc, language)}</div>
+                        <div className="truncate text-sm font-semibold text-ink">{bill.storeName}</div>
+                        <div className="text-sm text-muted">{bill.splitMode === 2 ? t("bills.weighted") : t("bills.equal")}</div>
+                        <div className="truncate text-sm text-ink">{participantNameById[bill.primaryPayerParticipantId] ?? "-"}</div>
+                        <div className="text-right text-sm text-ink">{formatCurrency(bill.subtotalAmount)}</div>
+                        <div className="text-right text-sm text-ink">{formatCurrency(bill.totalFeeAmount)}</div>
+                        <div className="text-right text-sm font-semibold text-ink">{formatCurrency(bill.grandTotalAmount)}</div>
+                        <div className="flex justify-end gap-2 text-xs font-semibold">
+                          <IconActionButton
+                            icon={<EyeIcon className="h-4 w-4" />}
+                            label={t("common.view")}
+                            onClick={() => setViewingBillId(bill.id)}
+                            size="sm"
+                          />
+                          <IconActionButton
+                            disabled={isReadOnly}
+                            icon={<PencilIcon className="h-4 w-4 text-brand" />}
+                            label={t("bills.editAction")}
+                            onClick={() => void openBillEditorForEdit(bill.id)}
+                            size="sm"
+                          />
+                          <IconActionButton
+                            disabled={isReadOnly}
+                            icon={<TrashIcon className="h-4 w-4 text-danger" />}
+                            label={t("common.delete")}
+                            onClick={() => {
+                              setDeleteBillError(null);
+                              setDeletingBillId(bill.id);
+                            }}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>
       </SectionCard>
 
       <SectionCard className="p-4 md:p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="section-title">{t("groups.settlementSectionTitle")}</h2>
-          {transfers.length > 0 ? (
-            <span className="tag border border-brand/10 bg-brand/5 text-brand">{transfers.length} {t("settlement.transferCount")}</span>
-          ) : null}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="section-title">{t("groups.settlementSectionTitle")}</h2>
+            {transfers.length > 0 ? (
+              <span className="group-detail-badge tag border border-brand/10 bg-brand/5 text-brand">{transfers.length} {t("settlement.transferCount")}</span>
+            ) : null}
+            <p className="mt-2 section-copy">{t("settlement.subtitle")}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {group?.status === "unresolved" ? (
+              <button
+                className="button-primary"
+                disabled={updateStatusMutation.isPending || bills.length === 0 || isReadOnly}
+                onClick={() => {
+                  setStatusActionError(null);
+                  setIsStartSettlementOpen(true);
+                }}
+                type="button"
+              >
+                {updateStatusMutation.isPending ? <LoadingSpinner /> : null}
+                {t("groups.startSettlementAction")}
+              </button>
+            ) : null}
+            {!isGuest && transfers.length > 0 ? (
+              <IconActionButton
+                disabled={isExportingAllReceipts}
+                icon={<ExportIcon className="h-5 w-5" />}
+                label={t("settlement.exportAllReceipts")}
+                onClick={() => void handleExportAllReceipts()}
+              />
+            ) : null}
+            {group?.status === "settling" && !isGuest && !isReadOnly ? (
+              <>
+                <button
+                  className="button-primary"
+                  disabled={updateStatusMutation.isPending}
+                  onClick={() => {
+                    setStatusActionError(null);
+                    setIsMarkSettledOpen(true);
+                  }}
+                  type="button"
+                >
+                  {updateStatusMutation.isPending ? <LoadingSpinner /> : null}
+                  {t("groups.markSettledAction")}
+                </button>
+                <IconActionButton
+                  icon={<LinkIcon className="h-5 w-5" />}
+                  label={t("groups.shareLinkAction")}
+                  onClick={() => setIsShareDialogOpen(true)}
+                />
+              </>
+            ) : null}
+          </div>
         </div>
-        <p className="mt-2 section-copy">{t("settlement.subtitle")}</p>
+
+        {group?.status === "unresolved" && bills.length === 0 ? (
+          <div className="group-detail-note mt-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
+            {t("groups.startSettlementHintDisabled")}
+          </div>
+        ) : null}
+        {isReadOnly && !canEditGroup ? (
+          <div className="mt-4">
+            <InlineMessage tone="info">{t("groups.readOnlyMemberHint")}</InlineMessage>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           {transfers.length === 0 ? (
@@ -1202,7 +1452,7 @@ export function GroupDetailPage() {
                 }
 
                 return (
-                  <article key={participant.id} className="rounded-[24px] border border-slate-200 bg-white/94 p-4 shadow-soft">
+                  <article key={participant.id} className="group-detail-settlement-card rounded-[24px] border border-slate-200 bg-white/82 p-4 shadow-soft">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-base font-semibold tracking-tight text-ink">{participant.name}</div>
@@ -1210,21 +1460,34 @@ export function GroupDetailPage() {
                           <div className="mt-1 text-xs text-muted">{getParticipantHandle(participant.name, participant.username)}</div>
                         ) : null}
                       </div>
-                      <button className="button-pill" onClick={() => setSettlementReceiptParticipantId(participant.id)} type="button">
-                        <EyeIcon className="h-4 w-4" />
-                        {t("common.view")}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <IconActionButton
+                          icon={<EyeIcon className="h-4 w-4" />}
+                          label={t("common.view")}
+                          onClick={() => setSettlementReceiptParticipantId(participant.id)}
+                          size="sm"
+                        />
+                        <IconActionButton
+                          disabled={downloadingReceiptIds.has(participant.id)}
+                          icon={<DownloadIcon className="h-4 w-4" />}
+                          label={t("common.download")}
+                          onClick={() => void handleDownloadReceipt(participant.id)}
+                          size="sm"
+                        />
+                      </div>
                     </div>
 
                     <div className="mt-4 space-y-2 text-sm">
                       {outgoingTransfers.map((transfer) => (
-                        <div key={transfer.transferKey} className="rounded-[16px] border border-slate-200 bg-slate-50/80 px-3 py-2 text-ink">
+                        <div key={transfer.transferKey} className="group-detail-transfer-chip rounded-[16px] border border-slate-200 bg-slate-50/80 px-3 py-2 text-ink">
                           {t("settlement.pays")} {participantNameById[transfer.toParticipantId] ?? transfer.toParticipantId.slice(0, 8)} {formatCurrency(transfer.amount)}
                         </div>
                       ))}
-                      <div className="rounded-[16px] border border-brand/10 bg-brand/5 px-3 py-2 text-ink">
-                        {t("groups.balanceReceives")} {formatCurrency(totalIncoming)}
-                      </div>
+                      {totalIncoming > 0 ? (
+                        <div className="group-detail-receive-chip rounded-[16px] border border-brand/10 bg-brand/5 px-3 py-2 text-ink">
+                          {t("groups.balanceReceives")} {formatCurrency(totalIncoming)}
+                        </div>
+                      ) : null}
                     </div>
                   </article>
                 );
@@ -1234,7 +1497,7 @@ export function GroupDetailPage() {
         </div>
 
         {netBalances.length > 0 ? (
-          <div className="mt-4 rounded-[20px] border border-slate-100 bg-white divide-y divide-slate-100">
+          <div className="group-detail-balance-board mt-4 rounded-[20px] border border-slate-100 bg-white/82 divide-y divide-slate-100">
             {netBalances.map((balance) => {
               const positive = balance.netAmount > 0;
               const zero = balance.netAmount === 0;
@@ -1262,7 +1525,7 @@ export function GroupDetailPage() {
         title={t("participants.addDialogTitle")}
         description={t("participants.addDialogBody")}
         onClose={closeCreateDialog}
-        className="sm:max-w-3xl"
+        className="sm:max-w-4xl"
         actions={(
           <>
             <button className="button-secondary w-full sm:w-auto" disabled={createParticipantMutation.isPending} onClick={closeCreateDialog} type="button">
@@ -1289,28 +1552,24 @@ export function GroupDetailPage() {
                   {t("participants.previewEmpty")}
                 </p>
               ) : (
-                  <ul className="space-y-2">
-                    {draftEntries.map((entry) => (
-                      <li key={entry.id} className="flex items-center gap-2 rounded-[14px] border border-slate-100 bg-white px-3 py-2 shadow-sm">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <div className="truncate text-sm font-semibold text-ink">{entry.name}</div>
-                            {entry.username ? <div className="truncate text-xs text-muted">{getParticipantHandle(entry.name, entry.username)}</div> : null}
-                          </div>
-                          <div className="mt-0.5">
-                            {entry.isInvite ? (
-                              <span className="tag border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
-                            ) : (
-                              <span className="tag bg-slate-100 text-muted">{t("participants.statusManual")}</span>
-                            )}
-                        </div>
+                <ul className="space-y-2">
+                  {draftEntries.map((entry) => (
+                    <li key={entry.id} className="flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-2 shadow-sm">
+                      <span className="truncate text-sm font-semibold text-ink">{entry.name}</span>
+                      {entry.username ? <span className="truncate text-xs text-muted">{getParticipantHandle(entry.name, entry.username)}</span> : null}
+                      {entry.isInvite ? (
+              <span className="group-detail-badge tag shrink-0 border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
+                      ) : (
+                        <span className="tag shrink-0 bg-slate-100 text-muted">{t("participants.statusManual")}</span>
+                      )}
+                      <div className="ml-auto shrink-0">
+                        <IconActionButton
+                          icon={<TrashIcon className="h-4 w-4" />}
+                          label={t("participants.removeRow")}
+                          onClick={() => removeEntry(entry.id)}
+                          size="sm"
+                        />
                       </div>
-                      <IconActionButton
-                        icon={<TrashIcon className="h-4 w-4" />}
-                        label={t("participants.removeRow")}
-                        onClick={() => removeEntry(entry.id)}
-                        size="sm"
-                      />
                     </li>
                   ))}
                 </ul>
@@ -1336,7 +1595,7 @@ export function GroupDetailPage() {
               </button>
             </div>
             {inputValue.trim().startsWith("@") ? (
-              <div className="mt-3 rounded-[18px] border border-slate-200 bg-slate-50/80 p-3">
+            <div className="group-detail-note mt-3 rounded-[18px] border border-slate-200 bg-slate-50/80 p-3">
                 {searchedUsername.length < 3 ? (
                   <div className="text-sm text-muted">{t("participants.userSearchHint")}</div>
                 ) : searchedUserQuery.isPending ? (
@@ -1351,7 +1610,7 @@ export function GroupDetailPage() {
                       <div className="truncate text-sm font-semibold text-ink">{searchedUserQuery.data.name}</div>
                       <div className="mt-1 text-xs text-muted">{getParticipantHandle(searchedUserQuery.data.name, searchedUserQuery.data.username)}</div>
                     </div>
-                    <span className="tag border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
+                  <span className="group-detail-badge tag border border-brand/10 bg-brand/5 text-brand">{t("participants.statusInvited")}</span>
                   </button>
                 ) : (
                   <div className="text-sm text-muted">{t("participants.userNotFound")}</div>
@@ -1369,7 +1628,7 @@ export function GroupDetailPage() {
         title={billModalMode === "edit" ? t("bills.editTitle") : t("bills.create")}
         description={t("bills.moduleBody")}
         onClose={() => closeBillEditor()}
-        className="sm:max-w-4xl"
+        className="sm:max-w-5xl"
         actions={(
           <>
             <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={() => closeBillEditor()} type="button">
@@ -1378,11 +1637,6 @@ export function GroupDetailPage() {
             {billEditorStep > 1 ? (
               <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillBack} type="button">
                 {t("common.back")}
-              </button>
-            ) : null}
-            {billEditorStep === 3 ? (
-              <button className="button-secondary w-full sm:w-auto" disabled={isBillMutationPending} onClick={handleBillNext} type="button">
-                {t("common.skip")}
               </button>
             ) : null}
             {billEditorStep < 4 ? (
@@ -1543,7 +1797,7 @@ export function GroupDetailPage() {
               {billItems.map((item, index) => (
                 <div key={item.id} className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-3">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{t("bills.item")} {String(index + 1).padStart(2, "0")}</div>
-                  <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1.3fr)_112px_minmax(260px,1fr)_34px]">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_100px_minmax(140px,1fr)_34px]">
                     <input
                       className={["input-base w-full", billItemErrors[item.id]?.description ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
                       placeholder={t("bills.itemDescription")}
@@ -1565,13 +1819,6 @@ export function GroupDetailPage() {
                         selectedIds={item.responsibleParticipantIds}
                         t={t}
                       />
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {item.responsibleParticipantIds.map((participantId) => (
-                          <button key={`${item.id}-${participantId}`} className="tag border border-slate-200 bg-white text-muted" onClick={() => toggleResponsible(item.id, participantId)} type="button">
-                            {participantNameById[participantId] ?? participantId}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                     <div className="flex justify-end">
                       <IconActionButton
@@ -1616,7 +1863,7 @@ export function GroupDetailPage() {
               <div className="space-y-3">
                 {billFees.map((fee) => (
                   <div key={fee.id} className="rounded-[20px] border border-slate-100 bg-slate-50/80 p-3.5">
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_168px_128px_34px]">
+                    <div className="grid gap-2 sm:gap-4 sm:grid-cols-[minmax(0,1fr)_150px_120px_34px]">
                       <input
                         className={["input-base w-full", billFeeErrors[fee.id]?.name ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")}
                         placeholder={t("bills.fees")}
@@ -1738,10 +1985,9 @@ export function GroupDetailPage() {
 
       <ModalDialog
         open={Boolean(viewingBillId)}
-        title={t("groups.viewAction")}
-        description={viewingBillQuery.data?.storeName ?? t("bills.moduleBody")}
+        title={viewingBillQuery.data?.storeName ?? t("bills.moduleBody")}
         onClose={() => setViewingBillId(null)}
-        className="sm:max-w-3xl"
+        className="sm:max-w-4xl"
       >
         {viewingBillQuery.isPending ? (
           <LoadingState lines={3} />
@@ -1755,9 +2001,8 @@ export function GroupDetailPage() {
       <ModalDialog
         open={Boolean(settlementReceiptParticipantId)}
         title={settlementReceiptParticipant?.name ?? t("groups.viewAction")}
-        description={t("settlement.shareReceiptTitle")}
         onClose={() => setSettlementReceiptParticipantId(null)}
-        className="sm:max-w-4xl"
+        className="sm:max-w-5xl"
       >
         <SettlementReceiptBreakdown
           error={settlementReceiptBillsQuery.error}
@@ -1766,6 +2011,53 @@ export function GroupDetailPage() {
           t={t}
         />
       </ModalDialog>
+
+      <ConfirmDialog
+        open={isStartSettlementOpen}
+        title={t("groups.startSettlementTitle")}
+        description={t("groups.startSettlementBody")}
+        details={group?.name ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("groups.startSettlementAction")}
+        error={statusActionError}
+        isBusy={updateStatusMutation.isPending}
+        onClose={() => {
+          setStatusActionError(null);
+          setIsStartSettlementOpen(false);
+        }}
+        onConfirm={() => updateStatusMutation.mutate("settling")}
+      />
+
+      <ConfirmDialog
+        open={isMarkSettledOpen}
+        title={t("groups.markSettledTitle")}
+        description={t("groups.markSettledBody")}
+        details={group?.name ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("groups.markSettledAction")}
+        error={statusActionError}
+        isBusy={updateStatusMutation.isPending}
+        onClose={() => {
+          setStatusActionError(null);
+          setIsMarkSettledOpen(false);
+        }}
+        onConfirm={() => updateStatusMutation.mutate("settled")}
+      />
+
+      {!isGuest && groupId && canEditGroup ? (
+        <SettlementShareDialog
+          open={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          groupId={groupId}
+          groupName={group?.name}
+          creatorName={group?.createdByUserName ?? undefined}
+          fromDate=""
+          toDate=""
+          hasInvalidDateRange={false}
+          groupStatus={group?.status}
+          participants={participants}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(deletingBillId)}
@@ -1818,6 +2110,26 @@ export function GroupDetailPage() {
       />
     </div>
   );
+}
+
+function getSettlementReceiptBillsQueryKey(
+  groupId: string | undefined,
+  participantId: string | null,
+  bills: Array<{ id: string }>
+) {
+  return [
+    "group-detail-bill-details",
+    groupId,
+    participantId,
+    bills.map((bill) => bill.id).join(",")
+  ] as const;
+}
+
+function createSummaryImageFileName() {
+  const uniqueId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `summary-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${uniqueId}-summary.png`;
 }
 
 function ResponsibleMultiSelect({
@@ -1965,18 +2277,26 @@ function BillDetailPanel({
         <div className="space-y-3">
           {bill.items.map((item) => (
             <div key={item.id} className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-start gap-2">
                 <div className="text-sm font-semibold text-ink">{item.description}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
+
+                <div className="flex flex-wrap gap-2">
                   {item.responsibleParticipants.map((participant) => (
-                    <span key={`${item.id}-${participant.participantId}`} className="tag border border-slate-200 bg-white text-muted">{participant.participantName}</span>
+                    <span
+                      key={`${item.id}-${participant.participantId}`}
+                      className="tag border border-slate-200 bg-white text-muted"
+                    >
+                      {participant.participantName}
+                    </span>
                   ))}
                 </div>
               </div>
-              <div className="shrink-0 text-sm font-semibold text-ink">{formatCurrency(item.amount)}</div>
+
+              <div className="shrink-0 text-sm font-semibold text-ink">
+                {formatCurrency(item.amount)}
+              </div>
             </div>
-          ))}
-        </div>
+          ))}        </div>
       </div>
 
       <div className="rounded-[18px] border border-slate-100 bg-slate-50/80 px-4 py-3">

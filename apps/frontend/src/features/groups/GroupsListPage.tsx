@@ -206,53 +206,110 @@ export function GroupsListPage() {
     }
 
     return (
-      <div className="dashboard-activity-table overflow-x-auto">
-        <div className="dashboard-activity-table-header groups-list-table-header min-w-[390px] sm:min-w-[740px]">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnName")}</div>
-          <div className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("groups.columnCreated")}</div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnStatus")}</div>
-          <div className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:block">{t("groups.participantCount")}</div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.billCount")}</div>
-          <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnActions")}</div>
-        </div>
-        <ul className="min-w-[390px] sm:min-w-[740px]">
+      <div className="space-y-3">
+        <div className="space-y-3 md:hidden">
           {groups.map((group, index) => (
-            <li key={group.id}>
-              <div className="dashboard-activity-table-row groups-list-table-row">
+            <article key={group.id} className="list-card">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-ink">{group.name}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="truncate text-sm font-semibold text-ink">{group.name}</div>
+                    {!group.canEdit ? <span className="tag bg-slate-100 text-muted">{t("groups.readOnlyShort")}</span> : null}
+                  </div>
+                  <div className="mt-2 text-xs text-muted">{formatGroupCreatedAt(group.createdAtUtc, language)}</div>
                 </div>
-                <div className="hidden text-sm text-muted sm:block">{formatGroupCreatedAt(group.createdAtUtc, language)}</div>
-                <div>
-                  <GroupStatusBadge status={group.status} t={t} />
+                <GroupStatusBadge status={group.status} t={t} />
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-[14px] border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.participantCount")}</div>
+                  <div className="mt-1 text-sm font-semibold text-ink">{getCountValue(index, participantQueries)}</div>
                 </div>
-                <div className="hidden text-sm text-ink sm:block">{getCountValue(index, participantQueries)}</div>
-                <div className="text-sm text-ink">{getCountValue(index, billQueries)}</div>
-                <div className="flex items-center justify-end gap-2">
-                  <IconActionLink
-                    icon={<EyeIcon className="h-4 w-4" />}
-                    label={t("groups.viewAction")}
-                    size="sm"
-                    to={`/groups/${group.id}`}
-                  />
-                  <IconActionButton
-                    disabled={isGroupLocked(group.status)}
-                    icon={<PencilIcon className="h-4 w-4" />}
-                    label={t("groups.editAction")}
-                    onClick={() => openEditDialog(group.id)}
-                    size="sm"
-                  />
-                  <IconActionButton
-                    icon={<TrashIcon className="h-4 w-4" />}
-                    label={t("groups.deleteAction")}
-                    onClick={() => openDeleteDialog(group.id)}
-                    size="sm"
-                  />
+                <div className="rounded-[14px] border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.billCount")}</div>
+                  <div className="mt-1 text-sm font-semibold text-ink">{getCountValue(index, billQueries)}</div>
                 </div>
               </div>
-            </li>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <IconActionLink
+                  icon={<EyeIcon className="h-4 w-4" />}
+                  label={t("groups.viewAction")}
+                  size="sm"
+                  to={`/groups/${group.id}`}
+                />
+                <IconActionButton
+                  disabled={!group.canEdit || isGroupLocked(group.status)}
+                  icon={<PencilIcon className="h-4 w-4" />}
+                  label={t("groups.editAction")}
+                  onClick={() => openEditDialog(group.id)}
+                  size="sm"
+                />
+                <IconActionButton
+                  disabled={!group.canEdit}
+                  icon={<TrashIcon className="h-4 w-4" />}
+                  label={t("groups.deleteAction")}
+                  onClick={() => openDeleteDialog(group.id)}
+                  size="sm"
+                />
+              </div>
+            </article>
           ))}
-        </ul>
+        </div>
+
+        <div className="dashboard-activity-table hidden overflow-x-auto md:block">
+          <div className="dashboard-activity-table-header groups-list-table-header min-w-[740px]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnName")}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnCreated")}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnStatus")}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.participantCount")}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.billCount")}</div>
+            <div className="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{t("groups.columnActions")}</div>
+          </div>
+          <ul className="min-w-[740px]">
+            {groups.map((group, index) => (
+              <li key={group.id}>
+                <div className="dashboard-activity-table-row groups-list-table-row">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="truncate text-sm font-semibold text-ink">{group.name}</div>
+                      {!group.canEdit ? <span className="tag bg-slate-100 text-muted">{t("groups.readOnlyShort")}</span> : null}
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted">{formatGroupCreatedAt(group.createdAtUtc, language)}</div>
+                  <div>
+                    <GroupStatusBadge status={group.status} t={t} />
+                  </div>
+                  <div className="text-sm text-ink">{getCountValue(index, participantQueries)}</div>
+                  <div className="text-sm text-ink">{getCountValue(index, billQueries)}</div>
+                  <div className="flex items-center justify-end gap-2">
+                    <IconActionLink
+                      icon={<EyeIcon className="h-4 w-4" />}
+                      label={t("groups.viewAction")}
+                      size="sm"
+                      to={`/groups/${group.id}`}
+                    />
+                    <IconActionButton
+                      disabled={!group.canEdit || isGroupLocked(group.status)}
+                      icon={<PencilIcon className="h-4 w-4" />}
+                      label={t("groups.editAction")}
+                      onClick={() => openEditDialog(group.id)}
+                      size="sm"
+                    />
+                    <IconActionButton
+                      disabled={!group.canEdit}
+                      icon={<TrashIcon className="h-4 w-4" />}
+                      label={t("groups.deleteAction")}
+                      onClick={() => openDeleteDialog(group.id)}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }

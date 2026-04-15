@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, type GroupStatus } from "@api-client";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { InlineMessage, LoadingSpinner, SectionCard } from "@/shared/ui/primitives";
-import { CheckIcon, LinkIcon, SparklesIcon, WalletIcon } from "@/shared/ui/icons";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { ModalDialog } from "@/shared/ui/dialog";
-import { useI18n } from "@/shared/i18n/I18nProvider";
 import { useAuth } from "@/shared/auth/AuthProvider";
+import { useI18n } from "@/shared/i18n/I18nProvider";
+import { CheckIcon, LinkIcon, SparklesIcon, WalletIcon } from "@/shared/ui/icons";
+import { InlineMessage, LoadingSpinner, SectionCard } from "@/shared/ui/primitives";
 import { useToast } from "@/shared/ui/toast";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import {
@@ -16,7 +17,15 @@ import {
   type SettlementShareReceiverPaymentInfo
 } from "@/features/settlements/share";
 
-type ShareSetupStep = 1 | 2;
+type ShareParticipant = {
+  id: string;
+  name: string;
+  username?: string | null;
+};
+
+type ReceiverFormState = SettlementShareReceiverPaymentInfo & {
+  wasAutoFilled: boolean;
+};
 
 export function SettlementShareDialog({
   open,
@@ -27,7 +36,8 @@ export function SettlementShareDialog({
   fromDate,
   toDate,
   hasInvalidDateRange,
-  groupStatus
+  groupStatus,
+  participants
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,17 +48,17 @@ export function SettlementShareDialog({
   toDate: string;
   hasInvalidDateRange: boolean;
   groupStatus?: GroupStatus;
+  participants: ShareParticipant[];
 }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [currentStep, setCurrentStep] = useState<ShareSetupStep>(1);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [receiverInfos, setReceiverInfos] = useState<SettlementShareReceiverPaymentInfo[]>([]);
+  const [receiverInfos, setReceiverInfos] = useState<ReceiverFormState[]>([]);
   const [generatedLink, setGeneratedLink] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isConfirmGenerateOpen, setIsConfirmGenerateOpen] = useState(false);
   const [preparingQrParticipantId, setPreparingQrParticipantId] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const qrInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -56,6 +66,8 @@ export function SettlementShareDialog({
 
   const isReadOnly = groupStatus === "settled";
   const canSystemShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const currentFromDateUtc = normalizeDialogDate(fromDate);
+  const currentToDateUtc = normalizeDialogDate(toDate);
 
   const currentShareQuery = useQuery({
     queryKey: ["current-settlement-share", groupId],
@@ -64,21 +76,13 @@ export function SettlementShareDialog({
     retry: false
   });
 
-  const hasSavedShare = Boolean(currentShareQuery.data);
-  const useSavedShareContext = hasSavedShare && !isRegenerating;
-  const currentFromDateUtc = normalizeDialogDate(fromDate);
-  const currentToDateUtc = normalizeDialogDate(toDate);
-  const activeFromDateUtc = useSavedShareContext ? currentShareQuery.data?.fromDateUtc : currentFromDateUtc;
-  const activeToDateUtc = useSavedShareContext ? currentShareQuery.data?.toDateUtc : currentToDateUtc;
-  const hasCreationDateError = !useSavedShareContext && hasInvalidDateRange;
-
   const settlementQuery = useQuery({
-    queryKey: ["settlement-share-preview", groupId, activeFromDateUtc ?? "", activeToDateUtc ?? "", useSavedShareContext ? "saved" : "draft"],
+    queryKey: ["settlement-share-preview", groupId, currentFromDateUtc ?? "", currentToDateUtc ?? ""],
     queryFn: () => apiClient.getSettlements(groupId, {
-      fromDate: activeFromDateUtc,
-      toDate: activeToDateUtc
+      fromDate: currentFromDateUtc,
+      toDate: currentToDateUtc
     }),
-    enabled: open && Boolean(groupId) && (!hasCreationDateError || useSavedShareContext)
+    enabled: open && Boolean(groupId) && !hasInvalidDateRange
   });
 
   const receivers = useMemo(() => {
@@ -93,18 +97,12 @@ export function SettlementShareDialog({
       }));
   }, [settlementQuery.data?.netBalances]);
 
-  const stepItems = [
-    { step: 1 as const, label: t("settlement.shareStepReceivers"), body: t("settlement.shareStepReceiversBody") },
-    { step: 2 as const, label: t("settlement.shareStepLink"), body: t("settlement.shareStepLinkBody") }
-  ];
-
   useEffect(() => {
     if (!open) {
-      setCurrentStep(1);
-      setIsRegenerating(false);
       setReceiverInfos([]);
       setGeneratedLink("");
       setDialogError(null);
+      setIsConfirmGenerateOpen(false);
       seededStateRef.current = "";
       return;
     }
@@ -119,10 +117,12 @@ export function SettlementShareDialog({
 
     const seedKey = [
       currentShareQuery.data?.shareToken ?? "new",
-      useSavedShareContext ? "saved" : "draft",
-      activeFromDateUtc ?? "",
-      activeToDateUtc ?? "",
-      receivers.map((receiver) => receiver.participantId).join(",")
+      currentFromDateUtc ?? "",
+      currentToDateUtc ?? "",
+      receivers.map((receiver) => receiver.participantId).join(","),
+      participants.map((participant) => `${participant.id}:${participant.name}:${participant.username ?? ""}`).join(","),
+      user?.name ?? "",
+      user?.username ?? ""
     ].join("|");
 
     if (seededStateRef.current === seedKey) {
@@ -130,35 +130,34 @@ export function SettlementShareDialog({
     }
 
     const seededReceivers = receivers.map((receiver) => {
-      const existing =
-        currentShareQuery.data?.receiverPaymentInfos.find((entry) => entry.participantId === receiver.participantId) ??
-        null;
-      const shouldUseSavedProfile = matchesParticipantName(receiver.participantName, user?.name);
-      const savedProfile = shouldUseSavedProfile
-        ? normalizeSavedPaymentProfile(user?.paymentProfile)
-        : createEmptySharePaymentInfo();
+      const existing = currentShareQuery.data?.receiverPaymentInfos.find((entry) => entry.participantId === receiver.participantId) ?? null;
+      const participantMeta = participants.find((participant) => participant.id === receiver.participantId);
+      const autoFilledPaymentInfo = normalizeSavedPaymentProfile(user?.paymentProfile);
+      const shouldAutoFill = !existing && matchesParticipantIdentity(participantMeta, user?.name, user?.username);
+      const paymentInfo = existing?.paymentInfo ?? (shouldAutoFill ? autoFilledPaymentInfo : createEmptySharePaymentInfo());
 
       return {
         participantId: receiver.participantId,
         participantName: receiver.participantName,
-        paymentInfo: existing?.paymentInfo ?? savedProfile
+        paymentInfo,
+        wasAutoFilled: shouldAutoFill && hasSharePaymentInfo(autoFilledPaymentInfo)
       };
     });
 
     setReceiverInfos(seededReceivers);
     setGeneratedLink(currentShareQuery.data ? buildShareUrl(currentShareQuery.data.shareToken) : "");
-    setCurrentStep(1);
     seededStateRef.current = seedKey;
   }, [
-    activeFromDateUtc,
-    activeToDateUtc,
+    currentFromDateUtc,
     currentShareQuery.data,
+    currentToDateUtc,
     open,
+    participants,
     receivers,
     settlementQuery.isSuccess,
-    useSavedShareContext,
     user?.name,
-    user?.paymentProfile
+    user?.paymentProfile,
+    user?.username
   ]);
 
   const receiverInfoCount = receiverInfos.filter((entry) => hasSharePaymentInfo(entry.paymentInfo)).length;
@@ -166,14 +165,27 @@ export function SettlementShareDialog({
     () => groupName ? `${groupName} · ${t("settlement.shareAction")}` : t("settlement.shareAction"),
     [groupName, t]
   );
+  const hasSavedShare = Boolean(currentShareQuery.data);
+  const isBusy = currentShareQuery.isPending || settlementQuery.isPending;
+  const hasError = currentShareQuery.isError || settlementQuery.isError;
+  const loadError = getErrorMessage(currentShareQuery.error ?? settlementQuery.error);
+  const canGenerate = !isReadOnly && !isBusy && !hasError && !hasInvalidDateRange && receivers.length > 0;
+  const generateActionLabel = hasSavedShare || generatedLink
+    ? t("settlement.shareRegenerateAction")
+    : t("settlement.generateLink");
 
   function updateReceiverField(participantId: string, field: keyof SettlementSharePaymentInfo, value: string) {
     setReceiverInfos((current) => current.map((entry) => (
       entry.participantId === participantId
-        ? { ...entry, paymentInfo: { ...entry.paymentInfo, [field]: value } }
+        ? {
+            ...entry,
+            wasAutoFilled: false,
+            paymentInfo: { ...entry.paymentInfo, [field]: value }
+          }
         : entry
     )));
-    if (!useSavedShareContext) {
+
+    if (!hasSavedShare) {
       setGeneratedLink("");
     }
   }
@@ -211,7 +223,7 @@ export function SettlementShareDialog({
     }
   }
 
-  async function handleSaveShare() {
+  async function handleGenerateConfirmed() {
     try {
       setIsGenerating(true);
       setDialogError(null);
@@ -224,15 +236,15 @@ export function SettlementShareDialog({
           participantId: entry.participantId,
           paymentInfo: entry.paymentInfo
         })),
-        regenerate: isRegenerating
+        regenerate: hasSavedShare
       });
 
       setGeneratedLink(buildShareUrl(result.shareToken));
-      setIsRegenerating(false);
+      setIsConfirmGenerateOpen(false);
       seededStateRef.current = "";
       await currentShareQuery.refetch();
       showToast({
-        title: isRegenerating ? t("settlement.shareRegenerated") : t("settlement.shareLinkReady"),
+        title: hasSavedShare ? t("settlement.shareRegenerated") : t("settlement.shareLinkReady"),
         description: receiverInfoCount > 0 ? t("settlement.shareWithPaymentInfo") : t("settlement.shareWithoutPaymentInfo"),
         tone: "success"
       });
@@ -286,130 +298,37 @@ export function SettlementShareDialog({
     }
   }
 
-  function handleRegenerate() {
-    if (isReadOnly) {
-      return;
-    }
-
-    setIsRegenerating(true);
-    setCurrentStep(1);
-    setGeneratedLink("");
-    seededStateRef.current = "";
-  }
-
-  const isBusy = currentShareQuery.isPending || settlementQuery.isPending;
-  const hasError = currentShareQuery.isError || settlementQuery.isError;
-  const loadError = getErrorMessage(currentShareQuery.error ?? settlementQuery.error);
-
   return (
-    <ModalDialog
-      open={open}
-      onClose={onClose}
-      title={t("settlement.shareAction")}
-      description={isReadOnly ? t("settlement.shareReadOnlyBody") : t("settlement.shareStepFlowBody")}
-      className="max-w-5xl"
-      actions={
-        <>
-          {currentStep === 2 ? (
-            <button className="button-secondary" onClick={() => setCurrentStep(1)} type="button">
-              {t("settlement.shareBack")}
+    <>
+      <ModalDialog
+        open={open}
+        onClose={onClose}
+        title={t("settlement.shareAction")}
+        description={t("settlement.shareDialogBody")}
+        className="max-w-5xl"
+        actions={(
+          <>
+            <button className="button-secondary w-full sm:w-auto" onClick={onClose} type="button">
+              {t("common.dismiss")}
             </button>
-          ) : null}
-          <button className="button-secondary" onClick={onClose} type="button">
-            {t("common.dismiss")}
-          </button>
-          {currentStep === 1 ? (
-            <button
-              className="button-primary"
-              disabled={isBusy || hasError || hasCreationDateError}
-              onClick={() => setCurrentStep(2)}
-              type="button"
-            >
-              {t("settlement.shareContinueToLink")}
-            </button>
-          ) : null}
-          {currentStep === 2 && (!hasSavedShare || isRegenerating) && !isReadOnly ? (
-            <button
-              className="button-primary"
-              disabled={isGenerating || isBusy || hasError || hasCreationDateError}
-              onClick={handleSaveShare}
-              type="button"
-            >
-              {isGenerating ? <LoadingSpinner /> : null}
-              {isRegenerating ? t("settlement.shareRegenerateAction") : t("settlement.generateLink")}
-            </button>
-          ) : null}
-        </>
-      }
-    >
-      <div className="space-y-6">
-        <div className="grid gap-3 md:grid-cols-2">
-          {stepItems.map((item) => {
-            const isActive = currentStep === item.step;
-            const isComplete = currentStep > item.step;
-            return (
-              <div
-                key={item.step}
-                className={[
-                  "rounded-[24px] border px-4 py-4 transition",
-                  isActive
-                    ? "border-brand/20 bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(255,255,255,0.98))] shadow-soft"
-                    : isComplete
-                      ? "border-mint bg-mint/35"
-                      : "border-slate-200 bg-white/88"
-                ].join(" ")}
+            {!isReadOnly ? (
+              <button
+                className="button-primary w-full sm:w-auto"
+                disabled={!canGenerate}
+                onClick={() => setIsConfirmGenerateOpen(true)}
+                type="button"
               >
-                <div className="flex items-center gap-3">
-                  <span className={[
-                    "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold",
-                    isActive ? "bg-brand text-white" : isComplete ? "bg-success text-white" : "bg-slate-100 text-muted"
-                  ].join(" ")}>
-                    {isComplete ? <CheckIcon className="h-4 w-4" /> : item.step}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold tracking-tight text-ink">{item.label}</div>
-                    <div className="mt-1 text-xs leading-5 text-muted">{item.body}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {hasCreationDateError ? (
-          <InlineMessage tone="error">{t("settlement.dateRangeInvalid")}</InlineMessage>
-        ) : null}
-
-        {hasError ? (
-          <InlineMessage tone="error">{loadError}</InlineMessage>
-        ) : null}
-
-        {dialogError ? (
-          <InlineMessage tone="error">{dialogError}</InlineMessage>
-        ) : null}
-
-        {isBusy ? (
-          <SectionCard className="flex min-h-[220px] items-center justify-center">
-            <div className="flex items-center gap-3 text-sm text-muted">
-              <LoadingSpinner />
-              {t("common.loading")}
-            </div>
-          </SectionCard>
-        ) : null}
-
-        {!isBusy && !hasError && currentStep === 1 ? (
-          <div className="space-y-5">
-            <SectionCard className="border border-brand/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.06),rgba(255,255,255,0.98))] p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="tag bg-white text-brand shadow-soft">{t("settlement.receiverInfoOptional")}</span>
-                {useSavedShareContext ? (
-                  <span className="tag bg-slate-100 text-muted">{t("settlement.shareSavedState")}</span>
-                ) : null}
-                {isRegenerating ? (
-                  <span className="tag bg-amber text-ink">{t("settlement.shareRegeneratingState")}</span>
-                ) : null}
-              </div>
-              <div className="mt-4 flex items-center gap-3">
+                {isGenerating ? <LoadingSpinner /> : null}
+                {generateActionLabel}
+              </button>
+            ) : null}
+          </>
+        )}
+      >
+        <div className="space-y-5">
+          <SectionCard className="border border-slate-200/80 bg-slate-50/80 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand shadow-soft">
                   <WalletIcon className="h-5 w-5" />
                 </span>
@@ -418,19 +337,41 @@ export function SettlementShareDialog({
                   <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.receiverInfoStepBody")}</p>
                 </div>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="tag bg-white text-brand shadow-soft">{t("settlement.receiverInfoOptional")}</span>
+                {hasSavedShare ? <span className="tag bg-slate-100 text-muted">{t("settlement.shareSavedState")}</span> : null}
+                {isReadOnly ? <span className="tag bg-slate-100 text-muted">{t("groups.statusSettled")}</span> : null}
+              </div>
+            </div>
+          </SectionCard>
 
-              {isReadOnly ? (
-                <div className="mt-4">
-                  <InlineMessage tone="info">{t("settlement.shareReadOnlyBody")}</InlineMessage>
-                </div>
-              ) : hasSavedShare && !isRegenerating ? (
-                <div className="mt-4">
-                  <InlineMessage tone="info">{t("settlement.shareSavedLockedHint")}</InlineMessage>
-                </div>
-              ) : null}
+          {hasInvalidDateRange ? (
+            <InlineMessage tone="error">{t("settlement.dateRangeInvalid")}</InlineMessage>
+          ) : null}
+
+          {hasError ? (
+            <InlineMessage tone="error">{loadError}</InlineMessage>
+          ) : null}
+
+          {dialogError ? (
+            <InlineMessage tone="error">{dialogError}</InlineMessage>
+          ) : null}
+
+          {isReadOnly ? (
+            <InlineMessage tone="info">{t("settlement.shareReadOnlyBody")}</InlineMessage>
+          ) : null}
+
+          {isBusy ? (
+            <SectionCard className="flex min-h-[220px] items-center justify-center">
+              <div className="flex items-center gap-3 text-sm text-muted">
+                <LoadingSpinner />
+                {t("common.loading")}
+              </div>
             </SectionCard>
+          ) : null}
 
-            {receivers.length === 0 ? (
+          {!isBusy && !hasError ? (
+            receivers.length === 0 ? (
               <SectionCard className="border border-dashed border-slate-200 bg-slate-50/80 p-5">
                 <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-muted">
@@ -448,24 +389,31 @@ export function SettlementShareDialog({
                   const receiverInfo = receiverInfos.find((entry) => entry.participantId === receiver.participantId) ?? {
                     participantId: receiver.participantId,
                     participantName: receiver.participantName,
-                    paymentInfo: createEmptySharePaymentInfo()
+                    paymentInfo: createEmptySharePaymentInfo(),
+                    wasAutoFilled: false
                   };
-                  const disabled = isReadOnly || (hasSavedShare && !isRegenerating);
+                  const disabled = isReadOnly;
                   const isPreparingQr = preparingQrParticipantId === receiver.participantId;
 
                   return (
-                    <SectionCard key={receiver.participantId} className="border border-slate-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.shareReceiverLabel")}</div>
-                          <div className="mt-2 text-xl font-semibold tracking-tight text-ink">{receiver.participantName}</div>
-                          <div className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-muted">
-                            {t("settlement.shareReceiverAmount")} {formatCurrency(receiver.amount)}
+                    <SectionCard key={receiver.participantId} className="border border-slate-200 bg-white/82 p-5">
+                      <div className="border-b border-slate-200 pb-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.shareReceiverLabel")}</div>
+                            <div className="mt-2 text-xl font-semibold tracking-tight text-ink">{receiver.participantName}</div>
+                            <div className="mt-2 text-sm leading-6 text-muted">
+                              {t("settlement.shareReceiverAmount")} {formatCurrency(receiver.amount)}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {receiverInfo.wasAutoFilled ? (
+                              <span className="tag border border-brand/10 bg-brand/5 text-brand">{t("settlement.autoFilledBadge")}</span>
+                            ) : null}
+                            <span className="tag bg-slate-100 text-muted">{t("settlement.shareReceiverAmount")} {formatCurrency(receiver.amount)}</span>
                           </div>
                         </div>
-                        <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-muted lg:max-w-sm">
-                          {t("settlement.shareReceiverInfoHint")}
-                        </div>
+                        <p className="mt-3 text-sm leading-6 text-muted">{t("settlement.shareReceiverInfoHint")}</p>
                       </div>
 
                       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -574,29 +522,24 @@ export function SettlementShareDialog({
                   );
                 })}
               </div>
-            )}
-          </div>
-        ) : null}
+            )
+          ) : null}
 
-        {!isBusy && !hasError && currentStep === 2 ? (
-          <div className="space-y-5">
-            <SectionCard className="border border-slate-200 bg-white p-5">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          {!isBusy && !hasError && generatedLink ? (
+            <SectionCard className="border border-slate-200 bg-white/82 p-5">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="tag bg-sky text-brand">{t("settlement.generateLinkTitle")}</span>
-                    {hasSavedShare && !isRegenerating ? (
-                      <span className="tag bg-slate-100 text-muted">{t("settlement.shareFixedLinkBadge")}</span>
-                    ) : null}
+                    {hasSavedShare ? <span className="tag bg-slate-100 text-muted">{t("settlement.shareSavedState")}</span> : null}
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold tracking-tight text-ink">{t("settlement.shareLinkStepTitle")}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareLinkStepBody")}</p>
+                  <h3 className="mt-4 text-lg font-semibold tracking-tight text-ink">{t("settlement.shareLinkBlockTitle")}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted">{t("settlement.shareLinkBlockBody")}</p>
                 </div>
-                {generatedLink ? (
-                  <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-muted lg:max-w-sm">
-                    {hasSavedShare && !isRegenerating ? t("settlement.shareFixedLinkBody") : t("settlement.generateHint")}
-                  </div>
-                ) : null}
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  <SummaryCard label={t("settlement.shareReceiverCount")} value={String(receivers.length).padStart(2, "0")} />
+                  <SummaryCard label={t("settlement.shareReceiverInfoCount")} value={String(receiverInfoCount).padStart(2, "0")} />
+                </div>
               </div>
 
               {currentShareQuery.data?.createdAtUtc ? (
@@ -605,113 +548,46 @@ export function SettlementShareDialog({
                 </div>
               ) : null}
 
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <SummaryCard label={t("settlement.shareReceiverCount")} value={String(receivers.length).padStart(2, "0")} />
-                <SummaryCard label={t("settlement.shareReceiverInfoCount")} value={String(receiverInfoCount).padStart(2, "0")} />
-                <SummaryCard
-                  label={t("settlement.shareStatusLabel")}
-                  value={hasSavedShare && !isRegenerating ? t("settlement.shareSavedState") : t("settlement.shareDraftState")}
-                />
-              </div>
-
               <div className="mt-5 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,1))] p-4 shadow-soft">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.shareLinkBlockTitle")}</div>
-                <div className="mt-2 text-sm leading-6 text-muted">
-                  {generatedLink ? t("settlement.shareLinkBlockBody") : t("settlement.shareCreateFirst")}
-                </div>
-                <div className="mt-3 break-all text-sm leading-6 text-ink">{generatedLink || t("settlement.generatedLink")}</div>
+                <div className="break-all text-sm leading-6 text-ink">{generatedLink}</div>
               </div>
 
-              {generatedLink ? (
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button className="button-primary" disabled={isCopying} onClick={handleCopyLink} type="button">
-                    {isCopying ? <LoadingSpinner /> : <LinkIcon className="h-4 w-4" />}
-                    {t("settlement.copyShareLink")}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button className="button-primary" disabled={isCopying} onClick={handleCopyLink} type="button">
+                  {isCopying ? <LoadingSpinner /> : <LinkIcon className="h-4 w-4" />}
+                  {t("settlement.copyShareLink")}
+                </button>
+                {canSystemShare ? (
+                  <button className="button-secondary" disabled={isSharing} onClick={handleSystemShare} type="button">
+                    {isSharing ? <LoadingSpinner /> : <CheckIcon className="h-4 w-4" />}
+                    {t("settlement.systemShare")}
                   </button>
-                  {canSystemShare ? (
-                    <button className="button-secondary" disabled={isSharing} onClick={handleSystemShare} type="button">
-                      {isSharing ? <LoadingSpinner /> : <CheckIcon className="h-4 w-4" />}
-                      {t("settlement.systemShare")}
-                    </button>
-                  ) : null}
-                  {hasSavedShare && !isRegenerating && !isReadOnly ? (
-                    <button className="button-secondary" onClick={handleRegenerate} type="button">
-                      {t("settlement.shareRegenerateAction")}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {isReadOnly ? (
-                <div className="mt-5">
-                  <InlineMessage tone="info">{t("settlement.shareReadOnlyBody")}</InlineMessage>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </SectionCard>
+          ) : null}
+        </div>
+      </ModalDialog>
 
-            <div className="space-y-4">
-              {receiverInfos.length === 0 ? (
-                <SectionCard className="border border-dashed border-slate-200 bg-slate-50/80 p-5 text-sm leading-6 text-muted">
-                  {t("settlement.shareNoReceiversBody")}
-                </SectionCard>
-              ) : (
-                receiverInfos.map((receiver) => {
-                  const hasInfo = hasSharePaymentInfo(receiver.paymentInfo);
-                  return (
-                    <SectionCard key={receiver.participantId} className="border border-slate-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                          <div className="text-base font-semibold tracking-tight text-ink">{receiver.participantName}</div>
-                          <div className="mt-2 text-sm leading-6 text-muted">
-                            {hasInfo ? t("settlement.receiverInfoShared") : t("settlement.receiverInfoNotProvided")}
-                          </div>
-                        </div>
-                        <span className={`tag ${hasInfo ? "bg-sky text-brand" : "bg-slate-100 text-muted"}`}>
-                          {hasInfo ? t("settlement.receiverInfoTitle") : t("settlement.receiverInfoOptional")}
-                        </span>
-                      </div>
-
-                      {hasInfo ? (
-                        <div className="mt-5 space-y-4">
-                          <div className="grid gap-3 md:grid-cols-2">
-                            {receiver.paymentInfo.payeeName ? <InfoCard label={t("settlement.payeeName")} value={receiver.paymentInfo.payeeName} /> : null}
-                            {receiver.paymentInfo.paymentMethod ? <InfoCard label={t("settlement.paymentMethod")} value={receiver.paymentInfo.paymentMethod} /> : null}
-                            {receiver.paymentInfo.accountName ? <InfoCard label={t("settlement.accountName")} value={receiver.paymentInfo.accountName} /> : null}
-                            {receiver.paymentInfo.accountNumber ? <InfoCard label={t("settlement.accountNumber")} value={receiver.paymentInfo.accountNumber} /> : null}
-                            {receiver.paymentInfo.notes ? (
-                              <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3 md:col-span-2">
-                                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.notes")}</div>
-                                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{receiver.paymentInfo.notes}</div>
-                              </div>
-                            ) : null}
-                          </div>
-                          {receiver.paymentInfo.paymentQrDataUrl ? (
-                            <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 p-4">
-                              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{t("settlement.paymentQrPreview")}</div>
-                              <div className="mt-3 flex justify-center rounded-[18px] bg-white p-3">
-                                <img
-                                  src={receiver.paymentInfo.paymentQrDataUrl}
-                                  alt={t("settlement.paymentQrAlt")}
-                                  className="max-h-44 w-auto rounded-[16px] object-contain"
-                                />
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm leading-6 text-muted">
-                          {t("settlement.shareReceiverInfoEmpty")}
-                        </div>
-                      )}
-                    </SectionCard>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </ModalDialog>
+      <ConfirmDialog
+        open={isConfirmGenerateOpen}
+        title={t("settlement.generateConfirmTitle")}
+        description={t("settlement.generateConfirmBody")}
+        details={groupName ?? ""}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={generateActionLabel}
+        error={dialogError}
+        isBusy={isGenerating}
+        tone="default"
+        onClose={() => {
+          if (!isGenerating) {
+            setIsConfirmGenerateOpen(false);
+            setDialogError(null);
+          }
+        }}
+        onConfirm={() => void handleGenerateConfirmed()}
+      />
+    </>
   );
 }
 
@@ -726,8 +602,24 @@ function normalizeSavedPaymentProfile(paymentProfile: Partial<SettlementSharePay
   };
 }
 
-function matchesParticipantName(participantName: string, userName: string | null | undefined) {
-  return participantName.trim().toLocaleLowerCase() === (userName ?? "").trim().toLocaleLowerCase();
+function matchesParticipantIdentity(
+  participant: ShareParticipant | undefined,
+  userName: string | null | undefined,
+  username: string | null | undefined
+) {
+  if (!participant) {
+    return false;
+  }
+
+  const normalizedParticipantName = participant.name.trim().toLocaleLowerCase();
+  const normalizedParticipantUsername = (participant.username ?? "").trim().toLocaleLowerCase();
+  const normalizedUserName = (userName ?? "").trim().toLocaleLowerCase();
+  const normalizedUsername = (username ?? "").trim().toLocaleLowerCase();
+
+  return (
+    (normalizedParticipantName !== "" && normalizedParticipantName === normalizedUserName) ||
+    (normalizedParticipantUsername !== "" && normalizedParticipantUsername === normalizedUsername)
+  );
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
@@ -735,15 +627,6 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-5 py-4">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
       <div className="mt-2 text-base font-semibold text-ink">{value}</div>
-    </div>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 px-4 py-3">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
-      <div className="mt-2 text-sm font-medium text-ink">{value}</div>
     </div>
   );
 }

@@ -17,8 +17,8 @@ export function PublicSiteFooter({
 
   return (
     <footer className={className}>
-      <div className="border-t border-[#e5dfd2] px-1 py-4">
-        <div className="flex flex-col gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#9b947f] sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-t border-slate-200/90 px-1 py-4">
+        <div className="flex flex-col gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-amber-700/80 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <span>+</span>
             <span>{t("app.title")}</span>

@@ -35,6 +35,12 @@ export function SettlementsPage() {
     enabled: Boolean(groupId)
   });
 
+  const participantsQuery = useQuery({
+    queryKey: ["participants", groupId],
+    queryFn: () => apiClient.listParticipants(groupId!),
+    enabled: Boolean(groupId)
+  });
+
   const settlementQuery = useQuery({
     queryKey: ["settlements", groupId, fromDate, toDate],
     queryFn: () => apiClient.getSettlements(groupId!, {
@@ -44,9 +50,18 @@ export function SettlementsPage() {
     enabled: Boolean(groupId) && !hasInvalidDateRange
   });
 
+  const currentShareQuery = useQuery({
+    queryKey: ["current-settlement-share", groupId],
+    queryFn: () => apiClient.getCurrentSettlementShare(groupId!),
+    enabled: Boolean(groupId),
+    retry: false
+  });
+
   const balances = settlementQuery.data?.netBalances ?? [];
   const transfers = settlementQuery.data?.transfers ?? [];
   const isLocked = groupQuery.data ? isGroupLocked(groupQuery.data.status) : false;
+  const canEditGroup = groupQuery.data?.canEdit ?? false;
+  const isReadOnly = isLocked || !canEditGroup;
   const nameById = Object.fromEntries(balances.map((x) => [x.participantId, x.participantName]));
   const creditors = balances.filter((balance) => balance.netAmount > 0).length;
   const debtors = balances.filter((balance) => balance.netAmount < 0).length;
@@ -128,11 +143,12 @@ export function SettlementsPage() {
 
     try {
       await downloadSettlementSummaryImage({
-        fileName: `${groupQuery.data.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "guest-summary"}-summary.png`,
+        fileName: createSummaryImageFileName(),
         groupName: groupQuery.data.name,
         subtitle: t("guest.summaryImageSubtitle"),
         balances,
         transfers,
+        receiverPaymentInfos: currentShareQuery.data?.receiverPaymentInfos ?? [],
         statusLabel: (status) => statusLabel(status, t),
         formatCurrency
       });
@@ -205,7 +221,7 @@ export function SettlementsPage() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   className="button-primary"
-                  disabled={updateStatusMutation.isPending}
+                  disabled={updateStatusMutation.isPending || isReadOnly}
                   onClick={() => {
                     setStatusActionError(null);
                     setIsStartSettlementOpen(true);
@@ -241,19 +257,20 @@ export function SettlementsPage() {
           onConfirm={() => updateStatusMutation.mutate("settling")}
         />
 
-        {!isGuest && groupId ? (
-          <SettlementShareDialog
-            open={isShareDialogOpen}
-            onClose={() => setIsShareDialogOpen(false)}
-            groupId={groupId}
-            groupName={groupQuery.data?.name}
-            creatorName={groupQuery.data?.createdByUserName ?? undefined}
-            fromDate={fromDate}
-            toDate={toDate}
-            hasInvalidDateRange={hasInvalidDateRange}
-            groupStatus={groupQuery.data?.status}
-          />
-        ) : null}
+        {!isGuest && groupId && canEditGroup ? (
+        <SettlementShareDialog
+          open={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          groupId={groupId}
+          groupName={groupQuery.data?.name}
+          creatorName={groupQuery.data?.createdByUserName ?? undefined}
+          fromDate={fromDate}
+          toDate={toDate}
+          hasInvalidDateRange={hasInvalidDateRange}
+          groupStatus={groupQuery.data?.status}
+          participants={participantsQuery.data ?? []}
+        />
+      ) : null}
       </div>
     );
   }
@@ -268,7 +285,7 @@ export function SettlementsPage() {
           actions={(
             <div className="flex flex-wrap gap-3">
               {!isGuest && groupId ? (
-                <button className="button-secondary" onClick={() => setIsShareDialogOpen(true)} type="button">
+                <button className="button-secondary" disabled={!canEditGroup} onClick={() => setIsShareDialogOpen(true)} type="button">
                   {t("groups.shareLinkAction")}
                 </button>
               ) : null}
@@ -280,7 +297,7 @@ export function SettlementsPage() {
               {groupQuery.data?.status === "settling" ? (
                 <button
                   className="button-primary"
-                  disabled={updateStatusMutation.isPending}
+                  disabled={updateStatusMutation.isPending || isReadOnly}
                   onClick={() => {
                     setStatusActionError(null);
                     setIsMarkSettledOpen(true);
@@ -299,9 +316,9 @@ export function SettlementsPage() {
             <GroupStatusBadge status={groupQuery.data.status} t={t} />
           </div>
         ) : null}
-        {isLocked ? (
+        {isReadOnly ? (
           <div className="mt-4">
-            <InlineMessage tone="info">{t("groups.readOnlySettlement")}</InlineMessage>
+            <InlineMessage tone="info">{canEditGroup ? t("groups.readOnlySettlement") : t("groups.readOnlyMemberHint")}</InlineMessage>
           </div>
         ) : null}
         {isGuest ? (
@@ -373,7 +390,7 @@ export function SettlementsPage() {
                       <div className="text-xl font-semibold tracking-tight text-ink">{formatCurrency(transfer.amount)}</div>
                     </div>
                   </div>
-                  {(canMarkPaid || canMarkReceived) && !isLocked ? (
+                  {(canMarkPaid || canMarkReceived) && !isReadOnly ? (
                     <div className="mt-4 flex justify-end">
                       {canMarkPaid ? <button className="button-primary" disabled={isBusy} onClick={() => markPaidMutation.mutate(transfer)} type="button">{markPaidMutation.isPending ? <LoadingSpinner /> : null}{t("settlement.markPaid")}</button> : null}
                       {canMarkReceived ? <button className="button-primary" disabled={isBusy} onClick={() => markReceivedMutation.mutate(transfer)} type="button">{markReceivedMutation.isPending ? <LoadingSpinner /> : null}{t("settlement.markReceived")}</button> : null}
@@ -386,7 +403,7 @@ export function SettlementsPage() {
         </SectionCard>
       </div>
 
-      {!isGuest && groupId ? (
+      {!isGuest && groupId && canEditGroup ? (
         <SettlementShareDialog
           open={isShareDialogOpen}
           onClose={() => setIsShareDialogOpen(false)}
@@ -397,6 +414,7 @@ export function SettlementsPage() {
           toDate={toDate}
           hasInvalidDateRange={hasInvalidDateRange}
           groupStatus={groupQuery.data?.status}
+          participants={participantsQuery.data ?? []}
         />
       ) : null}
       <ConfirmDialog
@@ -432,4 +450,11 @@ function statusTone(status: number) {
     [SETTLEMENT_STATUS.paid]: "bg-sky text-brand",
     [SETTLEMENT_STATUS.received]: "bg-mint text-success"
   }[status as 0 | 1 | 2]);
+}
+
+function createSummaryImageFileName() {
+  const uniqueId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `summary-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${uniqueId}-summary.png`;
 }

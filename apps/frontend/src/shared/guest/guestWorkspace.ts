@@ -104,7 +104,8 @@ function cloneGroupSummary(group: GroupDto): GroupSummaryDto {
     id: group.id,
     name: group.name,
     createdAtUtc: group.createdAtUtc,
-    status: group.status
+    status: group.status,
+    canEdit: group.canEdit
   };
 }
 
@@ -418,7 +419,8 @@ function createGuestGroup(name: string) {
     name,
     createdAtUtc,
     status: "unresolved",
-    createdByUserName: GUEST_USER_NAME
+    createdByUserName: GUEST_USER_NAME,
+    canEdit: true
   };
 
   guestState.groups = [group, ...guestState.groups];
@@ -477,6 +479,7 @@ export const guestApiClientOverride: Partial<ApiClient> = {
       groupId,
       name: name.trim(),
       username: username?.trim().replace(/^@+/, "") || null,
+      invitationStatus: "none",
       createdAtUtc: new Date().toISOString()
     };
     guestState.participantsByGroup[groupId] = [...(guestState.participantsByGroup[groupId] ?? []), participant];
