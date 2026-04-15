@@ -1,208 +1,179 @@
 # Splity
 
-Splity is a shared expense workspace built around a real bill-splitting flow. It connects "create a group -> add members -> add bills -> open settlement -> share payment details -> wait for payment confirmation" into one clear path, and fits group dinners, trips, shared living, and small team spending.
-![Home](./screenshots/home-en.png)
+Splity is a shared-expense workspace for real bill-splitting workflows.  
+It connects `create group -> add participants -> add bills -> settle -> share payment link -> confirm payment` in one flow, and now also supports invitation-based read-only collaboration.
 
 ## Project Overview
 
-This repository currently contains:
+This repository contains:
 
 - `apps/frontend`: React + TypeScript + Vite frontend
 - `apps/backend`: ASP.NET Core 10 Minimal API + EF Core backend
-- `packages/api-client`: shared typed API client used by both frontend and backend
+- `packages/api-client`: shared typed API client used by frontend and backend
 
-## Main Features
+## Core Features
 
-### Account and Entry Flows
+### Authentication and Access
 
-- Register / login
-- Local session persistence with Remember me
-- Forgot Password sends a temporary password through SMTP
-- Settings centralizes profile name, password, email verification, and sign-out
+- Clerk-based authentication (email/password, email verification code, social login)
+- Continue as Guest mode for quick local usage
+- Settings page for account profile, payment profile, language, and sign-out
+- Quick logout icon in the sidebar profile card
 
-### Group Workflow
+### Groups and Collaboration
 
-- Create groups
-- Group list is split into `Current Groups / Settled Groups`
-- Group Overview shows a summary of the current group
-- Participants supports batch add via modal
-- Bills supports create, edit, and preview via modal
-- Bill item `Responsible` supports multiple people and splits equally by default
+- Create, rename, delete groups (owner only)
+- Group status lifecycle: `unresolved -> settling -> settled`
+- Invitation flow via participant `@username`
+- New `Invitations` tab to accept/decline pending invitations
+- Accepted invitees can view groups in read-only mode (`canEdit: false`)
+- Declined invitations do not break the group; participant status is shown as `declined`
+- Participant invitation statuses: `none / pending / accepted / declined`
+- Participant removal is blocked if that participant is still referenced by bills
 
-### Settlement and Sharing
+### Bills and Settlement
 
-- When a group is still `unresolved`, Settlement first shows a clear prompt and next-step entry instead of the normal settlement result view
-- Clicking `Settle bills` moves the group into `settling`
-- The Share bill modal uses a step flow:
-  - Step 1: automatically lists each receiver from the settlement result and lets you optionally fill in payment info
-  - Step 2: creates or shows the single active share link for the current group
-- If a share record already exists, the modal reuses the previously saved link and payment info
-- Regenerating is supported: the old link becomes invalid and the new link replaces it
-- The share page `/s/:shareToken` still shows detailed settlement content
-- When a group is `settled`, the share page remains viewable but no longer allows payment or confirmation actions
+- Bill create/edit/preview in guided modal flows
+- Bill items support multiple responsible participants
+- Settlement page supports date range filtering and transfer status updates
+- In `unresolved`, settlement shows next-step guidance before full settlement flow
+
+### Settlement Share Page (`/s/:shareToken`)
+
+- 3-step flow: identity -> payment view -> completion
+- Payer view optimized for fast payment actions:
+  - amount summary
+  - status card
+  - separate payment proof screenshot card
+- Receiver view optimized as table:
+  - `Name | Amount | Status | Proof | Actions`
+  - proof column shows `View` button when available, otherwise `-`
+  - action supports `Mark as received`
+- Receipt details are collapsible (default collapsed) with smooth expand/collapse
+
+### Image Export
+
+- Settlement summary and receipt image export support
+- Export filename format: `{uuid}-summary.png`
+- Participant headers include right-side net amount:
+  - receive amount in cyan
+  - pay amount in red
+- For payers, a payment-status pill (`Paid` / `Unpaid`) is shown near amount
+- Receiver payment details are appended once at the end of the image
+- If payment details are missing, fallback text is:
+  - `Not provided. Ask receiver.`
+
+### UI and Responsive Design
+
+- Unified light theme across pages
+- Responsive behavior optimized for desktop, tablet, and mobile
+- Key pages tuned for responsive clarity:
+  - app shell / navigation
+  - dashboard activity
+  - groups list / group detail
+  - invitations
+  - settlement share page
+
+## Main Pages
+
+1. Home
+
+- Public landing page for unauthenticated users
+- Product overview and workflow explanation
+
+2. Auth
+
+- Login / register with Clerk
+- Optional social login
+- Forgot password via Clerk email code flow
+
+3. Dashboard
+
+- Range-based financial overview (`month` / `year`)
+- Group, bills, and activity insights
+
+4. Groups
+
+- Group list with status and action controls
+- Group detail, overview, participants, bills, settlements
+- Read-only badges and guardrails for invited non-owner members
+
+5. Invitations
+
+- View pending invitations
+- Accept or decline invitation directly
+
+6. Settlement Share
+
+- Owner generates and shares settlement link
+- Payer and receiver complete payment confirmation flow
+
+7. Settings
+
+- Account profile updates
+- Payment receiving details (for share page prefill)
+- Language and sign-out
 
 ## Group Status Rules
 
-- `unresolved / 未落实`
-  - Editable
-  - Participants and bills can be created, edited, and deleted
-- `settling / 结算中`
-  - Read-only
-  - Entered manually by clicking `Settle bills`
-  - Participants / Bills / Settlement are view-only
-- `settled / 已结算`
-  - Read-only
-  - Must be entered manually by clicking `Mark as settled`
-  - Never changes automatically
+- `unresolved`
+  - editable (owner)
+  - participants and bills can be managed
+- `settling`
+  - read-only for data edits
+  - settlement transfer actions available
+- `settled`
+  - read-only
+  - share page remains viewable, no new payment actions
 
-## Main Pages and Usage Flow
+## Language Support
 
-Screenshots are available in the [screenshots](./screenshots) folder.
-
-### 1. Home
-
-- Default landing page for unauthenticated users
-- Introduces product value, key features, and the 5-step usage flow
-- Header only keeps login and register
-
-### 2. Auth
-
-- Shared page for login and registration
-- Supports Remember me
-- Forgot Password supports entering an email, shows a generic success message, and provides a 60-second resend countdown (not fully implemented without SMTP config; currently only simulated)
-
-### 3. Dashboard
-
-- Shows the onboarding 5-step flow first
-- Overview supports `This month / This year`
-- Displays:
-  - Current group count
-  - Settled group count
-  - Bills created count
-
-### 4. Groups / Group Overview
-
-- Left navigation shows real groups for the current user
-- Entering a group lands on Overview by default
-- Overview shows current-group data such as participant count, bill count, total amount, status, and settlement summary
-
-### 5. Participants
-
-- Add participants through a modal
-- One input per line, with dynamic add/remove rows
-- Read-only in `settling / settled`
-
-### 6. Bills
-
-- Create, edit, and preview are all handled in a modal
-- Forms are blank by default, with no demo prefill
-- Supports multiple Responsible selections
-- Read-only in `settling / settled`
-
-### 7. Settlement
-
-- In `unresolved`, the page does not show the full settlement result immediately, and instead shows a prompt plus the next-step entry
-- In `settling / settled`, the normal settlement page is shown
-- The share-link entry opens the step-flow modal here
-
-### 8. Settings
-
-- Edit display name
-- Change password while logged in
-- Email verification status and verification code flow
-- Sign out, clear local session, and return to Home
-
-## Language Switching
-
-- Only `zh / en` are supported
-- The language switcher is placed in the footer dropdown
-- Home, Auth, Dashboard, Groups, Settings, Settlement, and the share page all use the same i18n setup
-- The selected language is persisted and kept after refresh
+- Supported languages: `en`, `zh`
+- Language choice persists across refresh
+- Main app pages use the same i18n setup
 
 ## Environment Variables
 
-### Frontend
+### Frontend (`apps/frontend/.env`)
 
-The frontend mainly uses:
+Main frontend variables:
 
-- `VITE_API_BASE_URL`
+- `VITE_CLERK_PUBLISHABLE_KEY` (required for Clerk auth)
+- `VITE_API_BASE_URL` (optional)
 - `VITE_DEV_API_PROXY_TARGET`
-- `VITE_DEV_ALLOWED_HOSTS`
+- `VITE_DEV_ALLOWED_HOSTS` (optional)
 
 Example:
 
 ```env
-# Optional: set this only when the API is hosted on a different origin.
-# VITE_API_BASE_URL=https://api.example.com
-
-# Local Vite proxy target for /api and /health during development.
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
 VITE_DEV_API_PROXY_TARGET=http://localhost:5204
-
-# Optional additional hosts allowed by the Vite dev server.
-# Useful for Cloudflare Quick Tunnel or other reverse proxies.
+# VITE_API_BASE_URL=https://api.example.com
 # VITE_DEV_ALLOWED_HOSTS=.trycloudflare.com
 ```
 
-### Backend
+### Backend (`apps/backend/src/Splity.Api/appsettings*.json` or env vars)
 
-Common backend settings can be overridden through `appsettings*.json` or environment variables.
+Common backend settings:
 
-#### Database
+Database:
 
 - `ConnectionStrings__DefaultConnection`
 - `Database__Provider`
 
-The current default development setup uses MySQL.
+Clerk:
 
-#### JWT
+- `Clerk__Authority`
+- `Clerk__SecretKey`
+- `Clerk__ApiUrl`
+- `Clerk__JwksUrl` (optional; defaults to `<Authority>/.well-known/jwks.json`)
+- `Clerk__AuthorizedParties__0`
+- `Clerk__AuthorizedParties__1`
 
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `Jwt__Secret`
-
-#### CORS / Frontend
+Frontend CORS:
 
 - `Frontend__AllowedOrigins__0`
 - `Frontend__AllowedOrigins__1`
-
-#### SMTP
-
-Forgot Password and email verification both depend on SMTP. Do not hardcode SMTP credentials in the repository. Provide them through environment variables:
-
-- `Smtp__Host`
-- `Smtp__Port`
-- `Smtp__EnableSsl`
-- `Smtp__Username`
-- `Smtp__Password`
-- `Smtp__FromAddress`
-- `Smtp__FromName`
-
-Example:
-
-```env
-Smtp__Host=smtp.example.com
-Smtp__Port=587
-Smtp__EnableSsl=true
-Smtp__Username=no-reply@example.com
-Smtp__Password=your-password
-Smtp__FromAddress=no-reply@example.com
-Smtp__FromName=Splity
-```
-
-## Forgot Password Mail Dependency Notes
-
-- The frontend always shows the same success message: `If the email exists, a reset email has been sent`
-- The backend does not reveal whether the email exists
-- If the email exists:
-  - A random temporary password is generated
-  - The stored password is updated using the existing password hashing mechanism
-  - The temporary password is sent through SMTP
-- If SMTP delivery fails:
-  - The backend logs the failure
-  - The frontend shows a user-readable error message
-  - Internal backend exception details are not exposed
-
-If SMTP is not configured correctly, Forgot Password and email verification mail cannot actually be delivered.
 
 ## Local Development
 
@@ -218,7 +189,7 @@ If SMTP is not configured correctly, Forgot Password and email verification mail
 npm run install:frontend
 ```
 
-### Start the frontend
+### Start frontend
 
 ```powershell
 npm run dev:frontend
@@ -228,13 +199,7 @@ Default URL:
 
 - `http://localhost:5173`
 
-Notes:
-
-- The frontend uses same-origin `/api` requests by default
-- During local development, Vite proxies `/api` and `/health` to `VITE_DEV_API_PROXY_TARGET`
-- Vite allows `*.trycloudflare.com` by default for Cloudflare quick tunnels
-
-### Start the backend
+### Start backend
 
 ```powershell
 npm run dev:backend
@@ -243,33 +208,26 @@ npm run dev:backend
 Default URLs:
 
 - API: `http://localhost:5204`
-- Health check: `http://localhost:5204/health`
+- Health: `http://localhost:5204/health`
 
-### Start frontend and backend together
+### Start frontend + backend together
 
 ```powershell
 npm run dev
 ```
 
-## Cloudflare Tunnel For Local Sharing
+## Cloudflare Tunnel (Local Sharing)
 
-This repository is now set up for a single frontend tunnel:
+Current setup uses a single frontend tunnel:
 
-- the browser calls the API through same-origin `/api`
-- Vite proxies `/api` to `http://localhost:5204` in local development
-- Cloudflare only needs to expose `http://localhost:5173`
+- browser calls same-origin `/api`
+- Vite proxies `/api` and `/health` to backend
+- only frontend `5173` needs to be exposed
 
 ### 1. Install cloudflared
 
-If `cloudflared` is not installed on Windows:
-
 ```powershell
 winget install --id Cloudflare.cloudflared
-```
-
-Then reopen the terminal and verify:
-
-```powershell
 cloudflared --version
 ```
 
@@ -279,28 +237,24 @@ cloudflared --version
 npm run dev
 ```
 
-Make sure these work locally:
+Check:
 
 - `http://localhost:5173`
 - `http://localhost:5173/health`
 
-`/health` is proxied by Vite to the backend health endpoint.
-
-### 3. Start the tunnel
+### 3. Start tunnel
 
 ```powershell
 cloudflared tunnel --url http://localhost:5173
 ```
 
-Cloudflare will print a `https://*.trycloudflare.com` URL. Share that URL.
+### 4. Common issues
 
-### 4. Common failure cases
-
-- `cloudflared` is not installed
-- frontend is not running on port `5173`
-- backend is not running, so the page loads but API requests fail
-- if the tunnel URL returns `Blocked request. This host is not allowed.`, Vite host allow-listing is the issue; this repository now allows `*.trycloudflare.com` by default
-- an old `.env` still sets `VITE_API_BASE_URL=http://localhost:5204`; external users will fail in that case, so remove it or point it at a publicly reachable API
+- frontend not running on `5173`
+- backend not running (UI loads, API fails)
+- Vite host not allowed (`Blocked request. This host is not allowed.`)
+- stale `VITE_API_BASE_URL=http://localhost:5204` in `.env`
+- Clerk/backend authorized parties or allowed origins not including your public origin
 
 ## Build Commands
 

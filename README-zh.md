@@ -1,7 +1,7 @@
 # Splity
 
-Splity 是一个面向真实分账流程的 shared expense workspace。它把「创建群组 -> 添加成员 -> 添加账单 -> 打开结算 -> 分享付款信息 -> 等待付款确认」串成一条清晰流程，适合聚餐、旅行、同住和小团队共同消费场景。
-![Home](./screenshots/home.png)
+Splity 是一个面向真实分账流程的共享账单工作区。  
+它把 `创建群组 -> 添加成员 -> 添加账单 -> 进入结算 -> 分享付款链接 -> 确认收款` 串成一条完整路径，并新增了邀请制只读协作能力。
 
 ## 项目简介
 
@@ -11,198 +11,171 @@ Splity 是一个面向真实分账流程的 shared expense workspace。它把「
 - `apps/backend`: ASP.NET Core 10 Minimal API + EF Core 后端
 - `packages/api-client`: 前后端共享的 typed API client
 
-## 主要功能
+## 核心功能
 
-### 账户与入口
+### 认证与访问
 
-- 注册 / 登录
-- Remember me 本地会话持久化
-- Forgot Password 通过 SMTP 发送临时密码
-- Settings 集中管理名字、密码、邮箱验证和登出
+- 基于 Clerk 的登录体系（邮箱密码、邮箱验证码、社交登录）
+- 支持 Continue as Guest 快速体验
+- Settings 页面统一管理账号资料、收款资料、语言和登出
+- 侧边栏 Profile Card 右侧支持一键登出图标
 
-### 群组工作流
+### 群组与协作
 
-- 创建群组
-- 群组列表按 `Current Groups / Settled Groups` 分类
-- Group Overview 展示当前群组摘要
-- Participants 通过 modal 批量添加
-- Bills 通过 modal 创建、编辑和预览
-- Bill item 的 `Responsible` 支持多人选择，默认平均分摊
+- 群组创建、改名、删除（仅群主可编辑）
+- 群组状态流转：`unresolved -> settling -> settled`
+- 通过 Participant 的 `@username` 发起邀请
+- 新增 `Invitations` Tab 处理邀请（Accept / Decline）
+- 被邀请并 Accept 的用户可查看群组，但为只读（`canEdit: false`）
+- Decline 不会破坏群组数据，群主侧可看到成员状态为 `declined`
+- 成员邀请状态：`none / pending / accepted / declined`
+- 若成员仍被账单引用，删除会被拦截并提示先清理相关账单
 
-### 结算与分享
+### 账单与结算
 
-- Settlement 在 `未落实` 时先显示明确提示和下一步入口
-- 点击 `结算账单` 后群组进入 `结算中`
-- Share bill modal 使用分步流程：
-  - Step 1: 根据 settlement 结果自动列出每个 receiver，并可选填写付款信息
-  - Step 2: 创建或查看当前群组唯一有效的分享链接
-- 已存在分享记录时会复用之前保存的链接和付款信息
-- 支持重新生成链接，旧链接失效，新链接取代旧链接
-- 分享页 `/s/:shareToken` 仍显示详细结算内容
-- 群组为 `已结算` 时，分享页仍可查看，但不提供付款或确认操作
+- 账单创建 / 编辑 / 预览采用引导式 modal
+- Bill item 支持多 Responsible
+- Settlement 支持按日期过滤与转账状态操作
+- 当群组为 `unresolved` 时，先展示下一步引导，再进入完整结算流程
+
+### Settlement Share 页面（`/s/:shareToken`）
+
+- 三步流程：身份确认 -> 付款视图 -> 完成
+- Payer 视图聚焦付款操作：
+  - 金额总览
+  - Status card
+  - 独立 Payment proof screenshot card
+- Receiver 视图改为表格：
+  - `Name | Amount | Status | Proof | Actions`
+  - Proof 有截图时显示 `View`，无则 `-`
+  - Actions 支持 `Mark as received`
+- Receipt details 改为可折叠模块，默认折叠，展开收起带平滑过渡
+
+### 图片导出
+
+- 支持结算汇总图与收据图导出
+- 导出文件名格式：`{uuid}-summary.png`
+- 参与者标题行右侧显示净额：
+  - 应收金额为青色
+  - 应付金额为红色
+- 对 payer 在金额左侧展示付款状态 pill（`Paid` / `Unpaid`）
+- Receiver payment details 只在整张图末尾追加一次
+- 未提供收款资料时，回退文案为：
+  - `Not provided. Ask receiver.`
+
+### UI 与响应式
+
+- 全站统一 light theme
+- Desktop / Tablet / Mobile 三端响应式统一优化
+- 已重点优化页面：
+  - App shell / 导航
+  - Dashboard activity
+  - Groups list / Group detail
+  - Invitations
+  - Settlement share
+
+## 主要页面
+
+1. Home
+
+- 未登录用户落地页
+- 展示产品定位和使用流程
+
+2. Auth
+
+- Clerk 登录 / 注册
+- 支持社交登录
+- Forgot password 走 Clerk 邮箱验证码流程
+
+3. Dashboard
+
+- 提供 `month / year` 维度的财务概览
+- 展示群组、账单和活动洞察
+
+4. Groups
+
+- 群组列表、状态与操作入口
+- Group detail / overview / participants / bills / settlements
+- 对受邀非群主用户展示只读标识和只读限制
+
+5. Invitations
+
+- 查看待处理邀请
+- 直接 Accept / Decline
+
+6. Settlement Share
+
+- 群主生成并分享结算链接
+- payer / receiver 在公开分享页完成确认流
+
+7. Settings
+
+- 账号资料维护
+- 收款资料维护（用于分享页自动预填）
+- 语言切换与登出
 
 ## 群组状态规则
 
-- `未落实 / unresolved`
-  - 可编辑
-  - 可新增 / 编辑 / 删除成员和账单
-- `结算中 / settling`
+- `unresolved`
+  - 可编辑（群主）
+  - 可维护成员和账单
+- `settling`
+  - 数据编辑只读
+  - 允许结算相关状态动作
+- `settled`
   - 只读
-  - 由用户手动点击 `结算账单` 进入
-  - Participants / Bills / Settlement 只可查看
-- `已结算 / settled`
-  - 只读
-  - 必须由用户手动点击 `已结算`
-  - 不会自动变化
+  - 分享页仍可查看，但不允许新的支付动作
 
-## 主要页面与使用流程
-可以在 [screenshots](./screenshots) 文件夹中找到截图。
+## 多语言
 
-### 1. Home
+- 支持语言：`en`、`zh`
+- 语言选择会持久化，刷新后保留
+- 主要页面使用统一 i18n 体系
 
-- 未登录用户默认落地页
-- 介绍产品价值、核心功能和 5 步使用流程
-- header 只保留登录、注册
+## 环境变量
 
-### 2. Auth
+### Frontend（`apps/frontend/.env`）
 
-- 登录 / 注册共用页面
-- 支持 Remember me
-- Forgot Password 支持输入邮箱、统一成功提示、60 秒重发倒计时 （未实现，没有SMTP配置，仅做了模拟）
+主要变量：
 
-### 3. Dashboard
-
-- 进入后先看到新手 5 步流程
-- Overview 支持 `本月 / 本年` 筛选
-- 显示：
-  - 当前群组数量
-  - 已结算群组数量
-  - 创建账单数
-
-### 4. Groups / Group Overview
-
-- 左侧 Nav 显示当前用户真实群组数据
-- 默认进入群组后先显示 Overview
-- Overview 展示成员数、账单数、总金额、状态、结算概况等当前群组数据
-
-### 5. Participants
-
-- 添加成员改为 modal
-- 一行一个输入框，支持动态增删
-- `结算中 / 已结算` 只读
-
-### 6. Bills
-
-- 创建、编辑、预览都在 modal 中完成
-- 表单默认空白，没有示例预填
-- 支持 Responsible 多选
-- `结算中 / 已结算` 只读
-
-### 7. Settlement
-
-- `未落实` 时不会直接显示完整结算结果，而是先显示提醒与下一步入口
-- `结算中 / 已结算` 时显示正常结算页面
-- 分享链接入口在这里打开 step flow modal
-
-### 8. Settings
-
-- 编辑名字
-- 主动修改密码
-- 邮箱验证状态与验证码流程
-- 登出并清理本地会话，返回 Home
-
-## 语言切换
-
-- 仅支持 `zh / en`
-- 语言切换入口统一在 footer dropdown
-- Home、Auth、Dashboard、Groups、Settings、Settlement、分享页都使用同一套 i18n
-- 用户语言选择会持久化，刷新后保留上次选择
-
-## 环境变量说明
-
-### Frontend
-
-前端主要使用：
-
-- `VITE_API_BASE_URL`
+- `VITE_CLERK_PUBLISHABLE_KEY`（Clerk 必填）
+- `VITE_API_BASE_URL`（可选）
 - `VITE_DEV_API_PROXY_TARGET`
-- `VITE_DEV_ALLOWED_HOSTS`
+- `VITE_DEV_ALLOWED_HOSTS`（可选）
 
 示例：
 
 ```env
-# 可选：如果前后端不是同域，显式指定后端地址
-# VITE_API_BASE_URL=https://api.example.com
-
-# 本地开发时，Vite 会把 /api 和 /health 代理到这里
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
 VITE_DEV_API_PROXY_TARGET=http://localhost:5204
-
-# 可选：允许 Cloudflare Quick Tunnel 这类反向代理域名访问 Vite dev server
+# VITE_API_BASE_URL=https://api.example.com
 # VITE_DEV_ALLOWED_HOSTS=.trycloudflare.com
 ```
 
-### Backend
+### Backend（`apps/backend/src/Splity.Api/appsettings*.json` 或环境变量）
 
-后端常用配置可通过 `appsettings*.json` 或环境变量覆盖。
+常用配置：
 
-#### 数据库
+数据库：
 
 - `ConnectionStrings__DefaultConnection`
 - `Database__Provider`
 
-当前默认开发配置使用 MySQL。
+Clerk：
 
-#### JWT
+- `Clerk__Authority`
+- `Clerk__SecretKey`
+- `Clerk__ApiUrl`
+- `Clerk__JwksUrl`（可选；默认 `<Authority>/.well-known/jwks.json`）
+- `Clerk__AuthorizedParties__0`
+- `Clerk__AuthorizedParties__1`
 
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `Jwt__Secret`
-
-#### CORS / Frontend
+前端 CORS：
 
 - `Frontend__AllowedOrigins__0`
 - `Frontend__AllowedOrigins__1`
 
-#### SMTP
-
-Forgot Password 和邮箱验证都依赖 SMTP。不要把 SMTP 凭据写死进仓库，请通过环境变量提供：
-
-- `Smtp__Host`
-- `Smtp__Port`
-- `Smtp__EnableSsl`
-- `Smtp__Username`
-- `Smtp__Password`
-- `Smtp__FromAddress`
-- `Smtp__FromName`
-
-示例：
-
-```env
-Smtp__Host=smtp.example.com
-Smtp__Port=587
-Smtp__EnableSsl=true
-Smtp__Username=no-reply@example.com
-Smtp__Password=your-password
-Smtp__FromAddress=no-reply@example.com
-Smtp__FromName=Splity
-```
-
-## Forgot Password 邮件依赖说明
-
-- 前端始终显示统一提示：`如果邮箱存在，已发送重置邮件`
-- 后端不会泄露邮箱是否存在
-- 如果邮箱存在：
-  - 生成随机临时密码
-  - 使用现有密码哈希机制更新数据库密码
-  - 通过 SMTP 发邮件
-- 如果 SMTP 发信失败：
-  - 后端会记录日志
-  - 前端显示可理解的失败提示
-  - 不暴露后端内部异常细节
-
-如果没有正确配置 SMTP，Forgot Password 和邮箱验证邮件都无法真正发送。
-
-## 本地运行方式
+## 本地开发
 
 ### 环境要求
 
@@ -216,7 +189,7 @@ Smtp__FromName=Splity
 npm run install:frontend
 ```
 
-### 启动 frontend
+### 启动前端
 
 ```powershell
 npm run dev:frontend
@@ -226,13 +199,7 @@ npm run dev:frontend
 
 - `http://localhost:5173`
 
-说明：
-
-- 前端默认通过同域 `/api` 调用后端
-- 本地开发下，Vite 会自动把 `/api` 和 `/health` 代理到 `VITE_DEV_API_PROXY_TARGET`
-- Vite 默认允许 `*.trycloudflare.com` 访问，便于 Cloudflare quick tunnel
-
-### 启动 backend
+### 启动后端
 
 ```powershell
 npm run dev:backend
@@ -240,8 +207,8 @@ npm run dev:backend
 
 默认地址：
 
-- API: `http://localhost:5204`
-- Health check: `http://localhost:5204/health`
+- API：`http://localhost:5204`
+- Health：`http://localhost:5204/health`
 
 ### 同时启动前后端
 
@@ -249,25 +216,18 @@ npm run dev:backend
 npm run dev
 ```
 
-## Cloudflare Tunnel（本地分享开发环境）
+## Cloudflare Tunnel（本地分享）
 
-当前仓库已经改成适合单 tunnel 的开发模式：
+当前为单 tunnel 开发模式：
 
-- 浏览器请求前端页面时，API 默认走同域 `/api`
-- Vite 在本地把 `/api` 代理到 `http://localhost:5204`
-- 所以 Cloudflare 只需要暴露前端 `5173`，不需要再单独暴露后端
+- 浏览器通过同域 `/api` 调后端
+- Vite 代理 `/api` 与 `/health` 到后端
+- 只需暴露前端 `5173`
 
 ### 1. 安装 cloudflared
 
-如果你的机器还没有 `cloudflared`，Windows 可先执行：
-
 ```powershell
 winget install --id Cloudflare.cloudflared
-```
-
-安装后重新打开终端，确认：
-
-```powershell
 cloudflared --version
 ```
 
@@ -277,12 +237,10 @@ cloudflared --version
 npm run dev
 ```
 
-确保这两个地址本机都能打开：
+确认可访问：
 
 - `http://localhost:5173`
 - `http://localhost:5173/health`
-
-其中 `/health` 会通过 Vite 代理到后端健康检查。
 
 ### 3. 启动 tunnel
 
@@ -290,15 +248,13 @@ npm run dev
 cloudflared tunnel --url http://localhost:5173
 ```
 
-成功后，Cloudflare 会返回一个 `https://*.trycloudflare.com` 地址。把这个地址发给别人即可。
+### 4. 常见问题
 
-### 4. 常见失败原因
-
-- 机器里没有安装 `cloudflared`
-- 前端没启动，`5173` 没在监听
-- 后端没启动，页面能打开但接口会失败
-- 如果访问 tunnel 地址返回 `Blocked request. This host is not allowed.`，说明 Vite 的允许域名没生效；当前仓库默认已放行 `*.trycloudflare.com`
-- 你旧的 `.env` 里如果还写着 `VITE_API_BASE_URL=http://localhost:5204`，外部访问时会失效；这时请删除该变量或改成可公网访问的 API 地址
+- 前端未运行在 `5173`
+- 后端未启动（页面可开但 API 失败）
+- Vite host 未放行（`Blocked request. This host is not allowed.`）
+- `.env` 中遗留 `VITE_API_BASE_URL=http://localhost:5204`
+- Clerk / 后端的 authorized parties 或 allowed origins 未包含公网访问域名
 
 ## 构建命令
 
