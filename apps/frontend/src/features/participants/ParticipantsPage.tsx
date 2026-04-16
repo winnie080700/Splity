@@ -90,6 +90,10 @@ export function ParticipantsPage() {
         throw new Error(t("participants.editMissing"));
       }
 
+      if (nextName.trim().startsWith("@")) {
+        throw new Error(t("participants.editInviteBlocked"));
+      }
+
       const duplicate = (participantsQuery.data ?? []).some(
         (participant) =>
           participant.id !== editingParticipantId &&
@@ -100,7 +104,11 @@ export function ParticipantsPage() {
         throw new Error(t("participants.nameDuplicate"));
       }
 
-      return apiClient.updateParticipant(groupId, editingParticipantId, { name: nextName });
+      const currentParticipant = (participantsQuery.data ?? []).find((participant) => participant.id === editingParticipantId);
+      return apiClient.updateParticipant(groupId, editingParticipantId, {
+        name: nextName,
+        username: currentParticipant?.username ?? null
+      });
     },
     onSuccess: async () => {
       await Promise.all([
@@ -462,6 +470,7 @@ export function ParticipantsPage() {
         cancelLabel={t("common.cancel")}
         submitLabel={t("common.saveChanges")}
         validationMessage={t("participants.nameRequired")}
+        validateInput={(value) => value.includes("@") ? t("participants.editInviteBlocked") : null}
         error={editError}
         isBusy={updateMutation.isPending}
         onClose={() => {

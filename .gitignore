@@ -20,3 +20,8 @@
 .codex-temp/
 .tmp/
 .claude
+
+# Local logs/build caches
+*.log
+*.err.log
+**/*.tsbuildinfo

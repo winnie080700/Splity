@@ -6,10 +6,11 @@ import { GroupStatusBadge, isGroupLocked } from "@/shared/groups/groupMeta";
 import { useI18n } from "@/shared/i18n/I18nProvider";
 import { formatCurrency, formatDate, getErrorMessage } from "@/shared/utils/format";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
-import { CustomSelect } from "@/shared/ui/CustomSelect";
+import { CustomMultiSelect, type CustomMultiSelectRef } from "@/shared/ui/CustomMultiSelect";
+import { CustomSelect, type CustomSelectRef } from "@/shared/ui/CustomSelect";
 import { ModalDialog } from "@/shared/ui/dialog";
 import { EmptyState, IconActionButton, InlineMessage, LoadingSpinner, LoadingState, PageHeading, SectionCard, StatTile } from "@/shared/ui/primitives";
-import { CheckIcon, ChevronDownIcon, PencilIcon, PlusIcon, ReceiptIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
+import { PencilIcon, PlusIcon, ReceiptIcon, TrashIcon, UsersIcon, WalletIcon } from "@/shared/ui/icons";
 import { useToast } from "@/shared/ui/toast";
 
 type BillFieldErrors = Partial<Record<"storeName" | "transactionDateUtc" | "feeName" | "feeValue" | "primaryPayer" | "weights" | "items", string>>;
@@ -54,17 +55,15 @@ export function BillsPage() {
   const [loadingBillId, setLoadingBillId] = useState<string | null>(null);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
   const [deleteBillError, setDeleteBillError] = useState<string | null>(null);
-  const [openResponsibleItemId, setOpenResponsibleItemId] = useState<string | null>(null);
 
   const storeRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const feeNameRef = useRef<HTMLInputElement>(null);
   const feeValueRef = useRef<HTMLInputElement>(null);
-  const payerRef = useRef<HTMLButtonElement>(null);
+  const payerRef = useRef<CustomSelectRef | null>(null);
   const itemDescRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const itemAmountRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const itemResponsibleRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const responsibleMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const itemResponsibleRefs = useRef<Record<string, CustomMultiSelectRef | null>>({});
   const weightRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const participantsQuery = useQuery({
@@ -108,26 +107,6 @@ export function BillsPage() {
 
     window.requestAnimationFrame(() => storeRef.current?.focus());
   }, [isEditorOpen]);
-
-  useEffect(() => {
-    if (!openResponsibleItemId) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const menu = responsibleMenuRefs.current[openResponsibleItemId];
-      const trigger = itemResponsibleRefs.current[openResponsibleItemId];
-      if (menu?.contains(target) || trigger?.contains(target)) {
-        return;
-      }
-
-      setOpenResponsibleItemId(null);
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [openResponsibleItemId]);
 
   const createBillMutation = useMutation({
     mutationFn: async () => apiClient.createBill(groupId!, buildBillPayload({
@@ -283,7 +262,6 @@ export function BillsPage() {
     else if (field === "items" && itemId && itemField === "description") itemDescRefs.current[itemId]?.focus();
     else if (field === "items" && itemId && itemField === "amount") itemAmountRefs.current[itemId]?.focus();
     else if (field === "items" && itemId && itemField === "responsible") {
-      setOpenResponsibleItemId(itemId);
       itemResponsibleRefs.current[itemId]?.focus();
     }
   };
@@ -303,7 +281,6 @@ export function BillsPage() {
     setFormError(null);
     setEditingBillId(null);
     setEditorStep(1);
-    setOpenResponsibleItemId(null);
   };
 
   const openCreateModal = () => {
@@ -340,7 +317,6 @@ export function BillsPage() {
   const addItem = () => {
     const nextItem = createItem();
     setItems((current) => [...current, nextItem]);
-    setOpenResponsibleItemId(nextItem.id);
     window.requestAnimationFrame(() => itemDescRefs.current[nextItem.id]?.focus());
   };
 
@@ -355,26 +331,6 @@ export function BillsPage() {
       delete next[itemId];
       return next;
     });
-    if (openResponsibleItemId === itemId) {
-      setOpenResponsibleItemId(null);
-    }
-  };
-
-  const toggleResponsibleParticipant = (itemId: string, participantId: string) => {
-    setItems((current) => current.map((item) => {
-      if (item.id !== itemId) {
-        return item;
-      }
-
-      const isSelected = item.responsibleParticipantIds.includes(participantId);
-      return {
-        ...item,
-        responsibleParticipantIds: isSelected
-          ? item.responsibleParticipantIds.filter((id) => id !== participantId)
-          : [...item.responsibleParticipantIds, participantId]
-      };
-    }));
-    clearItemError(itemId, "responsible");
   };
 
   const formatFeeInput = () => {
@@ -426,7 +382,6 @@ export function BillsPage() {
     setItemErrors({});
     setFormError(null);
     setEditorStep(1);
-    setOpenResponsibleItemId(null);
   }
 
   function validateBillDraft() {
@@ -844,20 +799,24 @@ export function BillsPage() {
 
                       <div className="space-y-2">
                         <span className="text-sm font-semibold text-ink">{t("bills.responsible")}</span>
-                        <ResponsibleMultiSelect
-                          buttonRef={(element) => {
+                        <CustomMultiSelect
+                          ref={(element) => {
                             itemResponsibleRefs.current[item.id] = element;
                           }}
-                          containerRef={(element) => {
-                            responsibleMenuRefs.current[item.id] = element;
+                          ariaLabel={t("bills.responsible")}
+                          invalid={Boolean(itemErrors[item.id]?.responsible)}
+                          options={participants.map((participant) => ({
+                            value: participant.id,
+                            label: participant.name
+                          }))}
+                          value={item.responsibleParticipantIds}
+                          onChange={(nextIds) => {
+                            setItems((current) => current.map((entry) => entry.id === item.id
+                              ? { ...entry, responsibleParticipantIds: nextIds }
+                              : entry));
+                            clearItemError(item.id, "responsible");
                           }}
-                          participants={participants}
-                          selectedIds={item.responsibleParticipantIds}
-                          open={openResponsibleItemId === item.id}
-                          error={itemErrors[item.id]?.responsible}
-                          onToggleOpen={() => setOpenResponsibleItemId((current) => current === item.id ? null : item.id)}
-                          onToggleParticipant={(participantId) => toggleResponsibleParticipant(item.id, participantId)}
-                          t={t}
+                          placeholder={t("bills.responsiblePlaceholder")}
                         />
                         {itemErrors[item.id]?.responsible ? <p className="text-sm font-medium text-danger">{itemErrors[item.id]?.responsible}</p> : null}
                       </div>
@@ -1005,128 +964,6 @@ export function BillsPage() {
         }}
         onConfirm={() => deleteBillMutation.mutate()}
       />
-    </div>
-  );
-}
-
-function ResponsibleMultiSelect({
-  buttonRef,
-  containerRef,
-  participants,
-  selectedIds,
-  open,
-  error,
-  onToggleOpen,
-  onToggleParticipant,
-  t
-}: {
-  buttonRef: (element: HTMLButtonElement | null) => void;
-  containerRef: (element: HTMLDivElement | null) => void;
-  participants: Array<{ id: string; name: string }>;
-  selectedIds: string[];
-  open: boolean;
-  error?: string;
-  onToggleOpen: () => void;
-  onToggleParticipant: (participantId: string) => void;
-  t: (key: any) => string;
-}) {
-  const selectedParticipants = participants.filter((participant) => selectedIds.includes(participant.id));
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        ref={buttonRef}
-        className={[
-          "dropdown-trigger",
-          error ? "border-danger" : "border-slate-200 hover:border-slate-300"
-        ].join(" ")}
-        onClick={onToggleOpen}
-        type="button"
-      >
-        <div className="min-w-0 flex-1">
-          {selectedParticipants.length > 0 ? (
-            <div className="space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                {selectedParticipants.length} {t("bills.selectedCount")}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedParticipants.map((participant) => (
-                  <span
-                    key={participant.id}
-                    className="tag rounded-full border border-sky-200 bg-sky/70 px-2.5 py-1 text-brand"
-                  >
-                    {participant.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                {t("bills.responsible")}
-              </div>
-              <span className="text-sm text-muted">{t("bills.responsiblePlaceholder")}</span>
-            </div>
-          )}
-        </div>
-        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-          <span>{selectedParticipants.length > 0 ? t("common.select") : t("common.select")}</span>
-          <ChevronDownIcon className={["h-4 w-4 transition-transform", open ? "rotate-180" : ""].join(" ")} />
-        </span>
-      </button>
-
-      {open ? (
-        <div className="dropdown-surface absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70]">
-          <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-200/80 px-1 pb-3">
-            <div>
-              <div className="text-sm font-semibold text-ink">{t("bills.responsible")}</div>
-              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">
-                {selectedParticipants.length} {t("bills.selectedCount")}
-              </div>
-            </div>
-          </div>
-
-          <div className="max-h-72 overflow-y-auto pr-1">
-            <div className="space-y-2">
-              {participants.map((participant) => {
-                const checked = selectedIds.includes(participant.id);
-                return (
-                  <label
-                    key={participant.id}
-                    className={[
-                      "dropdown-option",
-                      checked ? "dropdown-option-active" : "text-muted hover:text-ink"
-                    ].join(" ")}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-ink">{participant.name}</div>
-                      <div className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">
-                        {checked ? t("bills.selectedCount") : t("bills.selectedSplitHint")}
-                      </div>
-                    </div>
-                    <span
-                      className={[
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition",
-                        checked
-                          ? "border-brand/20 bg-brand text-white"
-                          : "border-slate-200 bg-white text-slate-300"
-                      ].join(" ")}
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                    </span>
-                    <input
-                      checked={checked}
-                      className="sr-only"
-                      onChange={() => onToggleParticipant(participant.id)}
-                      type="checkbox"
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1305,25 +1142,34 @@ function buildBillPayload({
   transactionDateUtc: string;
   weights: Record<string, string>;
 }) {
-  const billParticipants: BillParticipantInput[] = participants.map((participant) => ({
-    participantId: participant.id,
-    weight: splitMode === 2 ? Number(weights[participant.id] ?? "1") : null
-  }));
   const parsedFeeValue = feeValue.trim() === "" ? null : Number(feeValue);
   const fees = parsedFeeValue !== null && Number.isFinite(parsedFeeValue) && parsedFeeValue > 0
     ? [{ name: feeName.trim(), feeType, value: parsedFeeValue }]
     : [];
+  const normalizedItems = items.map((item) => ({
+    description: item.description.trim(),
+    amount: Number(item.amount),
+    responsibleParticipantIds: item.responsibleParticipantIds
+  }));
+  const activeParticipantIds = new Set<string>([primaryPayer]);
+  for (const item of normalizedItems) {
+    for (const participantId of item.responsibleParticipantIds) {
+      activeParticipantIds.add(participantId);
+    }
+  }
+  const billParticipants: BillParticipantInput[] = participants
+    .filter((participant) => activeParticipantIds.has(participant.id))
+    .map((participant) => ({
+      participantId: participant.id,
+      weight: splitMode === 2 ? Number(weights[participant.id] ?? "1") : null
+    }));
 
   return {
     storeName: storeName.trim(),
     transactionDateUtc: new Date(transactionDateUtc).toISOString(),
     splitMode,
     primaryPayerParticipantId: primaryPayer,
-    items: items.map((item) => ({
-      description: item.description.trim(),
-      amount: Number(item.amount),
-      responsibleParticipantIds: item.responsibleParticipantIds
-    })),
+    items: normalizedItems,
     fees,
     participants: billParticipants,
     extraContributions: []

@@ -11,6 +11,7 @@ export function EditNameDialog({
   cancelLabel,
   submitLabel,
   validationMessage,
+  validateInput,
   error,
   isBusy,
   onClose,
@@ -24,6 +25,7 @@ export function EditNameDialog({
   cancelLabel: string;
   submitLabel: string;
   validationMessage: string;
+  validateInput?: (trimmedValue: string) => string | null;
   error?: string | null;
   isBusy: boolean;
   onClose: () => void;
@@ -43,6 +45,15 @@ export function EditNameDialog({
     window.requestAnimationFrame(() => inputRef.current?.focus());
   }, [initialValue, open]);
 
+  function getInputValidationError(nextValue: string) {
+    const trimmed = nextValue.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    return validateInput?.(trimmed) ?? null;
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = value.trim();
@@ -52,9 +63,18 @@ export function EditNameDialog({
       return;
     }
 
+    const customValidationError = validateInput?.(trimmed) ?? null;
+    if (customValidationError) {
+      setValidationError(customValidationError);
+      inputRef.current?.focus();
+      return;
+    }
+
     setValidationError(null);
     onSubmit(trimmed);
   }
+
+  const isSubmitDisabled = isBusy || Boolean(getInputValidationError(value));
 
   return (
     <ModalDialog
@@ -79,7 +99,7 @@ export function EditNameDialog({
           >
             {cancelLabel}
           </button>
-          <button className="button-primary w-full sm:w-auto" disabled={isBusy} form="edit-name-form" type="submit">
+          <button className="button-primary w-full sm:w-auto" disabled={isSubmitDisabled} form="edit-name-form" type="submit">
             {isBusy ? <LoadingSpinner /> : null}
             {submitLabel}
           </button>
@@ -102,10 +122,9 @@ export function EditNameDialog({
             placeholder={placeholder}
             value={value}
             onChange={(event) => {
-              setValue(event.target.value);
-              if (validationError) {
-                setValidationError(null);
-              }
+              const nextValue = event.target.value;
+              setValue(nextValue);
+              setValidationError(getInputValidationError(nextValue));
             }}
           />
         </label>

@@ -20,6 +20,11 @@ public sealed class SplityDbContext(DbContextOptions<SplityDbContext> options)
     public DbSet<SettlementTransferConfirmation> SettlementTransferConfirmations => Set<SettlementTransferConfirmation>();
     public DbSet<SettlementShareLink> SettlementShareLinks => Set<SettlementShareLink>();
 
+    public void ClearTracking()
+    {
+        ChangeTracker.Clear();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Group>(entity =>

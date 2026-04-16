@@ -41,8 +41,13 @@ public sealed class ParticipantRepository(SplityDbContext dbContext) : IParticip
     public async Task<bool> HasBillReferencesAsync(Guid participantId, CancellationToken cancellationToken)
     {
         return await dbContext.BillItemResponsibilities.AnyAsync(x => x.ParticipantId == participantId, cancellationToken)
-            || await dbContext.BillShares.AnyAsync(x => x.ParticipantId == participantId, cancellationToken)
-            || await dbContext.PaymentContributions.AnyAsync(x => x.ParticipantId == participantId, cancellationToken);
+            || await dbContext.BillShares.AnyAsync(
+                x => x.ParticipantId == participantId
+                     && (x.TotalShareAmount > 0 || x.PreFeeAmount > 0 || x.FeeAmount > 0),
+                cancellationToken)
+            || await dbContext.PaymentContributions.AnyAsync(
+                x => x.ParticipantId == participantId && x.Amount > 0,
+                cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<Participant>> ListByGroupAsync(Guid groupId, CancellationToken cancellationToken)

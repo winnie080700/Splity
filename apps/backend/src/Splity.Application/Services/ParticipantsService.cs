@@ -82,7 +82,13 @@ public sealed class ParticipantsService(
             throw new EntityNotFoundException("Participant not found.");
         }
 
-        participant.Name = input.Name.Trim();
+        var trimmedName = input.Name.Trim();
+        if (trimmedName.StartsWith("@", StringComparison.Ordinal))
+        {
+            throw new DomainValidationException("Manual participant rename cannot start with '@'. To switch to invited, add @username as a new participant and delete this manual participant.");
+        }
+
+        participant.Name = trimmedName;
         var normalizedUsername = NormalizeUsername(input.Username);
         var invitation = await ResolveInvitationStateAsync(
             group,

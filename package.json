@@ -9,5 +9,8 @@
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "npm run build --prefix apps/frontend",
     "build:backend": "node scripts/backend.js build"
+  },
+  "dependencies": {
+    "react-select": "^5.10.2"
   }
 }

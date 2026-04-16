@@ -337,14 +337,6 @@ export function SettlementsPage() {
                 <input className={["input-base", hasInvalidDateRange ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                 <input className={["input-base", hasInvalidDateRange ? "border-danger focus:border-danger focus:ring-danger/10" : ""].join(" ")} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
               </div>
-              {/* <div>
-                <div className="text-sm font-semibold text-ink">{t("settlement.actingAs")}</div>
-                <p className="mt-1 text-sm leading-6 text-muted">{t("settlement.actingAsHint")}</p>
-                <select className="input-base mt-3" value={actingParticipantId} onChange={(e) => setActingParticipantId(e.target.value)}>
-                  {balances.length === 0 ? <option value="">{t("settlement.selectParticipant")}</option> : null}
-                  {balances.map((balance) => <option key={balance.participantId} value={balance.participantId}>{balance.participantName}</option>)}
-                </select>
-              </div> */}
             </div>
             {hasInvalidDateRange ? <p className="mt-3 text-sm font-medium text-danger">{t("settlement.dateRangeInvalid")}</p> : null}
           </div>
