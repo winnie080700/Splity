@@ -56,6 +56,7 @@ public sealed class BillRepository(SplityDbContext dbContext) : IBillRepository
     private IQueryable<Bill> Query()
     {
         return dbContext.Bills
+            .AsSplitQuery()
             .Include(x => x.Items)
             .ThenInclude(x => x.Responsibilities)
             .Include(x => x.Fees)

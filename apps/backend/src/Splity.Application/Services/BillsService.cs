@@ -81,16 +81,48 @@ public sealed class BillsService(
         CancellationToken cancellationToken)
     {
         await EnsureGroupEditable(groupId, cancellationToken);
-        var bill = await GetBillEntity(groupId, billId, cancellationToken);
         ValidateBillInput(input.StoreName);
 
         var participants = await GetAndValidateBillParticipants(groupId, input.Participants, input.PrimaryPayerParticipantId, cancellationToken);
         var computation = ComputeBill(input.SplitMode, input.Participants, input.Items, input.Fees, input.PrimaryPayerParticipantId, input.ExtraContributions);
 
-        UpdateBillEntity(bill, input, computation);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        const int maxAttempts = 2;
+        string? lastConcurrencyMessage = null;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var bill = await GetBillEntity(groupId, billId, cancellationToken);
+            UpdateBillEntity(bill, input, computation);
 
-        return ToBillDetailDto(bill, participants, computation);
+            try
+            {
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                return ToBillDetailDto(bill, participants, computation);
+            }
+            catch (Exception exception) when (IsConcurrencyException(exception))
+            {
+                lastConcurrencyMessage = exception.Message;
+                if (attempt < maxAttempts - 1)
+                {
+                    ClearUnitOfWorkTracking();
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        ClearUnitOfWorkTracking();
+        var latestBill = await GetBillEntity(groupId, billId, cancellationToken);
+        if (!IsBillEquivalentToInput(latestBill, input, computation))
+        {
+            var detailSuffix = string.IsNullOrWhiteSpace(lastConcurrencyMessage)
+                ? string.Empty
+                : $" Last concurrency detail: {lastConcurrencyMessage}";
+            throw new DomainValidationException($"Bill was changed by another request. Please refresh and try again.{detailSuffix}");
+        }
+
+        var latestLookup = await BuildParticipantLookup(groupId, latestBill, cancellationToken);
+        return ToBillDetailDto(latestBill, latestLookup, BuildComputationFromBill(latestBill));
     }
 
     public async Task DeleteAsync(Guid groupId, Guid billId, CancellationToken cancellationToken)
@@ -190,7 +222,7 @@ public sealed class BillsService(
         bill.TransactionDateUtc = ToUtc(input.TransactionDateUtc);
         bill.SplitMode = input.SplitMode;
         bill.PrimaryPayerParticipantId = input.PrimaryPayerParticipantId;
-        bill.UpdatedAtUtc = DateTime.UtcNow;
+        bill.UpdatedAtUtc = NextUpdatedAtUtc(bill.UpdatedAtUtc);
 
         bill.Items.Clear();
         bill.Fees.Clear();
@@ -214,11 +246,8 @@ public sealed class BillsService(
     {
         foreach (var item in items)
         {
-            var billItemId = Guid.NewGuid();
-            bill.Items.Add(new BillItem
+            var billItem = new BillItem
             {
-                Id = billItemId,
-                BillId = bill.Id,
                 Description = item.Description.Trim(),
                 Amount = RoundToCurrency(item.Amount),
                 Responsibilities = item.ResponsibleParticipantIds
@@ -226,20 +255,18 @@ public sealed class BillsService(
                     .OrderBy(x => x)
                     .Select(participantId => new BillItemResponsibility
                     {
-                        Id = Guid.NewGuid(),
-                        BillItemId = billItemId,
                         ParticipantId = participantId
                     })
                     .ToArray()
-            });
+            };
+
+            bill.Items.Add(billItem);
         }
 
         foreach (var fee in fees)
         {
             bill.Fees.Add(new BillFee
             {
-                Id = Guid.NewGuid(),
-                BillId = bill.Id,
                 Name = fee.Name.Trim(),
                 FeeType = fee.FeeType,
                 Value = RoundToCurrency(fee.Value)
@@ -250,8 +277,6 @@ public sealed class BillsService(
         {
             bill.Shares.Add(new BillShare
             {
-                Id = Guid.NewGuid(),
-                BillId = bill.Id,
                 ParticipantId = share.ParticipantId,
                 Weight = share.Weight,
                 PreFeeAmount = share.PreFeeAmount,
@@ -264,8 +289,6 @@ public sealed class BillsService(
         {
             bill.Contributions.Add(new PaymentContribution
             {
-                Id = Guid.NewGuid(),
-                BillId = bill.Id,
                 ParticipantId = contribution.ParticipantId,
                 Amount = RoundToCurrency(contribution.Amount),
                 CreatedAtUtc = DateTime.UtcNow
@@ -331,6 +354,161 @@ public sealed class BillsService(
             x.Amount)).ToArray();
 
         return new BillComputationResult(subtotal, totalFee, grandTotal, appliedFees, shares, contributions);
+    }
+
+    private async Task<Dictionary<Guid, Participant>> BuildParticipantLookup(
+        Guid groupId,
+        Bill bill,
+        CancellationToken cancellationToken)
+    {
+        var participantIds = bill.Shares.Select(x => x.ParticipantId)
+            .Concat(bill.Contributions.Select(x => x.ParticipantId))
+            .Concat(bill.Items.SelectMany(x => x.Responsibilities.Select(r => r.ParticipantId)))
+            .Distinct()
+            .ToArray();
+
+        var participants = await participantRepository.ListByIdsAsync(groupId, participantIds, cancellationToken);
+        return participants.ToDictionary(x => x.Id, x => x);
+    }
+
+    private static bool IsBillEquivalentToInput(Bill bill, UpdateBillInput input, BillComputationResult expectedComputation)
+    {
+        if (!string.Equals(bill.StoreName, input.StoreName.Trim(), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.Equals(bill.ReferenceImageDataUrl, NormalizeOptionalLongText(input.ReferenceImageDataUrl), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (bill.TransactionDateUtc != ToUtc(input.TransactionDateUtc))
+        {
+            return false;
+        }
+
+        if (bill.SplitMode != input.SplitMode || bill.PrimaryPayerParticipantId != input.PrimaryPayerParticipantId)
+        {
+            return false;
+        }
+
+        var expectedItems = input.Items
+            .Select(x => new
+            {
+                Description = x.Description.Trim(),
+                Amount = RoundToCurrency(x.Amount),
+                Responsible = x.ResponsibleParticipantIds.Distinct().OrderBy(id => id).ToArray()
+            })
+            .OrderBy(x => x.Description)
+            .ThenBy(x => x.Amount)
+            .ToArray();
+        var actualItems = bill.Items
+            .Select(x => new
+            {
+                Description = x.Description.Trim(),
+                Amount = RoundToCurrency(x.Amount),
+                Responsible = x.Responsibilities.Select(r => r.ParticipantId).Distinct().OrderBy(id => id).ToArray()
+            })
+            .OrderBy(x => x.Description)
+            .ThenBy(x => x.Amount)
+            .ToArray();
+
+        if (expectedItems.Length != actualItems.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < expectedItems.Length; i++)
+        {
+            if (!string.Equals(expectedItems[i].Description, actualItems[i].Description, StringComparison.Ordinal)
+                || expectedItems[i].Amount != actualItems[i].Amount
+                || !expectedItems[i].Responsible.SequenceEqual(actualItems[i].Responsible))
+            {
+                return false;
+            }
+        }
+
+        var expectedFees = input.Fees
+            .Select(x => new { Name = x.Name.Trim(), x.FeeType, Value = RoundToCurrency(x.Value) })
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.FeeType)
+            .ThenBy(x => x.Value)
+            .ToArray();
+        var actualFees = bill.Fees
+            .Select(x => new { Name = x.Name.Trim(), x.FeeType, Value = RoundToCurrency(x.Value) })
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.FeeType)
+            .ThenBy(x => x.Value)
+            .ToArray();
+
+        if (expectedFees.Length != actualFees.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < expectedFees.Length; i++)
+        {
+            if (!string.Equals(expectedFees[i].Name, actualFees[i].Name, StringComparison.Ordinal)
+                || expectedFees[i].FeeType != actualFees[i].FeeType
+                || expectedFees[i].Value != actualFees[i].Value)
+            {
+                return false;
+            }
+        }
+
+        var expectedShares = expectedComputation.Shares
+            .OrderBy(x => x.ParticipantId)
+            .Select(x => new { x.ParticipantId, x.Weight, x.PreFeeAmount, x.FeeAmount, x.TotalShareAmount })
+            .ToArray();
+        var actualShares = bill.Shares
+            .OrderBy(x => x.ParticipantId)
+            .Select(x => new { x.ParticipantId, x.Weight, x.PreFeeAmount, x.FeeAmount, x.TotalShareAmount })
+            .ToArray();
+
+        if (expectedShares.Length != actualShares.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < expectedShares.Length; i++)
+        {
+            if (expectedShares[i].ParticipantId != actualShares[i].ParticipantId
+                || expectedShares[i].Weight != actualShares[i].Weight
+                || expectedShares[i].PreFeeAmount != actualShares[i].PreFeeAmount
+                || expectedShares[i].FeeAmount != actualShares[i].FeeAmount
+                || expectedShares[i].TotalShareAmount != actualShares[i].TotalShareAmount)
+            {
+                return false;
+            }
+        }
+
+        var expectedContributions = expectedComputation.Contributions
+            .Where(x => x.Amount > 0)
+            .OrderBy(x => x.ParticipantId)
+            .Select(x => new { x.ParticipantId, Amount = RoundToCurrency(x.Amount) })
+            .ToArray();
+        var actualContributions = bill.Contributions
+            .Where(x => x.Amount > 0)
+            .OrderBy(x => x.ParticipantId)
+            .Select(x => new { x.ParticipantId, Amount = RoundToCurrency(x.Amount) })
+            .ToArray();
+
+        if (expectedContributions.Length != actualContributions.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < expectedContributions.Length; i++)
+        {
+            if (expectedContributions[i].ParticipantId != actualContributions[i].ParticipantId
+                || expectedContributions[i].Amount != actualContributions[i].Amount)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static BillDetailDto ToBillDetailDto(
@@ -458,6 +636,12 @@ public sealed class BillsService(
         };
     }
 
+    private static DateTime NextUpdatedAtUtc(DateTime previousValue)
+    {
+        var nowUtc = DateTime.UtcNow;
+        return nowUtc <= previousValue ? previousValue.AddSeconds(1) : nowUtc;
+    }
+
     private static decimal RoundToCurrency(decimal amount)
     {
         return Math.Round(amount, 2, MidpointRounding.AwayFromZero);
@@ -479,5 +663,15 @@ public sealed class BillsService(
         {
             throw new DomainValidationException("Store name is required.");
         }
+    }
+
+    private void ClearUnitOfWorkTracking()
+    {
+        unitOfWork.ClearTracking();
+    }
+
+    private static bool IsConcurrencyException(Exception exception)
+    {
+        return string.Equals(exception.GetType().Name, "DbUpdateConcurrencyException", StringComparison.Ordinal);
     }
 }

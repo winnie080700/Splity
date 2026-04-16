@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Splity.Application.Exceptions;
@@ -34,6 +35,15 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
                     notFoundException.Message,
                     StatusCodes.Status404NotFound,
                     "not_found");
+                return true;
+            case DbUpdateConcurrencyException:
+                logger.LogWarning(exception, "DbUpdateConcurrencyException for {Path}", httpContext.Request.Path);
+                await WriteProblemAsync(
+                    httpContext,
+                    "No new changes",
+                    "No new changes were applied. The data may already be up to date.",
+                    StatusCodes.Status409Conflict,
+                    "concurrency_conflict");
                 return true;
             default:
                 logger.LogError(exception, "Unhandled exception for {Path}", httpContext.Request.Path);
