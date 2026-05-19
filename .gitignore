@@ -5,11 +5,13 @@
 # Node
 **/node_modules/
 **/dist/
+apps/web/.next/
 
 # Local env
 .env
 .env.*
 !.env.example
+apps/web/.env.local
 
 # IDE
 .vs/
