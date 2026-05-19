@@ -22,6 +22,7 @@ apps/web/.env.local
 .codex-temp/
 .tmp/
 .claude
+supabase/.temp/
 
 # Local logs/build caches
 *.log
