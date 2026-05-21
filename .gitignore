@@ -23,6 +23,7 @@ apps/web/.env.local
 .tmp/
 .claude
 supabase/.temp/
+supabase/.branches/
 
 # Local logs/build caches
 *.log

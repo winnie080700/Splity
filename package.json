@@ -2,16 +2,10 @@
   "name": "splity",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.js",
-    "dev:web": "pnpm --filter splity-web dev",
-    "dev:frontend": "node scripts/dev.js frontend",
-    "dev:backend": "node scripts/dev.js backend",
-    "install:frontend": "npm install --prefix apps/frontend",
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "npm run build --prefix apps/frontend",
-    "build:backend": "node scripts/backend.js build"
+    "dev": "pnpm --filter splity-web dev",
+    "build": "pnpm --filter splity-web build",
+    "typecheck": "pnpm --filter splity-web typecheck"
   },
   "dependencies": {
-    "react-select": "^5.10.2"
   }
 }
