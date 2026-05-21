@@ -1,3 +1,4 @@
+import { AuthSimpleCard } from "../auth-simple-card";
 import { VerifyEmailForm } from "./form";
 
 type VerifyEmailPageProps = {
@@ -10,5 +11,9 @@ export default async function VerifyEmailPage({
   searchParams,
 }: VerifyEmailPageProps) {
   const params = await searchParams;
-  return <VerifyEmailForm email={params.email ?? ""} />;
+  return (
+    <AuthSimpleCard>
+      <VerifyEmailForm email={params.email ?? ""} />
+    </AuthSimpleCard>
+  );
 }

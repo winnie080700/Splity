@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <I18nProvider>{children}</I18nProvider>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

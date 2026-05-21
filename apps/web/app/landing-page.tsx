@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { ArrowIcon } from "@/components/brand/arrow-icon";
+import { BrandMark } from "@/components/brand/brand-mark";
+
 type Language = "en" | "zh";
 
 type Feature = {
@@ -226,25 +229,6 @@ const navIds = ["#why", "#how", "#cases", "#contact"] as const;
 
 function isPageLink(href: string) {
   return href.startsWith("/") && !href.startsWith("/#");
-}
-
-function ArrowIcon() {
-  return (
-    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-      <path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function BrandMark({ compact = false }: { compact?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-2.5 font-[var(--splity-display)] text-[22px] font-bold">
-      <span className="grid h-7 w-7 -rotate-3 place-items-center rounded-lg bg-[var(--splity-navy)] text-lg font-extrabold text-[var(--splity-gold)]">
-        S
-      </span>
-      {compact ? null : <span>Splity</span>}
-    </span>
-  );
 }
 
 function Avatar({ children, tone = "bg-[var(--splity-navy)]" }: { children: string; tone?: string }) {

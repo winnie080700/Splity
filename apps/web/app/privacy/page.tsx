@@ -1,22 +1,15 @@
 import Link from "next/link";
 
-const SECTION_SPACING = "mt-12 first:mt-10";
-const H2 = "text-2xl font-semibold tracking-tight text-[var(--splity-ink)]";
-const H3 = "mt-8 text-lg font-semibold text-[var(--splity-ink)]";
-const P = "mt-4 text-base leading-relaxed text-[var(--splity-ink)]";
-const UL = "mt-4 list-disc space-y-2 pl-6 text-base leading-relaxed text-[var(--splity-ink)]";
-const MUTED = "text-[var(--splity-muted)]";
+import { BackToHome } from "@/components/brand/back-to-home";
+import { LEGAL_TYPOGRAPHY as T } from "@/components/legal/typography";
+
+const { section: SECTION_SPACING, h2: H2, h3: H3, p: P, ul: UL, muted: MUTED, link: LINK } = T;
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[var(--splity-bg)] px-4 py-10 text-[var(--splity-ink)] sm:px-8">
       <article className="mx-auto max-w-3xl">
-        <Link
-          className="inline-flex items-center text-sm font-semibold text-[var(--splity-navy)] hover:underline"
-          href="/"
-        >
-          ← Back to Splity
-        </Link>
+        <BackToHome />
 
         <header className="mt-10 border-b border-[var(--splity-line)] pb-8">
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--splity-muted)]">
@@ -226,7 +219,7 @@ export default function PrivacyPage() {
             <li>
               Contacting us at{" "}
               <a
-                className="font-medium text-[var(--splity-navy)] underline underline-offset-2"
+                className={LINK}
                 href="mailto:winnie.chngsm@gmail.com"
               >
                 winnie.chngsm@gmail.com
@@ -288,7 +281,7 @@ export default function PrivacyPage() {
             We do not knowingly collect personal information from children. If you believe a child has
             provided personal information to us, contact us at{" "}
             <a
-              className="font-medium text-[var(--splity-navy)] underline underline-offset-2"
+              className={LINK}
               href="mailto:winnie.chngsm@gmail.com"
             >
               winnie.chngsm@gmail.com
@@ -330,7 +323,7 @@ export default function PrivacyPage() {
             <dt className={`font-semibold ${MUTED}`}>Email</dt>
             <dd>
               <a
-                className="font-medium text-[var(--splity-navy)] underline underline-offset-2"
+                className={LINK}
                 href="mailto:winnie.chngsm@gmail.com"
               >
                 winnie.chngsm@gmail.com
@@ -339,7 +332,7 @@ export default function PrivacyPage() {
             <dt className={`font-semibold ${MUTED}`}>GitHub</dt>
             <dd>
               <a
-                className="font-medium text-[var(--splity-navy)] underline underline-offset-2"
+                className={LINK}
                 href="https://github.com/winnie080700"
                 target="_blank"
                 rel="noreferrer"

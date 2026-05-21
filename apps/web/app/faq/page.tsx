@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { BackToHome } from "@/components/brand/back-to-home";
+
 
 type Category = {
   label: CategoryLabel;
@@ -507,12 +509,7 @@ export default function FaqPage() {
   return (
     <main className="min-h-screen bg-[#efede7] px-3 py-7 text-[var(--splity-ink)] sm:px-6 lg:px-8">
       <header className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <Link
-          className="inline-flex items-center text-sm font-semibold text-[var(--splity-navy)] hover:underline"
-          href="/"
-        >
-          ← Back to Splity
-        </Link>
+        <BackToHome />
       </header>
 
       <section className="mt-8 overflow-hidden rounded-[26px] bg-[var(--splity-navy)] px-6 py-12 text-white sm:px-10 lg:px-12" id="help">

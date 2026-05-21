@@ -1,9 +1,9 @@
-import { SignInForm } from "./form";
+import { CombinedAuthPage } from "../combined-auth-page";
 
 type SignInPageProps = {
   searchParams: Promise<{
     error?: string;
-    redirectTo?: string;
+    mode?: string;
   }>;
 };
 
@@ -11,9 +11,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
 
   return (
-    <SignInForm
+    <CombinedAuthPage
       callbackError={params.error ?? null}
-      redirectTo={params.redirectTo ?? "/dashboard"}
+      initialMode={params.mode === "register" ? "register" : "login"}
+      redirectTo="/dashboard"
     />
   );
 }
