@@ -1,270 +1,84 @@
 # Splity
 
-Splity is a shared-expense workspace for real bill-splitting workflows.  
-It connects `create group -> add participants -> add bills -> settle -> share payment link -> confirm payment` in one flow, and now also supports invitation-based read-only collaboration.
+Splity is a shared-expense workspace for real bill-splitting workflows. It connects:
+
+`create group -> add participants -> add bills -> settle -> share payment link -> confirm payment`
+
+The current app is a Next.js + Supabase implementation. The legacy frontend, backend, and database bootstrap have been removed.
 
 ## Project Overview
 
-This repository contains:
-
-- `apps/frontend`: React + TypeScript + Vite frontend
-- `apps/backend`: ASP.NET Core 10 Minimal API + EF Core backend
-- `packages/api-client`: shared typed API client used by frontend and backend
+- `apps/web`: Next.js App Router app with Server Actions and Tailwind CSS
+- `supabase/migrations`: Supabase Postgres schema, RLS policies, triggers, and RPCs
+- `supabase/tests`: SQL fixtures for RLS and migration behavior
+- `packages/api-client`: shared DTO type definitions only
 
 ## Core Features
 
-### Authentication and Access
-
-- Clerk-based authentication (email/password, email verification code, social login)
-- Continue as Guest mode for quick local usage
-- Settings page for account profile, payment profile, language, and sign-out
-- Quick logout icon in the sidebar profile card
-
-### Groups and Collaboration
-
-- Create, rename, delete groups (owner only)
-- Group status lifecycle: `unresolved -> settling -> settled`
-- Invitation flow via participant `@username`
-- New `Invitations` tab to accept/decline pending invitations
-- Accepted invitees can view groups in read-only mode (`canEdit: false`)
-- Declined invitations do not break the group; participant status is shown as `declined`
-- Participant invitation statuses: `none / pending / accepted / declined`
-- Participant removal is blocked if that participant is still referenced by bills
-
-### Bills and Settlement
-
-- Bill create/edit/preview in guided modal flows
-- Bill items support multiple responsible participants
-- Settlement page supports date range filtering and transfer status updates
-- In `unresolved`, settlement shows next-step guidance before full settlement flow
-
-### Settlement Share Page (`/s/:shareToken`)
-
-- 3-step flow: identity -> payment view -> completion
-- Payer view optimized for fast payment actions:
-  - amount summary
-  - status card
-  - separate payment proof screenshot card
-- Receiver view optimized as table:
-  - `Name | Amount | Status | Proof | Actions`
-  - proof column shows `View` button when available, otherwise `-`
-  - action supports `Mark as received`
-- Receipt details are collapsible (default collapsed) with smooth expand/collapse
-
-### Image Export
-
-- Settlement summary and receipt image export support
-- Export filename format: `{uuid}-summary.png`
-- Participant headers include right-side net amount:
-  - receive amount in cyan
-  - pay amount in red
-- For payers, a payment-status pill (`Paid` / `Unpaid`) is shown near amount
-- Receiver payment details are appended once at the end of the image
-- If payment details are missing, fallback text is:
-  - `Not provided. Ask receiver.`
-
-### UI and Responsive Design
-
-- Unified light theme across pages
-- Responsive behavior optimized for desktop, tablet, and mobile
-- Key pages tuned for responsive clarity:
-  - app shell / navigation
-  - dashboard activity
-  - groups list / group detail
-  - invitations
-  - settlement share page
-
-## Main Pages
-
-1. Home
-
-- Public landing page for unauthenticated users
-- Product overview and workflow explanation
-
-2. Auth
-
-- Login / register with Clerk
-- Optional social login
-- Forgot password via Clerk email code flow
-
-3. Dashboard
-
-- Range-based financial overview (`month` / `year`)
-- Group, bills, and activity insights
-
-4. Groups
-
-- Group list with status and action controls
-- Group detail, overview, participants, bills, settlements
-- Read-only badges and guardrails for invited non-owner members
-
-5. Invitations
-
-- View pending invitations
-- Accept or decline invitation directly
-
-6. Settlement Share
-
-- Owner generates and shares settlement link
-- Payer and receiver complete payment confirmation flow
-
-7. Settings
-
-- Account profile updates
-- Payment receiving details (for share page prefill)
-- Language and sign-out
-
-## Group Status Rules
-
-- `unresolved`
-  - editable (owner)
-  - participants and bills can be managed
-- `settling`
-  - read-only for data edits
-  - settlement transfer actions available
-- `settled`
-  - read-only
-  - share page remains viewable, no new payment actions
-
-## Language Support
-
-- Supported languages: `en`, `zh`
-- Language choice persists across refresh
-- Main app pages use the same i18n setup
-
-## Environment Variables
-
-### Frontend (`apps/frontend/.env`)
-
-Main frontend variables:
-
-- `VITE_CLERK_PUBLISHABLE_KEY` (required for Clerk auth)
-- `VITE_API_BASE_URL` (optional)
-- `VITE_DEV_API_PROXY_TARGET`
-- `VITE_DEV_ALLOWED_HOSTS` (optional)
-
-Example:
-
-```env
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
-VITE_DEV_API_PROXY_TARGET=http://localhost:5204
-# VITE_API_BASE_URL=https://api.example.com
-# VITE_DEV_ALLOWED_HOSTS=.trycloudflare.com
-```
-
-### Backend (`apps/backend/src/Splity.Api/appsettings*.json` or env vars)
-
-Common backend settings:
-
-Database:
-
-- `ConnectionStrings__DefaultConnection`
-- `Database__Provider`
-
-Clerk:
-
-- `Clerk__Authority`
-- `Clerk__SecretKey`
-- `Clerk__ApiUrl`
-- `Clerk__JwksUrl` (optional; defaults to `<Authority>/.well-known/jwks.json`)
-- `Clerk__AuthorizedParties__0`
-- `Clerk__AuthorizedParties__1`
-
-Frontend CORS:
-
-- `Frontend__AllowedOrigins__0`
-- `Frontend__AllowedOrigins__1`
+- Supabase Auth email/password sign-up, sign-in, reset password, and email verification
+- Account settings for display name, username, password, email verification, and default payment profile
+- Group creation and status lifecycle: `unresolved -> settling -> settled`
+- Participant management, including registered-user invitations by username
+- Bill creation/editing with deterministic split calculations
+- Settlement transfer status tracking
+- Public settlement share links with payment details and QR data URL support
+- Invitation inbox for accepting or declining pending invitations
 
 ## Local Development
 
 ### Requirements
 
-- Node.js + npm
-- .NET SDK 10
-- MySQL
+- Node.js
+- pnpm
+- Supabase project or local Supabase stack configured for the migrations
 
-### Install frontend dependencies
+### Environment
+
+Copy the web env example and fill in Supabase values:
 
 ```powershell
-npm run install:frontend
+Copy-Item apps/web/.env.example apps/web/.env.local
 ```
 
-### Start frontend
+Expected public variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### Install
 
 ```powershell
-npm run dev:frontend
+pnpm install
+```
+
+### Run
+
+```powershell
+pnpm dev
 ```
 
 Default URL:
 
-- `http://localhost:5173`
+- `http://localhost:3000`
 
-### Start backend
-
-```powershell
-npm run dev:backend
-```
-
-Default URLs:
-
-- API: `http://localhost:5204`
-- Health: `http://localhost:5204/health`
-
-### Start frontend + backend together
+### Build And Check
 
 ```powershell
-npm run dev
+pnpm typecheck
+pnpm build
 ```
 
-## Cloudflare Tunnel (Local Sharing)
+## Data And Security
 
-Current setup uses a single frontend tunnel:
+- All app data lives in Supabase Postgres.
+- RLS is enabled on public tables.
+- User-facing writes go through Server Actions and Supabase clients with the current user session.
+- Username lookup uses a whitelisted RPC that returns only `id`, `name`, and `username`.
+- The app must not call the removed legacy HTTP API.
 
-- browser calls same-origin `/api`
-- Vite proxies `/api` and `/health` to backend
-- only frontend `5173` needs to be exposed
+## Package Notes
 
-### 1. Install cloudflared
-
-```powershell
-winget install --id Cloudflare.cloudflared
-cloudflared --version
-```
-
-### 2. Start Splity
-
-```powershell
-npm run dev
-```
-
-Check:
-
-- `http://localhost:5173`
-- `http://localhost:5173/health`
-
-### 3. Start tunnel
-
-```powershell
-cloudflared tunnel --url http://localhost:5173
-```
-
-### 4. Common issues
-
-- frontend not running on `5173`
-- backend not running (UI loads, API fails)
-- Vite host not allowed (`Blocked request. This host is not allowed.`)
-- stale `VITE_API_BASE_URL=http://localhost:5204` in `.env`
-- Clerk/backend authorized parties or allowed origins not including your public origin
-
-## Build Commands
-
-```powershell
-# frontend build
-npm run build:frontend
-
-# backend build
-npm run build:backend
-
-# full build
-npm run build
-```
+`packages/api-client` is intentionally types-only. Runtime data access belongs in `apps/web/lib/services/*` and Server Actions.
