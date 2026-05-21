@@ -1,5 +1,5 @@
 /**
- * Splity brand logo — the "S" tile + wordmark.
+ * Splity brand logo — icon + wordmark.
  *
  * Use everywhere the Splity logo appears (landing, auth, settings, etc).
  * Do NOT inline this SVG/HTML elsewhere; changes here propagate globally.
@@ -16,21 +16,18 @@ type Props = {
   className?: string;
 };
 
-const SIZE_STYLES: Record<Size, { wrapper: string; tile: string; letter: string }> = {
+const SIZE_STYLES: Record<Size, { wrapper: string; icon: string }> = {
   sm: {
     wrapper: "text-lg",
-    tile: "h-6 w-6 text-sm",
-    letter: "text-sm",
+    icon: "h-6 w-6",
   },
   md: {
     wrapper: "text-[22px]",
-    tile: "h-7 w-7",
-    letter: "text-lg",
+    icon: "h-7 w-7",
   },
   lg: {
     wrapper: "text-2xl",
-    tile: "h-9 w-9",
-    letter: "text-xl",
+    icon: "h-9 w-9",
   },
 };
 
@@ -41,12 +38,12 @@ export function BrandMark({ compact = false, size = "md", className = "" }: Prop
     <span
       className={`inline-flex items-center gap-2.5 font-[var(--splity-display)] font-bold tracking-tight ${styles.wrapper} ${className}`}
     >
-      <span
-        className={`grid -rotate-3 place-items-center rounded-lg bg-[var(--splity-navy)] font-extrabold text-[var(--splity-gold)] ${styles.tile} ${styles.letter}`}
+      <img
+        alt=""
         aria-hidden="true"
-      >
-        S
-      </span>
+        className={`shrink-0 ${styles.icon}`}
+        src="/splity-logo.svg"
+      />
       {compact ? null : <span>Splity</span>}
     </span>
   );

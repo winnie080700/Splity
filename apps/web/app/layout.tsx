@@ -7,6 +7,11 @@ import { I18nProvider } from "@/lib/i18n";
 export const metadata: Metadata = {
   title: "Splity",
   description: "Split shared expenses and settle payments clearly.",
+  icons: {
+    icon: "/splity-logo.svg",
+    shortcut: "/splity-logo.svg",
+    apple: "/splity-logo.svg",
+  },
 };
 
 export default function RootLayout({
