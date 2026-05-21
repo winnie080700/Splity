@@ -1,6 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --splity-bg: #f2f1ec;
+  --splity-paper: #ffffff;
+  --splity-ink: #0c1538;
+  --splity-navy: #1b2a6b;
+  --splity-muted: #5a6079;
+  --splity-line: rgba(12, 21, 56, 0.09);
+  --splity-line-strong: rgba(12, 21, 56, 0.18);
+  --splity-gold: #e9b142;
+  --splity-gold-strong: #d8941a;
+  --splity-mint: #2e8a5e;
+  --splity-rose: #c24a4a;
+  --splity-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+  --splity-sans: "Geist", "Inter", system-ui, sans-serif;
+  --splity-mono: "Geist Mono", ui-monospace, monospace;
+  --splity-serif: "Instrument Serif", Georgia, serif;
+}
 
 * {
   box-sizing: border-box;
@@ -9,4 +29,14 @@
 body {
   margin: 0;
   min-width: 320px;
+  font-family: var(--splity-sans);
+  color: var(--splity-ink);
+  background: var(--splity-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  overflow-x: hidden;
 }

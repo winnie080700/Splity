@@ -1,0 +1,25 @@
+type BadgeProps = {
+  children: React.ReactNode;
+  tone?: "neutral" | "green" | "amber" | "red" | "blue";
+};
+
+const tones: Record<NonNullable<BadgeProps["tone"]>, string> = {
+  neutral: "border-zinc-200 bg-zinc-50 text-zinc-700",
+  green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  amber: "border-amber-200 bg-amber-50 text-amber-800",
+  red: "border-red-200 bg-red-50 text-red-700",
+  blue: "border-sky-200 bg-sky-50 text-sky-700",
+};
+
+export function Badge({ children, tone = "neutral" }: BadgeProps) {
+  return (
+    <span
+      className={[
+        "inline-flex h-7 items-center rounded-md border px-2 text-xs font-semibold",
+        tones[tone],
+      ].join(" ")}
+    >
+      {children}
+    </span>
+  );
+}
