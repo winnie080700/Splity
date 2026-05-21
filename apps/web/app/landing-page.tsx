@@ -22,6 +22,11 @@ type Step = {
   body: string;
 };
 
+type FooterColumn = {
+  heading: string;
+  links: { label: string; href: string }[];
+};
+
 const copy = {
   en: {
     nav: ["Why Splity", "How it works", "Use cases", "Contact"],
@@ -108,7 +113,7 @@ const copy = {
       ["¥2.4M", "Settled across Splity groups this year."],
       ["12K+", "Groups created, from hotpot to honeymoon."],
       ["37s", "Average time to log a bill, no friction."],
-      ["0", "Accounts you need to create to start splitting."],
+      ["1", "Accounts you need to create to start splitting."],
     ],
     finalKicker: "Make Splity better together",
     finalTitleA: "Ready to",
@@ -204,7 +209,7 @@ const copy = {
       ["¥2.4M", "今年通过 Splity 群组结算的金额。"],
       ["12K+", "从火锅到蜜月旅行都有人创建群组。"],
       ["37s", "平均录入一笔账单的时间。"],
-      ["0", "开始测试分账前不需要创建账号。"],
+      ["1", "开始测试分账前不需要创建账号。"],
     ],
     finalKicker: "一起把 Splity 做得更好",
     finalTitleA: "准备好",
@@ -218,6 +223,10 @@ const copy = {
 } as const;
 
 const navIds = ["#why", "#how", "#cases", "#contact"] as const;
+
+function isPageLink(href: string) {
+  return href.startsWith("/") && !href.startsWith("/#");
+}
 
 function ArrowIcon() {
   return (
@@ -437,13 +446,14 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
       </div>
       <h3 className="mt-2 font-[var(--splity-display)] text-[22px] font-semibold">{feature.title}</h3>
       <p className="text-[14.5px] leading-6 text-[var(--splity-muted)]">{feature.body}</p>
-      <div className="mt-auto pt-3">
+      <div className={index === 0 ? "mt-4" : "mt-auto pt-3"}>
         {index === 0 ? (
           <div className="flex flex-col gap-2">
             {[
               ["Old Beijing hotpot", "Leo paid · split 4 ways", "+¥214.00", "bg-[#c46920]", "text-[var(--splity-mint)]"],
               ["DiDi to the station", "You paid · 2 of you", "-¥24.00", "bg-[#2e8a5e]", "text-[var(--splity-rose)]"],
               ["Kyoto Airbnb", "You paid · split 5 ways", "+¥1,070.00", "bg-[#6b3ce7]", "text-[var(--splity-mint)]"],
+              ["Late snack run", "Mia paid · split 3 ways", "+¥36.00", "bg-[var(--splity-navy)]", "text-[var(--splity-mint)]"],
             ].map(([name, meta, amount, tone, color]) => (
               <div className="grid grid-cols-[30px_1fr_auto] items-center gap-3 rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] px-3.5 py-2.5 text-[13px]" key={name}>
                 <span className={`grid h-[30px] w-[30px] place-items-center rounded-[9px] text-sm font-bold text-white ${tone}`}>{name[0]}</span>
@@ -454,6 +464,16 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
                 <p className={`font-[var(--splity-mono)] text-[13px] font-bold ${color}`}>{amount}</p>
               </div>
             ))}
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-[#f2f1ec] px-3.5 py-3">
+                <p className="font-[var(--splity-mono)] text-[11px] uppercase text-[var(--splity-muted)]">Logged</p>
+                <p className="mt-1 font-[var(--splity-display)] text-[22px] font-semibold">4 bills</p>
+              </div>
+              <div className="rounded-xl bg-[#f2f1ec] px-3.5 py-3">
+                <p className="font-[var(--splity-mono)] text-[11px] uppercase text-[var(--splity-muted)]">Balance</p>
+                <p className="mt-1 font-[var(--splity-display)] text-[22px] font-semibold text-[var(--splity-mint)]">+¥1.3K</p>
+              </div>
+            </div>
           </div>
         ) : index === 1 ? (
           <MiniSettlement />
@@ -593,18 +613,7 @@ function StepMini({ index }: { index: number }) {
 
   if (index === 3) {
     return (
-      <div className="rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] p-2.5 text-[11px]">
-              {["Winnie (you)", "Mia", "Leo"].map((name, idx) => (
-          <div className="flex items-center gap-2 rounded-lg border border-[var(--splity-line)] bg-white px-2 py-1.5 text-[11.5px]" key={name}>
-            <Avatar tone={idx === 1 ? "bg-[#c46920]" : idx === 2 ? "bg-[#2e8a5e]" : undefined}>{name[0]}</Avatar>
-            {name}
-          </div>
-        ))}
-
-        {["Mia -> You ¥240", "Leo -> You ¥186", "You -> Ada ¥214"].map((row) => (
-          <div className="border-b border-dashed border-[var(--splity-line)] py-1.5 last:border-b-0" key={row}>{row}</div>
-        ))}
-      </div>
+      <MiniSettlement/>
     );
   }
 
@@ -622,23 +631,79 @@ function StepMini({ index }: { index: number }) {
 
 export function LandingPage() {
   const [language, setLanguage] = useState<Language>("en");
+  const [isScrolled, setIsScrolled] = useState(false);
   const text = copy[language];
   const navLinks = useMemo(() => navIds.map((href, index) => [href, text.nav[index]] as const), [text]);
+  const footerColumns = useMemo<FooterColumn[]>(
+    () => [
+      {
+        heading: "Product",
+        links: text.nav.slice(0, 3).map((label, index) => ({
+          label,
+          href: navIds[index],
+        })),
+      },
+      {
+        heading: "Support",
+        links: [
+          { label: text.contact, href: "#contact" },
+          { label: "FAQ", href: "/faq" },
+        ],
+      },
+      {
+        heading: "Legal",
+        links: [
+          { label: "Privacy", href: "/privacy" },
+          { label: "Terms", href: "/terms" },
+        ],
+      },
+    ],
+    [text]
+  );
 
   useEffect(() => {
     document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
   }, [language]);
 
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  function handleAnchorClick(href: string) {
+    const target = document.querySelector(href);
+    if (!(target instanceof HTMLElement)) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", href);
+  }
+
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(1100px_600px_at_8%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(900px_500px_at_100%_12%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] text-[var(--splity-ink)]">
-      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-transparent bg-[rgba(242,241,236,0.72)] px-4 py-4 backdrop-blur-xl sm:px-8">
+    <main className="min-h-screen bg-[radial-gradient(1100px_600px_at_8%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(900px_500px_at_100%_12%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] text-[var(--splity-ink)]">
+      <nav
+        className={`sticky top-0 z-50 flex items-center justify-between border-b px-4 backdrop-blur-xl transition-[background-color,border-color,box-shadow,padding] duration-300 ease-out sm:px-8 ${
+          isScrolled
+            ? "border-[var(--splity-line)] bg-[rgba(242,241,236,0.92)] py-3 shadow-[0_12px_30px_rgba(12,21,56,0.08)]"
+            : "border-transparent bg-[rgba(242,241,236,0.72)] py-4 shadow-none"
+        }`}
+      >
         <Link href="/" aria-label="Splity home">
           <BrandMark />
         </Link>
 
         <div className="hidden items-center gap-9 text-[14.5px] font-medium md:flex">
           {navLinks.map(([href, label]) => (
-            <a className="opacity-80 hover:opacity-100" href={href} key={href}>
+            <a
+              className="opacity-80 transition-opacity duration-200 hover:opacity-100"
+              href={href}
+              key={href}
+              onClick={(event) => {
+                event.preventDefault();
+                handleAnchorClick(href);
+              }}
+            >
               {label}
             </a>
           ))}
@@ -646,12 +711,18 @@ export function LandingPage() {
 
         <div className="flex items-center gap-3">
           <button
-            className="inline-flex rounded-full border border-[var(--splity-line)] bg-white/70 p-1 text-[12.5px] font-semibold"
+            aria-label="Toggle language"
+            className="relative inline-grid grid-cols-2 rounded-full border border-[var(--splity-line)] bg-white/70 p-1 text-[12.5px] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]"
             onClick={() => setLanguage((current) => (current === "en" ? "zh" : "en"))}
             type="button"
           >
-            <span className={`rounded-full px-2.5 py-1 ${language === "en" ? "bg-[var(--splity-navy)] text-white" : "text-[var(--splity-muted)]"}`}>EN</span>
-            <span className={`rounded-full px-2.5 py-1 ${language === "zh" ? "bg-[var(--splity-navy)] text-white" : "text-[var(--splity-muted)]"}`}>中</span>
+            <span
+              className={`absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-full bg-[var(--splity-navy)] transition-transform duration-300 ease-out ${
+                language === "zh" ? "translate-x-full" : "translate-x-0"
+              }`}
+            />
+            <span className={`relative z-10 rounded-full px-2.5 py-1 transition-colors duration-300 ${language === "en" ? "text-white" : "text-[var(--splity-muted)]"}`}>EN</span>
+            <span className={`relative z-10 rounded-full px-2.5 py-1 transition-colors duration-300 ${language === "zh" ? "text-white" : "text-[var(--splity-muted)]"}`}>中</span>
           </button>
           <Link className="inline-flex items-center gap-2 rounded-full bg-[var(--splity-navy)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(27,42,107,0.22)] hover:-translate-y-0.5" href="/sign-up">
             {text.tryNow}
@@ -681,7 +752,14 @@ export function LandingPage() {
               {text.primary}
               <ArrowIcon />
             </Link>
-            <a className="inline-flex items-center gap-2 rounded-full border border-[var(--splity-line-strong)] px-5 py-3 text-sm font-semibold hover:bg-white/60" href="#how">
+            <a
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--splity-line-strong)] px-5 py-3 text-sm font-semibold transition-colors duration-200 hover:bg-white/60"
+              href="#how"
+              onClick={(event) => {
+                event.preventDefault();
+                handleAnchorClick("#how");
+              }}
+            >
               <span className="grid h-3.5 w-3.5 place-items-center rounded-full border border-current text-[8px]">▶</span>
               {text.secondary}
             </a>
@@ -693,7 +771,7 @@ export function LandingPage() {
         </div>
       </header>
 
-      <section className="py-24 sm:py-28" id="why">
+      <section className="scroll-mt-24 py-24 sm:py-28" id="why">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading kicker={text.byline} titleA={text.calcA} titleB={text.calcB} body={text.calcBody} />
           <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_1fr]">
@@ -704,7 +782,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20" id="cases">
+      <section className="scroll-mt-24 py-20" id="cases">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading centered kicker={text.casesKicker} titleA={text.casesTitleA} titleB={text.casesTitleB} body={text.casesBody} />
           <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -720,7 +798,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="py-24 sm:py-28" id="how">
+      <section className="scroll-mt-24 py-24 sm:py-28" id="how">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading kicker={text.stepsKicker} titleA={text.stepsTitleA} titleB={text.stepsTitleB} body={text.stepsBody} />
           <div className="relative grid gap-3 lg:grid-cols-5">
@@ -737,24 +815,10 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
-          <div className="grid border-y border-[var(--splity-line-strong)] py-9 sm:grid-cols-2 lg:grid-cols-4">
-            {text.metrics.map(([value, label]) => (
-              <div className="border-[var(--splity-line)] py-5 sm:border-r sm:px-8 sm:last:border-r-0" key={value}>
-                <p className="font-[var(--splity-display)] text-[56px] font-bold leading-none text-[var(--splity-gold-strong)]">{value}</p>
-                <p className="mt-2.5 text-[13px] text-[var(--splity-muted)]">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20" id="contact">
+      <section className="scroll-mt-24 py-20" id="contact">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <div className="relative overflow-hidden rounded-[32px] bg-[var(--splity-navy)] px-7 py-14 text-white sm:px-14 sm:py-20">
             <div className="absolute -right-32 -top-32 h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,rgba(233,177,66,0.6),transparent_70%)]" />
-            <div className="relative grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-center">
               <div>
                 <p className="text-[11.5px] font-bold uppercase text-[var(--splity-gold)]">{text.finalKicker}</p>
                 <h2 className="mt-4 font-[var(--splity-display)] text-[clamp(2.5rem,5.6vw,4.5rem)] font-bold leading-[1.04]">
@@ -770,15 +834,6 @@ export function LandingPage() {
                     {text.contact}
                   </a>
                 </div>
-              </div>
-
-              <div className="text-left lg:text-right">
-                <div className="inline-flex flex-col gap-3.5 rounded-[18px] border border-white/10 bg-white/[0.06] p-[22px] text-left">
-                  <p className="font-[var(--splity-mono)] text-[11px] uppercase text-white/50">Your last settlement</p>
-                  <p className="font-[var(--splity-display)] text-[38px] font-bold">+¥486<span className="text-[22px] text-white/55">.20</span></p>
-                  <p className="text-[12.5px] text-white/60">3 friends owed <span className="font-semibold text-[var(--splity-gold)]">you</span>, you owed 1.</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -792,16 +847,28 @@ export function LandingPage() {
               <p className="mt-5 text-[13.5px] text-[var(--splity-muted)]">{text.footerBody}</p>
             </div>
             <div className="grid grid-cols-3 gap-8 text-sm sm:gap-16">
-              {[
-                ["Product", text.nav.slice(0, 3)],
-                ["Support", [text.contact, "FAQ", "Status"]],
-                ["Legal", ["Privacy", "Terms"]],
-              ].map(([heading, links]) => (
-                <div className="flex flex-col gap-2.5" key={heading as string}>
-                  <p className="text-[11px] font-bold uppercase text-[var(--splity-muted)]">{heading as string}</p>
-                  {(links as readonly string[]).map((link) => (
-                    <a className="opacity-80" href="#contact" key={link}>{link}</a>
-                  ))}
+              {footerColumns.map((column) => (
+                <div className="flex flex-col gap-2.5" key={column.heading}>
+                  <p className="text-[11px] font-bold uppercase text-[var(--splity-muted)]">{column.heading}</p>
+                  {column.links.map((link) =>
+                    isPageLink(link.href) ? (
+                      <Link className="opacity-80 transition-opacity duration-200 hover:opacity-100" href={link.href} key={link.label}>
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a
+                        className="opacity-80 transition-opacity duration-200 hover:opacity-100"
+                        href={link.href}
+                        key={link.label}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          handleAnchorClick(link.href);
+                        }}
+                      >
+                        {link.label}
+                      </a>
+                    )
+                  )}
                 </div>
               ))}
             </div>
