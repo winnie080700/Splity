@@ -195,9 +195,13 @@ VALUES (
   '10000000-0000-4000-8000-000000000001',
   'Phase 2 Group',
   '00000000-0000-4000-8000-0000000000a1',
-  0
+  1
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  created_by_user_id = EXCLUDED.created_by_user_id,
+  status = EXCLUDED.status;
 
 INSERT INTO public.participants (id, group_id, name, invited_user_id, invitation_status)
 VALUES
@@ -215,7 +219,12 @@ VALUES
     '00000000-0000-4000-8000-0000000000b2',
     1
   )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET
+  group_id = EXCLUDED.group_id,
+  name = EXCLUDED.name,
+  invited_user_id = EXCLUDED.invited_user_id,
+  invitation_status = EXCLUDED.invitation_status;
 
 INSERT INTO public.settlement_share_links (
   id,

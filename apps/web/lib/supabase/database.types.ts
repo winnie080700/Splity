@@ -539,6 +539,10 @@ export type Database = {
         Args: { p_participant_id: string }
         Returns: undefined
       }
+      deactivate_settlement_share: {
+        Args: { p_group_id: string }
+        Returns: undefined
+      }
       get_group_members: {
         Args: { p_group_id: string }
         Returns: {
@@ -549,22 +553,44 @@ export type Database = {
         }[]
       }
       is_group_member: { Args: { p_group_id: string }; Returns: boolean }
+      list_my_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at_utc: string
+          group_id: string
+          group_name: string
+          invited_by_name: string
+          participant_id: string
+        }[]
+      }
       record_settlement_action: {
         Args: {
           p_action: string
           p_actor_participant_id: string
           p_amount: number
-          p_from_date_utc: string
+          p_from_date_utc: string | null
           p_from_participant_id: string
           p_group_id: string
-          p_proof_screenshot_data_url: string
-          p_to_date_utc: string
+          p_proof_screenshot_data_url: string | null
+          p_to_date_utc: string | null
           p_to_participant_id: string
           p_transfer_key: string
         }
         Returns: Json
       }
+      regenerate_settlement_share: {
+        Args: { p_group_id: string; p_payload: Json }
+        Returns: string
+      }
       resolve_share_token: { Args: { p_token: string }; Returns: Json }
+      search_user_by_username: {
+        Args: { p_username: string }
+        Returns: {
+          id: string
+          name: string
+          username: string
+        }[]
+      }
       update_bill_with_items: {
         Args: { p_bill_id: string; p_input: Json }
         Returns: undefined
