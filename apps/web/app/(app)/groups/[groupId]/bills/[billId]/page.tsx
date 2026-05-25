@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { getBill } from "@/lib/services/bills";
@@ -33,7 +34,7 @@ export default async function BillPage({ params }: BillPageProps) {
     <div className="grid gap-6">
       <div>
         <Link className="text-sm font-semibold text-zinc-600 underline" href={`/groups/${groupId}`}>
-          Back to group
+          <T k="groups.backToGroup" />
         </Link>
       </div>
 
@@ -41,8 +42,13 @@ export default async function BillPage({ params }: BillPageProps) {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{bill.storeName}</h1>
           <p className="mt-2 text-sm text-zinc-500">
-            {new Date(bill.transactionDateUtc).toLocaleDateString()} · Paid by{" "}
-            {participantNames.get(bill.primaryPayerParticipantId) ?? "Unknown"}
+            <T
+              k="bills.paidBy"
+              values={{
+                date: new Date(bill.transactionDateUtc).toLocaleDateString(),
+                name: participantNames.get(bill.primaryPayerParticipantId) ?? "Unknown",
+              }}
+            />
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -50,17 +56,17 @@ export default async function BillPage({ params }: BillPageProps) {
           {canEdit ? (
             <>
               <Link className="inline-flex h-10 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-950 hover:bg-zinc-50" href={`/groups/${groupId}/bills/${bill.id}/edit`}>
-                Edit
+                <T k="bills.edit" />
               </Link>
               <ConfirmDialog
                 action={deleteBillAction}
-                confirmLabel="Delete bill"
-                title="Delete this bill?"
-                triggerLabel="Delete"
+                confirmLabel={<T k="bills.deleteBill" />}
+                title={<T k="bills.deleteTitle" />}
+                triggerLabel={<T k="bills.delete" />}
               >
                 <input name="groupId" type="hidden" value={groupId} />
                 <input name="billId" type="hidden" value={bill.id} />
-                This removes the bill and all calculated shares.
+                <T k="bills.deleteBody" />
               </ConfirmDialog>
             </>
           ) : null}
@@ -68,7 +74,9 @@ export default async function BillPage({ params }: BillPageProps) {
       </header>
 
       <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Items</h2>
+        <h2 className="text-lg font-semibold">
+          <T k="bills.items" />
+        </h2>
         {bill.items.map((item) => (
           <div className="flex flex-wrap justify-between gap-3 border-b border-zinc-100 py-3 last:border-0" key={item.id}>
             <div>
@@ -83,11 +91,13 @@ export default async function BillPage({ params }: BillPageProps) {
       </section>
 
       <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Totals</h2>
+        <h2 className="text-lg font-semibold">
+          <T k="bills.totals" />
+        </h2>
         <div className="grid gap-2 text-sm text-zinc-700">
-          <div className="flex justify-between"><span>Subtotal</span><span>{formatMoney(bill.subtotalAmount, bill.currencyCode)}</span></div>
-          <div className="flex justify-between"><span>Fees</span><span>{formatMoney(bill.totalFeeAmount, bill.currencyCode)}</span></div>
-          <div className="flex justify-between font-semibold text-zinc-950"><span>Grand total</span><span>{formatMoney(bill.grandTotalAmount, bill.currencyCode)}</span></div>
+          <div className="flex justify-between"><span><T k="bills.subtotal" /></span><span>{formatMoney(bill.subtotalAmount, bill.currencyCode)}</span></div>
+          <div className="flex justify-between"><span><T k="bills.fees" /></span><span>{formatMoney(bill.totalFeeAmount, bill.currencyCode)}</span></div>
+          <div className="flex justify-between font-semibold text-zinc-950"><span><T k="bills.grandTotal" /></span><span>{formatMoney(bill.grandTotalAmount, bill.currencyCode)}</span></div>
         </div>
         {bill.appliedFees.length ? (
           <div className="grid gap-2 border-t border-zinc-100 pt-3 text-sm text-zinc-600">
@@ -102,16 +112,18 @@ export default async function BillPage({ params }: BillPageProps) {
       </section>
 
       <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Shares</h2>
+        <h2 className="text-lg font-semibold">
+          <T k="bills.shares" />
+        </h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="text-zinc-500">
               <tr>
-                <th className="py-2">Participant</th>
-                <th className="py-2">Weight</th>
-                <th className="py-2">Pre-fee</th>
-                <th className="py-2">Fee</th>
-                <th className="py-2">Total</th>
+                <th className="py-2"><T k="bills.participant" /></th>
+                <th className="py-2"><T k="bills.weight" /></th>
+                <th className="py-2"><T k="bills.preFee" /></th>
+                <th className="py-2"><T k="bills.fee" /></th>
+                <th className="py-2"><T k="bills.total" /></th>
               </tr>
             </thead>
             <tbody>
@@ -130,7 +142,9 @@ export default async function BillPage({ params }: BillPageProps) {
       </section>
 
       <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Contributions</h2>
+        <h2 className="text-lg font-semibold">
+          <T k="bills.contributions" />
+        </h2>
         {bill.contributions.map((contribution) => (
           <div className="flex justify-between gap-3 border-b border-zinc-100 py-2 text-sm last:border-0" key={contribution.participantId}>
             <span>{participantNames.get(contribution.participantId) ?? "Unknown"}</span>

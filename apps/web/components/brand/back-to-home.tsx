@@ -1,4 +1,7 @@
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+
+import { T } from "@/components/i18n/t";
 
 /**
  * Top-of-page navigation back to Splity home.
@@ -10,14 +13,14 @@ type Props = {
   /** Override the destination. Default "/". */
   href?: string;
   /** Override the label. Default "Back to Splity". */
-  label?: string;
+  label?: React.ReactNode;
   /** Extra className. */
   className?: string;
 };
 
 export function BackToHome({
   href = "/",
-  label = "Back to Splity",
+  label = <T k="common.backHome" />,
   className = "",
 }: Props) {
   return (
@@ -26,7 +29,7 @@ export function BackToHome({
       href={href}
     >
       <span aria-hidden="true" className="mr-1">
-        ←
+        <ChevronLeft/>
       </span>
       {label}
     </Link>

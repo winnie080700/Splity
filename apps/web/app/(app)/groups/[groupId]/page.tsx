@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
 import {
   GROUP_STATUS,
-  GROUP_STATUS_LABELS,
   getGroup,
   isGroupStatus,
 } from "@/lib/services/groups";
@@ -30,7 +30,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
     <div className="grid gap-6">
       <div>
         <Link className="text-sm font-semibold text-zinc-600 underline" href="/dashboard">
-          Back to groups
+          <T k="common.backToGroups" />
         </Link>
       </div>
 
@@ -38,11 +38,19 @@ export default async function GroupPage({ params }: GroupPageProps) {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{group.name}</h1>
           <p className="mt-2 text-sm text-zinc-500">
-            Created {new Date(group.created_at_utc).toLocaleDateString()}
+            <T k="common.created" values={{ date: new Date(group.created_at_utc).toLocaleDateString() }} />
           </p>
         </div>
         <Badge tone={status === 0 ? "green" : status === 1 ? "amber" : "blue"}>
-          {GROUP_STATUS_LABELS[status]}
+          <T
+            k={
+              status === 0
+                ? "groups.status.unresolved"
+                : status === 1
+                  ? "groups.status.settling"
+                  : "groups.status.settled"
+            }
+          />
         </Badge>
       </header>
 
@@ -55,9 +63,15 @@ export default async function GroupPage({ params }: GroupPageProps) {
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Bills</h2>
+            <h2 className="text-lg font-semibold">
+              <T k="groups.bills" />
+            </h2>
             <p className="mt-1 text-sm text-zinc-600">
-              {bills.length ? `${bills.length} bill${bills.length === 1 ? "" : "s"} in this group.` : "No bills yet."}
+              {bills.length ? (
+                <T k={bills.length === 1 ? "groups.billCount" : "groups.billCountPlural"} values={{ count: bills.length }} />
+              ) : (
+                <T k="groups.noBills" />
+              )}
             </p>
           </div>
           {status === GROUP_STATUS.unresolved ? (
@@ -65,7 +79,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
               className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
               href={`/groups/${group.id}/bills/new`}
             >
-              New bill
+              <T k="groups.newBill" />
             </Link>
           ) : null}
         </div>
@@ -92,7 +106,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
-            Add the first bill after your participants are set.
+            <T k="groups.firstBillHint" />
           </div>
         )}
       </section>
@@ -101,11 +115,11 @@ export default async function GroupPage({ params }: GroupPageProps) {
         <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Settlement</h2>
+              <h2 className="text-lg font-semibold">
+                <T k="groups.settlement" />
+              </h2>
               <p className="mt-1 text-sm text-zinc-600">
-                {status === GROUP_STATUS.settling
-                  ? "Manage suggested transfers for this group."
-                  : "Review the final settlement history."}
+                <T k={status === GROUP_STATUS.settling ? "groups.settlementManageBody" : "groups.settlementHistoryBody"} />
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -114,14 +128,14 @@ export default async function GroupPage({ params }: GroupPageProps) {
                   className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-950 shadow-sm transition hover:bg-zinc-50"
                   href={`/groups/${group.id}/share`}
                 >
-                  Share publicly
+                  <T k="groups.sharePublicly" />
                 </Link>
               ) : null}
               <Link
                 className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
                 href={`/groups/${group.id}/settlements`}
               >
-                {status === GROUP_STATUS.settling ? "Manage settlements" : "View settlements"}
+                <T k={status === GROUP_STATUS.settling ? "groups.manageSettlements" : "groups.viewSettlements"} />
               </Link>
             </div>
           </div>

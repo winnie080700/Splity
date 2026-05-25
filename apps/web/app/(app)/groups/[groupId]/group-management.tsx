@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { GROUP_STATUS_OPTIONS } from "@/lib/domain/status";
+import { useTranslation } from "@/lib/i18n";
 import {
   changeStatusAction,
   deleteGroupAction,
@@ -46,13 +46,22 @@ export function GroupManagement({
     changeStatusAction.bind(null, groupId),
     initialState
   );
+  const { t } = useTranslation();
+  const statusOptions = [
+    { label: t("groups.status.unresolved"), value: "0" },
+    { label: t("groups.status.settling"), value: "1" },
+    { label: t("groups.status.settled"), value: "2" },
+  ];
+  const deleteBody = t("groups.deleteBody")
+    .replace("{count}", String(participantCount))
+    .replace("{plural}", participantCount === 1 ? "" : "s");
 
   return (
     <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold">Group settings</h2>
+        <h2 className="text-lg font-semibold">{t("groups.settings")}</h2>
         <p className="mt-1 text-sm text-zinc-600">
-          Rename, change settlement state, or delete this group.
+          {t("groups.settingsBody")}
         </p>
       </div>
 
@@ -60,10 +69,10 @@ export function GroupManagement({
         <div className="grid gap-3">
           <Alert tone="error">{renameState.error}</Alert>
           <Alert tone="success">{renameState.success}</Alert>
-          <Input defaultValue={name} label="Name" name="name" required />
+          <Input defaultValue={name} label={t("groups.name")} name="name" required />
         </div>
         <div className="flex items-end">
-          <SubmitButton label="Rename" pendingLabel="Saving..." />
+          <SubmitButton label={t("groups.rename")} pendingLabel={t("common.saving")} />
         </div>
       </form>
 
@@ -73,27 +82,25 @@ export function GroupManagement({
           <Alert tone="success">{statusState.success}</Alert>
           <Select
             defaultValue={String(status)}
-            label="Status"
+            label={t("groups.status")}
             name="status"
-            options={GROUP_STATUS_OPTIONS}
+            options={statusOptions}
           />
         </div>
         <div className="flex items-end">
-          <SubmitButton label="Update status" pendingLabel="Updating..." />
+          <SubmitButton label={t("groups.updateStatus")} pendingLabel={t("settings.updating")} />
         </div>
       </form>
 
       <div className="flex justify-end border-t border-zinc-100 pt-4">
         <ConfirmDialog
           action={deleteGroupAction}
-          confirmLabel="Delete group"
-          title="Delete this group?"
-          triggerLabel="Delete group"
+          confirmLabel={t("groups.deleteGroup")}
+          title={t("groups.deleteTitle")}
+          triggerLabel={t("groups.deleteGroup")}
         >
           <input name="groupId" type="hidden" value={groupId} />
-          This will delete {participantCount} participant
-          {participantCount === 1 ? "" : "s"}, all bills, and all settlement
-          data for this group.
+          {deleteBody}
         </ConfirmDialog>
       </div>
     </section>

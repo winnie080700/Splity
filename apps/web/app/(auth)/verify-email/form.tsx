@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/lib/i18n";
 import {
   resendVerification,
   type ResendVerificationState,
@@ -19,24 +20,25 @@ const initialState: ResendVerificationState = {
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
 
   return (
     <Button disabled={pending} type="submit" variant="secondary">
-      {pending ? "Sending..." : "Resend email"}
+      {pending ? t("common.sending") : t("auth.resendEmail")}
     </Button>
   );
 }
 
 export function VerifyEmailForm({ email }: { email: string }) {
   const [state, formAction] = useActionState(resendVerification, initialState);
+  const { t } = useTranslation();
 
   return (
     <div className="grid gap-6">
       <div className="grid gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("auth.checkEmailTitle")}</h1>
         <p className="text-sm leading-6 text-zinc-600">
-          We sent a verification link. Open it in this browser to finish setting
-          up your account.
+          {t("auth.checkEmailBody")}
         </p>
       </div>
 
@@ -47,7 +49,7 @@ export function VerifyEmailForm({ email }: { email: string }) {
           autoCapitalize="none"
           autoComplete="email"
           defaultValue={email}
-          label="Email"
+          label={t("auth.email")}
           name="email"
           required
           type="email"
@@ -56,9 +58,9 @@ export function VerifyEmailForm({ email }: { email: string }) {
       </form>
 
       <p className="text-center text-sm text-zinc-600">
-        Already verified?{" "}
+        {t("auth.alreadyVerified")}{" "}
         <Link className="font-semibold text-zinc-950 underline" href="/sign-in">
-          Sign in
+          {t("auth.signIn")}
         </Link>
       </p>
     </div>

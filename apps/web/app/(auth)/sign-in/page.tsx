@@ -1,4 +1,4 @@
-import { CombinedAuthPage } from "../combined-auth-page";
+import { SignInClient } from "./sign-in-client";
 
 type SignInPageProps = {
   searchParams: Promise<{
@@ -11,10 +11,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
 
   return (
-    <CombinedAuthPage
+    <SignInClient
       callbackError={params.error ?? null}
       initialMode={params.mode === "register" ? "register" : "login"}
-      redirectTo="/dashboard"
     />
   );
 }

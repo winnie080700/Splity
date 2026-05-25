@@ -7,36 +7,25 @@ import { toast } from "sonner";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Alert } from "@/components/ui/alert";
+import { useTranslation } from "@/lib/i18n";
 import { resetPassword, type PasswordActionState } from "../auth-actions";
 import { AuthField, AuthSubmitButton } from "../auth-form-controls";
+import { LockIcon } from "lucide-react";
 
 const initialState: PasswordActionState = { error: null, success: null };
-
-function LockIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M7 10V8a5 5 0 0 1 10 0v2m-9 0h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [state, formAction] = useActionState(resetPassword, initialState);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!state.success) return;
 
-    toast.success(state.success, { duration: 3000 });
+    toast.success(state.success, { duration: 2000 });
     const timeout = window.setTimeout(() => {
       router.replace("/sign-in");
-    }, 3000);
+    }, 1000);
 
     return () => window.clearTimeout(timeout);
   }, [router, state.success]);
@@ -54,14 +43,13 @@ export default function ResetPasswordPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
-              Account recovery
+              {t("auth.accountRecovery")}
             </p>
-            <h1 className="mt-1 font-[var(--splity-display)] text-[clamp(2.4rem,6vw,3.15rem)] font-bold leading-[1.02] tracking-tight">
-              Set new password
+            <h1 className="mt-1 font-[var(--splity-display)] text-[clamp(2.4rem,6vw,3.15rem)] leading-[1.02] tracking-tight">
+              {t("auth.setNewPasswordTitle")}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--splity-muted)]">
-              Choose a new password for your Splity account. After updating, we
-              will send you back to the login page.
+              {t("auth.setNewPassword")}
             </p>
           </div>
         </div>
@@ -70,23 +58,23 @@ export default function ResetPasswordPage() {
           <Alert tone="error">{state.error}</Alert>
           <AuthField
             autoComplete="new-password"
-            label="New password"
+            label={t("auth.newPassword")}
             minLength={6}
             name="password"
-            placeholder="At least 6 characters"
+            placeholder={t("auth.passwordMinPlaceholder")}
             type="password"
           />
           <AuthField
             autoComplete="new-password"
-            label="Confirm new password"
+            label={t("auth.confirmNewPassword")}
             minLength={6}
             name="confirmPassword"
-            placeholder="Re-enter your password"
+            placeholder={t("auth.reenterPassword")}
             type="password"
           />
           <AuthSubmitButton
-            idleLabel="Update password"
-            pendingLabel="Updating password..."
+            idleLabel={t("auth.updatePassword")}
+            pendingLabel={t("auth.updatingPassword")}
           />
         </form>
 
@@ -95,7 +83,7 @@ export default function ResetPasswordPage() {
             className="text-sm font-semibold text-[var(--splity-navy)] underline decoration-[var(--splity-gold)] underline-offset-4"
             href="/sign-in"
           >
-            Back to login
+            {t("auth.backToLogin")}
           </Link>
         </div>
       </section>

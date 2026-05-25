@@ -22,6 +22,9 @@ apps/web/.env.local
 .codex-temp/
 .tmp/
 .claude
+.playwright-cli/
+apps/web/.agents/
+apps/web/skills-lock.json
 supabase/.temp/
 supabase/.branches/
 

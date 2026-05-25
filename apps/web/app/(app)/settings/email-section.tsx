@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n";
 import { resendVerificationAction, type SettingsActionState } from "./actions";
 
 type EmailSectionProps = {
@@ -17,15 +18,16 @@ const COOLDOWN_SECONDS = 60;
 
 function SubmitButton({ cooldown }: { cooldown: number }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   const disabled = pending || cooldown > 0;
 
   return (
     <Button disabled={disabled} type="submit" variant="secondary">
       {pending
-        ? "Sending..."
+        ? t("common.sending")
         : cooldown > 0
-          ? `Resend in ${cooldown}s`
-          : "Resend verification email"}
+          ? t("settings.resendIn").replace("{seconds}", String(cooldown))
+          : t("settings.resendVerification")}
     </Button>
   );
 }
@@ -33,6 +35,7 @@ function SubmitButton({ cooldown }: { cooldown: number }) {
 export function EmailSection({ email, isVerified }: EmailSectionProps) {
   const [state, formAction] = useActionState(resendVerificationAction, initialState);
   const [cooldown, setCooldown] = useState(0);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!state.success || isVerified) return;
@@ -50,7 +53,7 @@ export function EmailSection({ email, isVerified }: EmailSectionProps) {
     <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-950">Email verification</h2>
+          <h2 className="text-lg font-semibold text-zinc-950">{t("settings.emailTitle")}</h2>
           <p className="mt-1 text-sm text-zinc-500">{email}</p>
         </div>
         <span
@@ -61,7 +64,7 @@ export function EmailSection({ email, isVerified }: EmailSectionProps) {
               : "border-amber-200 bg-amber-50 text-amber-800",
           ].join(" ")}
         >
-          {isVerified ? "Verified" : "Pending"}
+          {isVerified ? t("settings.emailVerified") : t("settings.emailPending")}
         </span>
       </div>
       {!isVerified ? (

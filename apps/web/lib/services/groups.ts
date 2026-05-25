@@ -11,6 +11,19 @@ export {
 } from "@/lib/domain/status";
 
 export type Group = Database["public"]["Tables"]["groups"]["Row"];
+export type GroupSummary = Group & {
+  billCount: number;
+  participantCount: number;
+};
+
+function readCount(value: unknown) {
+  if (Array.isArray(value)) {
+    const first = value[0] as { count?: unknown } | undefined;
+    return typeof first?.count === "number" ? first.count : 0;
+  }
+
+  return 0;
+}
 
 export async function listAccessibleGroups() {
   const supabase = await createClient();
@@ -21,6 +34,33 @@ export async function listAccessibleGroups() {
 
   if (error) throw error;
   return data;
+}
+
+export async function listAccessibleGroupSummaries(): Promise<GroupSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("groups")
+    .select("id, name, status, created_at_utc, created_by_user_id, participants(count), bills(count)")
+    .order("created_at_utc", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((row) => {
+    const joined = row as typeof row & {
+      bills?: unknown;
+      participants?: unknown;
+    };
+
+    return {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      created_at_utc: row.created_at_utc,
+      created_by_user_id: row.created_by_user_id,
+      billCount: readCount(joined.bills),
+      participantCount: readCount(joined.participants),
+    };
+  });
 }
 
 export async function getGroup(groupId: string) {

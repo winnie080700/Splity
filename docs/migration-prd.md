@@ -131,7 +131,7 @@ Splity/
 │   ├── frontend/     ← 旧 Vite，保留至 Phase 8 完成
 │   └── web/          ← 新建
 │       ├── app/
-│       │   ├── (auth)/sign-in, sign-up, verify-email
+│       │   ├── (auth)/sign-in, verify-email
 │       │   ├── (app)/
 │       │   │   ├── dashboard
 │       │   │   ├── invitations
@@ -429,8 +429,7 @@ Route Handler (apps/web)           record_settlement_action RPC (Postgres)
 ### Phase 3：Supabase Auth 接入（1 天）
 
 **交付物**
-- `app/(auth)/sign-up/page.tsx`：邮箱 + 密码 + 姓名 → `supabase.auth.signUp({ options: { data: { name } } })`。
-- `app/(auth)/sign-in/page.tsx`。
+- `app/(auth)/sign-in/page.tsx`：邮箱 + 密码 + 姓名 → `supabase.auth.signUp({ options: { data: { name } } })`。
 - `app/(auth)/verify-email/page.tsx`：处理 `?code=...` 回调，调 `supabase.auth.exchangeCodeForSession`。
 - `app/(auth)/forgot-password/page.tsx`：调 `supabase.auth.resetPasswordForEmail`。
 - `lib/auth/server.ts`：`getUser()` / `requireUser()` 辅助，从 Server Component cookies 拿。

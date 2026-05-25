@@ -7,9 +7,9 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { useTranslation } from "@/lib/i18n";
 import {
   SETTLEMENT_TRANSFER_STATUS,
-  SETTLEMENT_TRANSFER_STATUS_LABELS,
   type SettlementTransferStatus,
 } from "@/lib/domain/status";
 import type { Participant } from "@/lib/services/participants";
@@ -35,9 +35,10 @@ const initialState: SettlementActionState = { error: null, success: null };
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button disabled={pending} type="submit" variant="secondary">
-      {pending ? "Saving..." : label}
+      {pending ? t("common.saving") : label}
     </Button>
   );
 }
@@ -89,6 +90,13 @@ export function TransferRow({
   const toName = participantLookup[transfer.toParticipantId] ?? "Unknown";
   const canMarkPaid = canManage && statusIsSettling && transfer.status === SETTLEMENT_TRANSFER_STATUS.pending;
   const canMarkReceived = canManage && statusIsSettling && transfer.status === SETTLEMENT_TRANSFER_STATUS.markedPaid;
+  const { t } = useTranslation();
+  const statusLabel =
+    transfer.status === SETTLEMENT_TRANSFER_STATUS.received
+      ? t("settlements.status.received")
+      : transfer.status === SETTLEMENT_TRANSFER_STATUS.markedPaid
+        ? t("settlements.status.markedPaid")
+        : t("settlements.status.pending");
 
   async function handleProofSelected(event: ChangeEvent<HTMLInputElement>) {
     setProofError(null);
@@ -99,13 +107,13 @@ export function TransferRow({
     }
 
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      setProofError("Use a PNG, JPEG, or WebP image.");
+      setProofError(t("settlements.proofTypeError"));
       setProofScreenshotDataUrl("");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setProofError("Proof image must be smaller than 5MB.");
+      setProofError(t("settlements.proofSizeError"));
       setProofScreenshotDataUrl("");
       return;
     }
@@ -120,10 +128,10 @@ export function TransferRow({
       <div className="grid gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-zinc-950">{fromName}</span>
-          <span className="text-zinc-400">to</span>
+          <span className="text-zinc-400">{t("settlements.toLabel")}</span>
           <span className="font-medium text-zinc-950">{toName}</span>
           <Badge tone={badgeTone(transfer.status)}>
-            {SETTLEMENT_TRANSFER_STATUS_LABELS[transfer.status]}
+            {statusLabel}
           </Badge>
         </div>
         <div className="text-sm text-zinc-600">
@@ -149,15 +157,15 @@ export function TransferRow({
             />
             <Select
               defaultValue={transfer.fromParticipantId}
-              label="Actor"
+              label={t("settlements.actor")}
               name="actorParticipantId"
               options={participants.map((participant) => ({ label: participant.name, value: participant.id }))}
             />
             <label className="grid gap-2 text-sm font-medium text-zinc-800">
-              <span>Proof screenshot</span>
+              <span>{t("settlements.proofScreenshot")}</span>
               <input accept="image/png,image/jpeg,image/webp" onChange={handleProofSelected} type="file" />
             </label>
-            <SubmitButton label="Mark paid" />
+            <SubmitButton label={t("settlements.markPaid")} />
           </form>
         ) : null}
 
@@ -171,17 +179,17 @@ export function TransferRow({
             />
             <Select
               defaultValue={transfer.toParticipantId}
-              label="Actor"
+              label={t("settlements.actor")}
               name="actorParticipantId"
               options={participants.map((participant) => ({ label: participant.name, value: participant.id }))}
             />
-            <SubmitButton label="Mark received" />
+            <SubmitButton label={t("settlements.markReceived")} />
           </form>
         ) : null}
 
         {!canMarkPaid && !canMarkReceived ? (
           <div className="text-right text-sm text-zinc-500">
-            {transfer.status === SETTLEMENT_TRANSFER_STATUS.received ? "Complete" : "No action available"}
+            {transfer.status === SETTLEMENT_TRANSFER_STATUS.received ? t("settlements.complete") : t("settlements.noAction")}
           </div>
         ) : null}
       </div>

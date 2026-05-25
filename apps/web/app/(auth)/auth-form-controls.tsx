@@ -1,8 +1,7 @@
 "use client";
 
+import { ArrowRightIcon } from "lucide-react";
 import { useFormStatus } from "react-dom";
-
-import { ArrowIcon } from "@/components/brand/arrow-icon";
 
 export function AuthSubmitButton({
   idleLabel,
@@ -20,7 +19,7 @@ export function AuthSubmitButton({
       type="submit"
     >
       <span>{pending ? pendingLabel : idleLabel}</span>
-      <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
     </button>
   );
 }
@@ -55,7 +54,7 @@ export function AuthField({
       </span>
       <span className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] px-3.5 transition focus-within:border-[var(--splity-navy)] focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(27,42,107,0.08)]">
         {prefix ? (
-          <span className="font-[var(--splity-mono)] text-sm font-medium text-[var(--splity-muted)]">
+          <span className="font-[var(--splity-mono)] text-sm text-[var(--splity-muted)]">
             {prefix}
           </span>
         ) : null}

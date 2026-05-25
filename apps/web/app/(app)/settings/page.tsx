@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { T } from "@/components/i18n/t";
 import { getAppUser, requireUser } from "@/lib/auth/server";
 import { ChangePasswordForm } from "./change-password-form";
 import { EmailSection } from "./email-section";
@@ -17,9 +18,11 @@ export default async function SettingsPage() {
         <p className="text-sm font-semibold text-zinc-500">
           {appUser.username ? `@${appUser.username}` : user.email}
         </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          <T k="settings.title" />
+        </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-          Manage your profile, payment defaults, password, and email verification.
+          <T k="settings.body" />
         </p>
       </header>
 

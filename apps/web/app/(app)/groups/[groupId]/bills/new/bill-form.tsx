@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FEE_TYPE, SPLIT_MODE, type SplitMode } from "@/lib/calculations/types";
+import { useTranslation } from "@/lib/i18n";
 import type { BillActionState } from "../actions";
 import type { BillDetail } from "@/lib/calculations/bill-read-projection";
 import type { Participant } from "@/lib/services/participants";
@@ -46,9 +47,10 @@ function toDateInput(value?: string) {
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button disabled={disabled || pending} type="submit">
-      {pending ? "Saving..." : "Save bill"}
+      {pending ? t("common.saving") : t("bills.saveBill")}
     </Button>
   );
 }
@@ -115,26 +117,27 @@ export function BillForm({
   );
 
   const disabled = !canEdit || participants.length === 0;
+  const { t } = useTranslation();
 
   return (
     <form action={formAction} className="grid gap-6">
       <input name="payload" type="hidden" value={payload} />
       <div>
         <Link className="text-sm font-semibold text-zinc-600 underline" href={`/groups/${groupId}`}>
-          Back to group
+          {t("groups.backToGroup")}
         </Link>
       </div>
       <Alert tone="error">{state.error}</Alert>
-      {!canEdit ? <Alert tone="info">This group is locked because settlement has already started.</Alert> : null}
-      {participants.length === 0 ? <Alert tone="error">Add at least one participant before creating bills.</Alert> : null}
+      {!canEdit ? <Alert tone="info">{t("bills.groupLocked")}</Alert> : null}
+      {participants.length === 0 ? <Alert tone="error">{t("bills.needParticipant")}</Alert> : null}
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold">{initialBill ? "Edit bill" : "New bill"}</h1>
+        <h1 className="text-2xl font-semibold">{initialBill ? t("bills.editBill") : t("groups.newBill")}</h1>
         <div className="grid gap-4 md:grid-cols-2">
-          <Input label="Store name" name="storeNameView" onChange={(e) => setStoreName(e.target.value)} required value={storeName} />
-          <Input label="Date" name="dateView" onChange={(e) => setDate(e.target.value)} required type="date" value={date} />
+          <Input label={t("bills.storeName")} name="storeNameView" onChange={(e) => setStoreName(e.target.value)} required value={storeName} />
+          <Input label={t("bills.date")} name="dateView" onChange={(e) => setDate(e.target.value)} required type="date" value={date} />
           <label className="grid gap-2 text-sm font-medium text-zinc-800">
-            <span>Primary payer</span>
+            <span>{t("bills.primaryPayer")}</span>
             <select
               className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950 shadow-sm outline-none transition focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10"
               onChange={(event) => setPrimaryPayerParticipantId(event.target.value)}
@@ -148,14 +151,14 @@ export function BillForm({
             </select>
           </label>
           <label className="grid gap-2 text-sm font-medium text-zinc-800">
-            <span>Split mode</span>
+            <span>{t("bills.splitMode")}</span>
             <select
               className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950 shadow-sm outline-none transition focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10"
               onChange={(event) => setSplitMode(Number(event.target.value) as SplitMode)}
               value={splitMode}
             >
-              <option value={SPLIT_MODE.equal}>Equal</option>
-              <option value={SPLIT_MODE.weighted}>Weighted</option>
+              <option value={SPLIT_MODE.equal}>{t("bills.equal")}</option>
+              <option value={SPLIT_MODE.weighted}>{t("bills.weighted")}</option>
             </select>
           </label>
         </div>
@@ -163,7 +166,7 @@ export function BillForm({
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Items</h2>
+          <h2 className="text-lg font-semibold">{t("bills.items")}</h2>
           <Button
             onClick={() =>
               setItems((current) => [
@@ -173,14 +176,14 @@ export function BillForm({
             }
             variant="secondary"
           >
-            Add item
+            {t("bills.addItem")}
           </Button>
         </div>
         {items.map((item, index) => (
           <div className="grid gap-3 rounded-md border border-zinc-100 p-3" key={item.id ?? index}>
             <div className="grid gap-3 md:grid-cols-[1fr_10rem_auto]">
               <Input
-                label="Description"
+                label={t("bills.description")}
                 name={`itemDescription${index}`}
                 onChange={(event) =>
                   setItems((current) => current.map((x, i) => (i === index ? { ...x, description: event.target.value } : x)))
@@ -188,7 +191,7 @@ export function BillForm({
                 value={item.description}
               />
               <Input
-                label="Amount"
+                label={t("bills.amount")}
                 min="0"
                 name={`itemAmount${index}`}
                 onChange={(event) =>
@@ -204,7 +207,7 @@ export function BillForm({
                   onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
                   variant="ghost"
                 >
-                  Remove
+                  {t("common.remove")}
                 </Button>
               </div>
             </div>
@@ -239,7 +242,7 @@ export function BillForm({
 
       {splitMode === SPLIT_MODE.weighted ? (
         <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Weights</h2>
+          <h2 className="text-lg font-semibold">{t("bills.weight")}</h2>
           <div className="grid gap-3 md:grid-cols-3">
             {participants.map((participant) => (
               <Input
@@ -259,25 +262,25 @@ export function BillForm({
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Fees</h2>
+          <h2 className="text-lg font-semibold">{t("bills.fees")}</h2>
           <Button onClick={() => setFees((current) => [...current, { name: "", feeType: FEE_TYPE.percentage, value: "0.00" }])} variant="secondary">
-            Add fee
+            {t("bills.addFee")}
           </Button>
         </div>
         {fees.map((fee, index) => (
           <div className="grid gap-3 md:grid-cols-[1fr_10rem_10rem_auto]" key={index}>
-            <Input label="Name" name={`feeName${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, name: event.target.value } : x)))} value={fee.name} />
+            <Input label={t("groups.name")} name={`feeName${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, name: event.target.value } : x)))} value={fee.name} />
             <label className="grid gap-2 text-sm font-medium text-zinc-800">
-              <span>Type</span>
+              <span>{t("bills.type")}</span>
               <select className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950" onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, feeType: Number(event.target.value) } : x)))} value={fee.feeType}>
-                <option value={FEE_TYPE.percentage}>Percent</option>
-                <option value={FEE_TYPE.fixed}>Fixed</option>
+                <option value={FEE_TYPE.percentage}>{t("bills.percent")}</option>
+                <option value={FEE_TYPE.fixed}>{t("bills.fixed")}</option>
               </select>
             </label>
-            <Input label="Value" min="0" name={`feeValue${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, value: event.target.value } : x)))} step="0.01" type="number" value={fee.value} />
+            <Input label={t("bills.value")} min="0" name={`feeValue${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, value: event.target.value } : x)))} step="0.01" type="number" value={fee.value} />
             <div className="flex items-end">
               <Button onClick={() => setFees((current) => current.filter((_, i) => i !== index))} variant="ghost">
-                Remove
+                {t("common.remove")}
               </Button>
             </div>
           </div>
@@ -286,15 +289,15 @@ export function BillForm({
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Pre-payments</h2>
+          <h2 className="text-lg font-semibold">{t("bills.prePayments")}</h2>
           <Button onClick={() => setContributions((current) => [...current, { participantId: firstParticipantId, amount: "0.00" }])} variant="secondary">
-            Add contribution
+            {t("bills.addContribution")}
           </Button>
         </div>
         {contributions.map((contribution, index) => (
           <div className="grid gap-3 md:grid-cols-[1fr_10rem_auto]" key={index}>
             <label className="grid gap-2 text-sm font-medium text-zinc-800">
-              <span>Participant</span>
+              <span>{t("bills.participant")}</span>
               <select className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950" onChange={(event) => setContributions((current) => current.map((x, i) => (i === index ? { ...x, participantId: event.target.value } : x)))} value={contribution.participantId}>
                 {participantOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -303,10 +306,10 @@ export function BillForm({
                 ))}
               </select>
             </label>
-            <Input label="Amount" min="0" name={`contribution${index}`} onChange={(event) => setContributions((current) => current.map((x, i) => (i === index ? { ...x, amount: event.target.value } : x)))} step="0.01" type="number" value={contribution.amount} />
+            <Input label={t("bills.amount")} min="0" name={`contribution${index}`} onChange={(event) => setContributions((current) => current.map((x, i) => (i === index ? { ...x, amount: event.target.value } : x)))} step="0.01" type="number" value={contribution.amount} />
             <div className="flex items-end">
               <Button onClick={() => setContributions((current) => current.filter((_, i) => i !== index))} variant="ghost">
-                Remove
+                {t("common.remove")}
               </Button>
             </div>
           </div>
@@ -315,7 +318,7 @@ export function BillForm({
 
       <div className="flex justify-end gap-3">
         <Link className="inline-flex h-11 items-center rounded-md px-4 text-sm font-semibold text-zinc-700 hover:bg-zinc-100" href={`/groups/${groupId}`}>
-          Cancel
+          {t("common.cancel")}
         </Link>
         <SubmitButton disabled={disabled} />
       </div>

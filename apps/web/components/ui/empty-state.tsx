@@ -1,7 +1,7 @@
 type EmptyStateProps = {
   action?: React.ReactNode;
-  description: string;
-  title: string;
+  description: React.ReactNode;
+  title: React.ReactNode;
 };
 
 export function EmptyState({ action, description, title }: EmptyStateProps) {

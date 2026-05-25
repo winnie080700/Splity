@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
 
 import { BackToHome } from "@/components/brand/back-to-home";
 import { LEGAL_TYPOGRAPHY as T } from "@/components/legal/typography";
@@ -15,13 +16,13 @@ export default function PrivacyPage() {
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--splity-muted)]">
             Legal
           </p>
-          <h1 className="mt-3 font-[var(--splity-display)] text-4xl font-bold sm:text-5xl">
+          <h1 className="mt-3 font-[var(--splity-display)] text-4xl sm:text-5xl">
             Privacy Policy
           </h1>
           <p className={`mt-4 text-sm ${MUTED}`}>Last updated: 21 May 2026</p>
         </header>
 
-        <div className="mt-10 space-y-2">
+        <div className="mt-10 flex flex-col gap-2">
           <p className={P}>
             This Privacy Policy explains how Splity (&quot;Splity&quot;, &quot;we&quot;, &quot;us&quot;, or
             &quot;our&quot;) collects, uses, stores, and shares information when you use our mobile
@@ -347,10 +348,11 @@ export default function PrivacyPage() {
 
         <footer className="mt-16 border-t border-[var(--splity-line)] pt-8">
           <Link
-            className="text-sm font-semibold text-[var(--splity-navy)] hover:underline"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--splity-navy)] hover:underline"
             href="/terms"
           >
-            See Terms of Service →
+            See Terms of Service
+            <ArrowRightIcon aria-hidden="true" className="h-4 w-4" />
           </Link>
         </footer>
       </article>

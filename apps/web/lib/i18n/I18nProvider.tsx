@@ -12,7 +12,7 @@ import {
 import { en, type MessageKey } from "./messages/en";
 import { zh } from "./messages/zh";
 
-type Locale = "en" | "zh";
+export type Locale = "en" | "zh";
 type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
@@ -37,6 +37,18 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "en" || stored === "zh") {
       setLocaleState(stored);
+      document.documentElement.lang = stored === "zh" ? "zh-CN" : "en";
+      return;
+    }
+
+    const cookieLocale = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith(`${STORAGE_KEY}=`))
+      ?.split("=")[1];
+
+    if (cookieLocale === "en" || cookieLocale === "zh") {
+      setLocaleState(cookieLocale);
+      document.documentElement.lang = cookieLocale === "zh" ? "zh-CN" : "en";
     }
   }, []);
 
@@ -47,6 +59,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         setLocaleState(nextLocale);
         window.localStorage.setItem(STORAGE_KEY, nextLocale);
         document.cookie = `${STORAGE_KEY}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+        document.documentElement.lang = nextLocale === "zh" ? "zh-CN" : "en";
       },
       t(key) {
         return resolveMessage(locale, key);

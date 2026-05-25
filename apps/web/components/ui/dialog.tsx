@@ -1,15 +1,17 @@
+import { T } from "@/components/i18n/t";
+
 type ConfirmDialogProps = {
   action: (formData: FormData) => void | Promise<void>;
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   children: React.ReactNode;
-  confirmLabel: string;
-  title: string;
-  triggerLabel: string;
+  confirmLabel: React.ReactNode;
+  title: React.ReactNode;
+  triggerLabel: React.ReactNode;
 };
 
 export function ConfirmDialog({
   action,
-  cancelLabel = "Cancel",
+  cancelLabel = <T k="common.cancel" />,
   children,
   confirmLabel,
   title,

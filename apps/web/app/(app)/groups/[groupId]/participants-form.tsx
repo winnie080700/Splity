@@ -8,11 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { useTranslation, type MessageKey } from "@/lib/i18n";
 import type { Database } from "@/lib/supabase/database.types";
-import {
-  INVITATION_STATUS_LABELS,
-  type InvitationStatus,
-} from "@/lib/domain/status";
+import { type InvitationStatus } from "@/lib/domain/status";
 import {
   addParticipantAction,
   removeParticipantAction,
@@ -30,15 +28,17 @@ const initialState: ParticipantActionState = {
 
 function AddButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button disabled={disabled || pending} type="submit">
-      {pending ? "Adding..." : "Add participant"}
+      {pending ? t("groups.adding") : t("groups.addParticipant")}
     </Button>
   );
 }
 
 function LookupButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button
       disabled={disabled || pending}
@@ -47,25 +47,27 @@ function LookupButton({ disabled }: { disabled: boolean }) {
       value="lookup"
       variant="secondary"
     >
-      {pending ? "Checking..." : "Look up"}
+      {pending ? t("groups.checking") : t("groups.lookup")}
     </Button>
   );
 }
 
 function SaveButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button disabled={disabled || pending} type="submit" variant="secondary">
-      {pending ? "Saving..." : "Save"}
+      {pending ? t("common.saving") : t("common.save")}
     </Button>
   );
 }
 
 function RemoveButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const { t } = useTranslation();
   return (
     <Button disabled={disabled || pending} type="submit" variant="ghost">
-      {pending ? "Removing..." : "Remove"}
+      {pending ? t("groups.removing") : t("common.remove")}
     </Button>
   );
 }
@@ -90,18 +92,19 @@ export function ParticipantsForm({
     addParticipantAction.bind(null, groupId),
     initialState
   );
+  const { t } = useTranslation();
 
   return (
     <section className="grid gap-5 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Participants</h2>
+          <h2 className="text-lg font-semibold">{t("groups.participants")}</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Add manual participants or invite registered users by username.
+            {t("groups.participantsBody")}
           </p>
         </div>
         {!canEdit ? (
-          <Badge tone="amber">locked</Badge>
+          <Badge tone="amber">{t("groups.locked")}</Badge>
         ) : null}
       </div>
 
@@ -109,11 +112,11 @@ export function ParticipantsForm({
         <Alert tone="error">{addState.error}</Alert>
         <Alert tone="success">{addState.success}</Alert>
         <div className="grid gap-3 md:grid-cols-2">
-          <Input disabled={!canEdit} label="Name" name="name" required />
+          <Input disabled={!canEdit} label={t("groups.name")} name="name" required />
           <Input
             autoCapitalize="none"
             disabled={!canEdit}
-            label="Username"
+            label={t("settings.username")}
             name="username"
           />
         </div>
@@ -129,15 +132,15 @@ export function ParticipantsForm({
         </div>
         {!canEdit ? (
           <p className="text-sm text-amber-700">
-            This group is locked because settlement has already started.
+            {t("bills.groupLocked")}
           </p>
         ) : null}
       </form>
 
       {participants.length === 0 ? (
         <EmptyState
-          description="Participants appear here after you add names or invite users."
-          title="No participants"
+          description={t("groups.noParticipantsBody")}
+          title={t("groups.noParticipantsTitle")}
         />
       ) : (
         <div className="grid gap-3">
@@ -173,6 +176,15 @@ function ParticipantRow({
     initialState
   );
   const status = participant.invitation_status as InvitationStatus;
+  const { t } = useTranslation();
+  const statusKey: MessageKey =
+    status === 1
+      ? "groups.invitation.pending"
+      : status === 2
+        ? "groups.invitation.accepted"
+        : status === 3
+          ? "groups.invitation.declined"
+          : "groups.invitation.none";
 
   return (
     <div className="rounded-md border border-zinc-200 p-4">
@@ -180,11 +192,11 @@ function ParticipantRow({
         <div>
           <p className="font-semibold text-zinc-950">{participant.name}</p>
           <p className="mt-1 text-sm text-zinc-500">
-            {participant.username ? `@${participant.username}` : "manual"}
+            {participant.username ? `@${participant.username}` : t("groups.manual")}
           </p>
         </div>
         <Badge tone={statusTone(status)}>
-          {INVITATION_STATUS_LABELS[status] ?? "none"}
+          {t(statusKey)}
         </Badge>
       </div>
 
@@ -196,7 +208,7 @@ function ParticipantRow({
           <Input
             defaultValue={participant.name}
             disabled={!canEdit}
-            label="Name"
+            label={t("groups.name")}
             name="name"
             required
           />
@@ -204,7 +216,7 @@ function ParticipantRow({
             autoCapitalize="none"
             defaultValue={participant.username ?? ""}
             disabled={!canEdit}
-            label="Username"
+            label={t("settings.username")}
             name="username"
           />
           <div className="flex items-end">

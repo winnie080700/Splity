@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { GROUP_STATUS } from "@/lib/domain/status";
@@ -33,30 +34,38 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
     <div className="grid gap-6">
       <div>
         <Link className="text-sm font-semibold text-zinc-600 underline" href={`/groups/${groupId}`}>
-          Back to group
+          <T k="groups.backToGroup" />
         </Link>
       </div>
 
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Settlement</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            <T k="settlements.title" />
+          </h1>
           <p className="mt-2 text-sm text-zinc-500">{group.name}</p>
         </div>
-        <Badge tone={isSettling ? "amber" : "blue"}>{isSettling ? "Settling" : "Read only"}</Badge>
+        <Badge tone={isSettling ? "amber" : "blue"}>
+          <T k={isSettling ? "settlements.settling" : "settlements.readOnly"} />
+        </Badge>
       </header>
 
       <form className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <Input defaultValue={dateInputValue(settlement.fromDateUtc)} label="From" name="from" type="date" />
-        <Input defaultValue={dateInputValue(settlement.toDateUtc)} label="To" name="to" type="date" />
+        <Input defaultValue={dateInputValue(settlement.fromDateUtc)} label={<T k="settlements.from" />} name="from" type="date" />
+        <Input defaultValue={dateInputValue(settlement.toDateUtc)} label={<T k="settlements.to" />} name="to" type="date" />
         <button className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800">
-          Apply
+          <T k="settlements.apply" />
         </button>
       </form>
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div>
-          <h2 className="text-lg font-semibold">Net balances</h2>
-          <p className="mt-1 text-sm text-zinc-600">Positive balances receive money; negative balances pay.</p>
+          <h2 className="text-lg font-semibold">
+            <T k="settlements.netBalances" />
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            <T k="settlements.netBalancesBody" />
+          </p>
         </div>
         <div className="divide-y divide-zinc-100">
           {settlement.netBalances.map((balance) => (
@@ -72,11 +81,18 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
 
       <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <div>
-          <h2 className="text-lg font-semibold">Transfers</h2>
+          <h2 className="text-lg font-semibold">
+            <T k="settlements.transfers" />
+          </h2>
           <p className="mt-1 text-sm text-zinc-600">
-            {settlement.transfers.length
-              ? `${settlement.transfers.length} suggested transfer${settlement.transfers.length === 1 ? "" : "s"}.`
-              : "No transfers are needed for this date range."}
+            {settlement.transfers.length ? (
+              <T
+                k={settlement.transfers.length === 1 ? "settlements.transferCount" : "settlements.transferCountPlural"}
+                values={{ count: settlement.transfers.length }}
+              />
+            ) : (
+              <T k="settlements.noTransfers" />
+            )}
           </p>
         </div>
 
@@ -98,7 +114,7 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
           </div>
         ) : (
           <div className="rounded-md border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
-            Everyone is balanced for this snapshot.
+            <T k="settlements.everyoneBalanced" />
           </div>
         )}
       </section>

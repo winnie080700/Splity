@@ -15,7 +15,7 @@ export const LEGAL_TYPOGRAPHY = {
   /** Body paragraph. */
   p: "mt-4 text-base leading-relaxed text-[var(--splity-ink)]",
   /** Unordered list. */
-  ul: "mt-4 list-disc space-y-2 pl-6 text-base leading-relaxed text-[var(--splity-ink)]",
+  ul: "mt-4 flex list-disc flex-col gap-2 pl-6 text-base leading-relaxed text-[var(--splity-ink)]",
   /** Muted helper text, e.g. "Last updated …". */
   muted: "text-[var(--splity-muted)]",
   /** Inline link (mailto, external, etc). */

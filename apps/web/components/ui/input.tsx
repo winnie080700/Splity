@@ -1,7 +1,7 @@
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   className?: string;
-  label: string;
-  hint?: string;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
   name: string;
 };
 

@@ -36,7 +36,7 @@ export function BrandMark({ compact = false, size = "md", className = "" }: Prop
 
   return (
     <span
-      className={`inline-flex items-center gap-2.5 font-[var(--splity-display)] font-bold tracking-tight ${styles.wrapper} ${className}`}
+      className={`inline-flex items-center gap-2.5 font-bold tracking-tight ${styles.wrapper} ${className}`}
     >
       <img
         alt=""
