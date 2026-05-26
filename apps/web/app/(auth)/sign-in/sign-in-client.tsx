@@ -88,10 +88,10 @@ function ReceiptPreview({ text }: { text: AuthCopy }) {
       aria-hidden="true"
       className="relative mt-6 hidden max-w-[390px] -rotate-[1.4deg] rounded-[18px] border border-[var(--splity-line)] bg-white px-5 pb-4 pt-[18px] shadow-[0_24px_50px_rgba(12,21,56,0.08)] before:absolute before:-top-2.5 before:left-6 before:h-[18px] before:w-14 before:-rotate-6 before:rounded-[3px] before:border before:border-dashed before:border-[var(--splity-gold-strong)] before:bg-[#faefce] before:content-[''] md:block [@media(max-height:760px)]:hidden">
       <div className="mb-2 flex items-center justify-between gap-4">
-        <p className="font-[var(--splity-display)] text-[15px]">
+        <p className="splity-display text-[15px]">
           {text.receiptTitle}
         </p>
-        <p className="font-[var(--splity-mono)] text-[10.5px] uppercase tracking-wide text-[var(--splity-muted)]">
+        <p className=" text-[10.5px] uppercase tracking-wide text-[var(--splity-muted)]">
           {text.receiptStatus}
         </p>
       </div>
@@ -105,7 +105,7 @@ function ReceiptPreview({ text }: { text: AuthCopy }) {
               {who}
             </span>
           </span>
-          <span className="font-[var(--splity-mono)] text-[12.5px]">
+          <span className=" text-[12.5px]">
             {value}
           </span>
         </div>
@@ -114,13 +114,13 @@ function ReceiptPreview({ text }: { text: AuthCopy }) {
         <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
           {text.receiptTotal}
         </span>
-        <span className="font-[var(--splity-display)] text-xl text-[var(--splity-mint)]">
+        <span className="splity-display text-xl text-[var(--splity-mint)]">
           +¥244.00
         </span>
       </div>
-      <div className="absolute -bottom-3 -right-3 flex h-[72px] w-[72px] rotate-[8deg] flex-col items-center justify-center rounded-full border-2 border-dashed border-[rgba(27,42,107,0.25)] bg-[var(--splity-gold)] text-center font-[var(--splity-display)] text-[10px] uppercase leading-tight tracking-wider text-[var(--splity-navy)] shadow-[0_8px_18px_rgba(217,148,38,0.35)]">
+      <div className="absolute -bottom-3 -right-3 flex h-[72px] w-[72px] rotate-[8deg] flex-col items-center justify-center rounded-full border-2 border-dashed border-[rgba(27,42,107,0.25)] bg-[var(--splity-gold)] text-center splity-display text-[10px] uppercase leading-tight tracking-wider text-[var(--splity-navy)] shadow-[0_8px_18px_rgba(217,148,38,0.35)]">
         <span>{text.receiptStampA}</span>
-        <span className="mt-[-2px] font-[var(--splity-serif)] text-xl italic tracking-tight">
+        <span className="mt-[-2px] text-xl italic tracking-tight">
           {text.receiptStampB}
         </span>
       </div>
@@ -142,6 +142,11 @@ function ForgotPasswordModal({
     forgotPasswordInitialState,
   );
 
+  useEffect(() => {
+    if (state.success) toast.success(state.success);
+    if (state.error) toast.error(state.error);
+  }, [state.error, state.success]);
+
   if (!isOpen) return null;
 
   return (
@@ -159,7 +164,7 @@ function ForgotPasswordModal({
               {text.account}
             </p>
             <h3
-              className="mt-1 font-[var(--splity-display)] text-3xl tracking-tight"
+              className="mt-1 splity-display text-3xl tracking-tight"
               id="forgot-password-title">
               {text.resetTitle}
             </h3>
@@ -278,6 +283,11 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
     signUpState.success,
   ]);
 
+  useEffect(() => {
+    const error = signInState.error ?? signUpState.error ?? callbackError;
+    if (error) toast.error(error);
+  }, [callbackError, signInState.error, signUpState.error]);
+
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(1000px_520px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(850px_480px_at_100%_12%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] text-[var(--splity-ink)] lg:h-dvh">
       <nav className="flex shrink-0 items-center justify-between px-5 py-4 sm:px-10 lg:px-8 lg:py-3">
@@ -298,17 +308,17 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
       <main className="mx-auto grid w-full max-w-[1220px] flex-1 items-center gap-8 px-5 pb-8 pt-3 sm:px-10 lg:min-h-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(410px,460px)] lg:gap-10 lg:px-8 lg:pb-4 lg:pt-1">
         <section className="max-w-[520px] lg:pr-4">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--splity-line)] bg-white py-1.5 pl-2 pr-3.5 text-xs font-semibold uppercase tracking-[0.06em] lg:mb-3">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--splity-gold)] font-[var(--splity-display)] text-[11px] text-[var(--splity-navy)]">
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--splity-gold)] splity-display text-[11px] text-[var(--splity-navy)]">
               <SparklesIcon aria-hidden="true" className="h-3 w-3" />
             </span>
             {text.free}
           </div>
-          <h1 className="font-[var(--splity-display)] text-[clamp(2.9rem,5.2vw,4.35rem)] leading-[0.94] tracking-tight text-[var(--splity-ink)]">
+          <h1 className="splity-display text-[clamp(2.9rem,5.2vw,4.35rem)] leading-[0.94] tracking-tight text-[var(--splity-ink)]">
             {text.heroA}
             <br />
             {text.heroB}
             <br />
-            <span className="font-[var(--splity-serif)] italic text-[var(--splity-navy)]">
+            <span className="italic text-[var(--splity-navy)]">
               {text.heroC}
             </span>
           </h1>
@@ -322,7 +332,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
             {text.account}
           </p>
-          <h2 className="mb-4 mt-1 font-[var(--splity-display)] text-[clamp(2.15rem,3.6vw,2.7rem)] leading-[1.02] tracking-tight">
+          <h2 className="mb-4 mt-1 splity-display text-[clamp(2.15rem,3.6vw,2.7rem)] leading-[1.02] tracking-tight">
             {isRegister ? text.registerTitle : text.loginTitle}
           </h2>
 
@@ -433,7 +443,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
 
           <div className="mt-4 flex items-center justify-end gap-4 border-t border-dashed border-[var(--splity-line)] pt-4 text-[13px]">
             {isRegister ? (
-              <span className="font-[var(--splity-mono)] text-[11px] uppercase tracking-wide text-[var(--splity-muted)]">
+              <span className=" text-[11px] uppercase tracking-wide text-[var(--splity-muted)]">
                 <Link className="hover:text-[var(--splity-navy)]" href="/terms">
                   {text.terms}
                 </Link>{" "}
@@ -455,7 +465,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
         </section>
       </main>
 
-      <footer className="hidden shrink-0 items-center justify-between gap-4 px-8 pb-3 font-[var(--splity-mono)] text-[11px] uppercase tracking-wide text-[var(--splity-muted)] lg:flex">
+      <footer className="hidden shrink-0 items-center justify-between gap-4 px-8 pb-3 text-[11px] uppercase tracking-wide text-[var(--splity-muted)] lg:flex">
         <span>{text.footerLeft}</span>
         <span>{text.footerRight}</span>
       </footer>

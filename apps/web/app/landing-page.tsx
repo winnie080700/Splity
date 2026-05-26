@@ -145,7 +145,7 @@ function isPageLink(href: string) {
 
 function Avatar({ children, tone = "bg-[var(--splity-navy)]" }: { children: string; tone?: string }) {
   return (
-    <span className={`inline-grid h-6 w-6 place-items-center rounded-full border-2 border-white font-[var(--splity-display)] text-[10px] text-white ${tone}`}>
+    <span className={`inline-grid h-6 w-6 place-items-center rounded-full border-2 border-white splity-display text-[10px] text-white ${tone}`}>
       {children}
     </span>
   );
@@ -214,7 +214,7 @@ function DashboardPreview({ language }: { language: Locale }) {
         </span>
         <div>
           <p className="text-[11px] text-[var(--splity-muted)]">Mia paid you back</p>
-          <p className="font-[var(--splity-mono)] text-sm text-[var(--splity-mint)]">+¥240.00</p>
+          <p className=" text-sm text-[var(--splity-mint)]">+¥240.00</p>
         </div>
       </div>
 
@@ -231,7 +231,7 @@ function DashboardPreview({ language }: { language: Locale }) {
       <div className="relative z-10 overflow-hidden rounded-[22px] bg-white shadow-[0_0_0_1px_rgba(12,21,56,0.06),0_28px_60px_rgba(12,21,56,0.14),0_60px_120px_rgba(12,21,56,0.10)]">
         <div className="grid min-h-[540px] grid-cols-1 md:grid-cols-[220px_1fr]">
           <aside className="hidden flex-col border-r border-[var(--splity-line)] bg-[#faf9f4] p-[22px_18px] text-[13.5px] md:flex">
-            <div className="flex items-center gap-2 px-1.5 pb-5 font-[var(--splity-display)] text-base">
+            <div className="flex items-center gap-2 px-1.5 pb-5 splity-display text-base">
               <BrandMark compact />
               Splity
             </div>
@@ -259,7 +259,7 @@ function DashboardPreview({ language }: { language: Locale }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase text-[var(--splity-muted)]">{labels.summary}</p>
-                <h2 className="mt-1 font-[var(--splity-display)] text-[22px]">{labels.greeting}</h2>
+                <h2 className="mt-1 splity-display text-[22px]">{labels.greeting}</h2>
               </div>
               <div className="inline-flex rounded-full border border-[var(--splity-line)] bg-[#f2f1ec] p-1 text-[11.5px] font-semibold">
                 <span className="rounded-full bg-[var(--splity-navy)] px-3 py-1.5 text-white">{labels.month}</span>
@@ -276,7 +276,7 @@ function DashboardPreview({ language }: { language: Locale }) {
               ].map(([title, value, color, bg]) => (
                 <div className={`relative overflow-hidden rounded-[14px] border border-[var(--splity-line)] p-4 ${bg}`} key={title}>
                   <p className="text-[10px] font-semibold uppercase text-[var(--splity-muted)]">{title}</p>
-                  <p className={`mt-3 font-[var(--splity-display)] text-[28px] ${color}`}>{value}</p>
+                  <p className={`mt-3 splity-display text-[28px] ${color}`}>{value}</p>
                 </div>
               ))}
             </div>
@@ -285,7 +285,7 @@ function DashboardPreview({ language }: { language: Locale }) {
               <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
                 <div>
                   <p className="text-[10px] font-semibold uppercase text-[var(--splity-muted)]">{labels.recent}</p>
-                  <p className="mt-0.5 font-[var(--splity-display)] text-[15px]">{labels.track}</p>
+                  <p className="mt-0.5 splity-display text-[15px]">{labels.track}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--splity-navy)]">
                   View all
@@ -294,12 +294,12 @@ function DashboardPreview({ language }: { language: Locale }) {
               </div>
               {activity.map(([initial, title, meta, amount, status, tone]) => (
                 <div className="grid grid-cols-[30px_1fr_auto] items-center gap-3 border-t border-[var(--splity-line)] px-4 py-2.5 text-[13px] sm:grid-cols-[30px_1fr_90px_80px]" key={title}>
-                  <span className={`grid h-6 w-6 place-items-center rounded-full font-[var(--splity-display)] text-[11px] text-white ${tone}`}>{initial}</span>
+                  <span className={`grid h-6 w-6 place-items-center rounded-full splity-display text-[11px] text-white ${tone}`}>{initial}</span>
                   <div>
                     <p className="font-semibold">{title}</p>
                     <p className="text-xs text-[var(--splity-muted)]">{meta}</p>
                   </div>
-                  <p className="hidden text-right font-[var(--splity-mono)] text-[13px] text-[var(--splity-mint)] sm:block">{amount}</p>
+                  <p className="hidden text-right text-[13px] text-[var(--splity-mint)] sm:block">{amount}</p>
                   <p className="text-right text-[11px] font-semibold uppercase text-[var(--splity-gold-strong)]">{status}</p>
                 </div>
               ))}
@@ -328,8 +328,8 @@ function SectionHeading({
     <div className={centered ? "mx-auto mb-12 max-w-[720px] text-center" : "mb-12 grid gap-8 md:grid-cols-2 md:items-end md:gap-[60px]"}>
       <div>
         <p className="text-[11.5px] font-bold uppercase text-[var(--splity-navy)]">{kicker}</p>
-        <h2 className="mt-3 font-[var(--splity-display)] text-[clamp(2.5rem,5.5vw,4.75rem)] leading-[0.98]">
-          {titleA} <span className="font-[var(--splity-serif)] italic text-[var(--splity-navy)]">{titleB}</span>
+        <h2 className="mt-3 splity-display text-[clamp(2.5rem,5.5vw,4.75rem)] leading-[0.98]">
+          {titleA} <span className="italic text-[var(--splity-navy)]">{titleB}</span>
         </h2>
       </div>
       <p className={`text-[15px] leading-7 text-[var(--splity-muted)] sm:text-[17px] ${centered ? "mx-auto mt-4 max-w-[600px]" : "max-w-[600px]"}`}>
@@ -345,11 +345,11 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
 
   return (
     <article className={`relative flex min-h-[230px] flex-col gap-2.5 overflow-hidden rounded-[22px] border border-[var(--splity-line)] bg-white p-6 ${index === 0 ? "md:row-span-2" : ""}`}>
-      <span className="absolute right-5 top-5 font-[var(--splity-mono)] text-[11px] text-[var(--splity-muted)]">0{title}</span>
+      <span className="absolute right-5 top-5 text-[11px] text-[var(--splity-muted)]">0{title}</span>
       <div className="grid h-[38px] w-[38px] place-items-center rounded-xl bg-[#faefce] text-[var(--splity-gold-strong)]">
         <FeatureIcon aria-hidden="true" className="h-5 w-5" />
       </div>
-      <h3 className="mt-2 font-[var(--splity-display)] text-[22px]">{feature.title}</h3>
+      <h3 className="mt-2 splity-display text-[22px]">{feature.title}</h3>
       <p className="text-[14.5px] leading-6 text-[var(--splity-muted)]">{feature.body}</p>
       <div className={index === 0 ? "mt-4" : "mt-auto pt-3"}>
         {index === 0 ? (
@@ -366,17 +366,17 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
                   <p className="font-semibold">{name}</p>
                   <p className="text-[11.5px] text-[var(--splity-muted)]">{meta}</p>
                 </div>
-                <p className={`font-[var(--splity-mono)] text-[13px] ${color}`}>{amount}</p>
+                <p className={` text-[13px] ${color}`}>{amount}</p>
               </div>
             ))}
             <div className="mt-1 grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-[#f2f1ec] px-3.5 py-3">
-                <p className="font-[var(--splity-mono)] text-[11px] uppercase text-[var(--splity-muted)]">Logged</p>
-                <p className="mt-1 font-[var(--splity-display)] text-[22px]">4 bills</p>
+                <p className=" text-[11px] uppercase text-[var(--splity-muted)]">Logged</p>
+                <p className="mt-1 splity-display text-[22px]">4 bills</p>
               </div>
               <div className="rounded-xl bg-[#f2f1ec] px-3.5 py-3">
-                <p className="font-[var(--splity-mono)] text-[11px] uppercase text-[var(--splity-muted)]">Balance</p>
-                <p className="mt-1 font-[var(--splity-display)] text-[22px] text-[var(--splity-mint)]">+¥1.3K</p>
+                <p className=" text-[11px] uppercase text-[var(--splity-muted)]">Balance</p>
+                <p className="mt-1 splity-display text-[22px] text-[var(--splity-mint)]">+¥1.3K</p>
               </div>
             </div>
           </div>
@@ -408,7 +408,7 @@ function MiniSettlement() {
           <ArrowRightIcon aria-hidden="true" className="h-3.5 w-3.5 text-[var(--splity-muted)]" />
           <Avatar>{to}</Avatar>
           <span>{toName}</span>
-          <span className={`ml-auto font-[var(--splity-mono)] ${color}`}>{amount}</span>
+          <span className={`ml-auto ${color}`}>{amount}</span>
         </div>
       ))}
     </div>
@@ -418,7 +418,7 @@ function MiniSettlement() {
 function ShareMini() {
   return (
     <div className="rounded-[14px] border border-[var(--splity-line)] bg-[#fbfaf5] p-3">
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--splity-line-strong)] px-2.5 py-2 font-[var(--splity-mono)] text-[11.5px] text-[var(--splity-muted)]">
+      <div className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--splity-line-strong)] px-2.5 py-2 text-[11.5px] text-[var(--splity-muted)]">
         splity.app/g/<span className="text-[var(--splity-ink)]">tokyo-trip</span>
         <span className="ml-auto font-[var(--splity-sans)] text-[11px] text-[var(--splity-navy)]">COPY</span>
       </div>
@@ -462,12 +462,12 @@ function ReceiptMini() {
       ].map(([label, value]) => (
         <div className="flex justify-between border-b border-dashed border-[var(--splity-line)] py-1.5 text-[12.5px]" key={label}>
           <span>{label}</span>
-          <span className="font-[var(--splity-mono)]">{value}</span>
+          <span className="">{value}</span>
         </div>
       ))}
       <div className="mt-2.5 flex items-baseline justify-between border-t-2 border-[var(--splity-ink)] pt-2.5">
         <span className="text-[11px] font-bold uppercase text-[var(--splity-muted)]">Your share</span>
-        <span className="font-[var(--splity-display)] text-[22px]">¥244.00</span>
+        <span className="splity-display text-[22px]">¥244.00</span>
       </div>
     </div>
   );
@@ -477,7 +477,7 @@ function StepMini({ index }: { index: number }) {
   if (index === 0) {
     return (
       <div className="rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] p-2.5">
-        <p className="font-[var(--splity-display)] text-[13.5px]">Weekend Hotpot</p>
+        <p className="splity-display text-[13.5px]">Weekend Hotpot</p>
         <p className="text-[11px] text-[var(--splity-muted)]">4 members · 5 bills</p>
         <div className="mt-2 flex -space-x-1.5">
           <Avatar>Y</Avatar><Avatar tone="bg-[#c46920]">M</Avatar><Avatar tone="bg-[#2e8a5e]">L</Avatar><Avatar tone="bg-[#6b3ce7]">A</Avatar>
@@ -502,14 +502,14 @@ function StepMini({ index }: { index: number }) {
 
   if (index === 2) {
     return (
-      <div className="rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] p-2.5 font-[var(--splity-mono)] text-[11.5px]">
+      <div className="rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] p-2.5 text-[11.5px]">
         {["Hotpot · Leo", "Taxi · You", "7-Eleven · Mia"].map((label, idx) => (
           <div className="flex justify-between py-0.5" key={label}>
             <span>{label}</span>
             <span className="font-semibold">{["856", "48", "72"][idx]}</span>
           </div>
         ))}
-        <div className="mt-1.5 flex justify-between border-t border-dashed border-[var(--splity-line-strong)] pt-1.5 font-[var(--splity-display)] text-sm">
+        <div className="mt-1.5 flex justify-between border-t border-dashed border-[var(--splity-line-strong)] pt-1.5 splity-display text-sm">
           <span>Total</span><span>¥976</span>
         </div>
       </div>
@@ -680,7 +680,7 @@ export function LandingPage() {
                 <span className={`grid h-9 w-9 place-items-center rounded-[11px] text-sm font-bold ${useCase.tone}`}>{useCase.title.slice(0, 1)}</span>
                 <h3 className="text-[19px] font-semibold">{useCase.title}</h3>
                 <p className="text-[13.5px] leading-6 text-[var(--splity-muted)]">{useCase.body}</p>
-                <span className="mt-auto w-fit rounded-full bg-[#f2f1ec] px-2.5 py-1.5 font-[var(--splity-mono)] text-[11px] uppercase">{useCase.tag}</span>
+                <span className="mt-auto w-fit rounded-full bg-[#f2f1ec] px-2.5 py-1.5 text-[11px] uppercase">{useCase.tag}</span>
               </article>
             ))}
           </div>
@@ -694,7 +694,7 @@ export function LandingPage() {
             <div className="absolute left-[8%] right-[8%] top-[92px] hidden h-px bg-[repeating-linear-gradient(to_right,var(--splity-line-strong)_0_8px,transparent_8px_16px)] lg:block" />
             {text.steps.map((step: Step, index) => (
               <article className="relative z-10 flex min-h-[320px] flex-col gap-3.5 rounded-[18px] border border-[var(--splity-line)] bg-white p-[18px]" key={step.title}>
-                <span className="grid h-[34px] w-[34px] place-items-center rounded-full border border-[var(--splity-line-strong)] font-[var(--splity-mono)] text-[13px]">0{index + 1}</span>
+                <span className="grid h-[34px] w-[34px] place-items-center rounded-full border border-[var(--splity-line-strong)] text-[13px]">0{index + 1}</span>
                 <h3 className=" text-[17px] font-semibold">{step.title}</h3>
                 <p className="flex-1 text-[12.5px] leading-5 text-[var(--splity-muted)]">{step.body}</p>
                 <StepMini index={index} />

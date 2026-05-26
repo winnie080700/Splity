@@ -64,15 +64,14 @@ export async function createBillAction(
   _prevState: BillActionState,
   formData: FormData
 ): Promise<BillActionState> {
-  let billId: string;
   try {
-    billId = await createBill(groupId, parsePayload(formData));
+    await createBill(groupId, parsePayload(formData));
   } catch (error) {
     return fail(getErrorMessage(error, initialError));
   }
 
   revalidatePath(`/groups/${groupId}`);
-  redirect(`/groups/${groupId}/bills/${billId}`);
+  redirect(`/groups/${groupId}`);
 }
 
 export async function updateBillAction(
@@ -89,7 +88,7 @@ export async function updateBillAction(
 
   revalidatePath(`/groups/${groupId}`);
   revalidatePath(`/groups/${groupId}/bills/${billId}`);
-  redirect(`/groups/${groupId}/bills/${billId}`);
+  redirect(`/groups/${groupId}`);
 }
 
 export async function deleteBillAction(formData: FormData) {

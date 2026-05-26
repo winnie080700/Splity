@@ -230,9 +230,9 @@ export type ParticipantNetBalanceDto = {
 
 export type SettlementResultDto = {
   groupId: string;
-  fromDateUtc?: string;
-  toDateUtc?: string;
-  netBalances: ParticipantNetBalanceDto[];
+  fromDateUtc?: string | null;
+  toDateUtc?: string | null;
+  netBalances: ParticipantNetBalanceDto[] | null;
   transfers: SettlementTransferDto[];
 };
 

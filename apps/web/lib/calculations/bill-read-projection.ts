@@ -106,6 +106,7 @@ export type BillSummary = Pick<
   | "storeName"
   | "transactionDateUtc"
   | "currencyCode"
+  | "splitMode"
   | "primaryPayerParticipantId"
   | "subtotalAmount"
   | "totalFeeAmount"
@@ -209,6 +210,7 @@ export function projectBillToSummary(row: BillProjectionRow): BillSummary {
     storeName: detail.storeName,
     transactionDateUtc: detail.transactionDateUtc,
     currencyCode: detail.currencyCode,
+    splitMode: detail.splitMode,
     primaryPayerParticipantId: detail.primaryPayerParticipantId,
     subtotalAmount: detail.subtotalAmount,
     totalFeeAmount: detail.totalFeeAmount,

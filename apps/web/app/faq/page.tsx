@@ -603,16 +603,16 @@ export default function FaqPage() {
         id="help">
         <div className="relative min-h-[250px]">
           <div className="absolute -right-10 -top-16 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,rgba(233,177,66,0.22),transparent_68%)]" />
-          <div className="absolute bottom-0 right-3 hidden font-[var(--splity-serif)] text-[240px] leading-none text-white/16 lg:block">
+          <div className="absolute bottom-0 right-3 hidden text-[240px] leading-none text-white/16 lg:block">
             ?
           </div>
           <div className="relative max-w-[560px]">
-            <p className="font-[var(--splity-mono)] text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold)]">
+            <p className=" text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold)]">
               • Help & FAQ
             </p>
-            <h1 className="mt-5 font-[var(--splity-display)] text-[clamp(2.6rem,5vw,4rem)] leading-tight">
+            <h1 className="mt-5 splity-display text-[clamp(2.6rem,5vw,4rem)] leading-tight">
               How can we{" "}
-              <span className="font-[var(--splity-serif)] italic text-[var(--splity-gold)]">
+              <span className="italic text-[var(--splity-gold)]">
                 help?
               </span>
             </h1>
@@ -638,7 +638,7 @@ export default function FaqPage() {
       </section>
 
       <section className="mt-10" id="faq">
-        <p className="font-[var(--splity-mono)] text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
+        <p className=" text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
           • Frequently asked
         </p>
         <div className="mt-4 grid gap-6 lg:grid-cols-[220px_1fr]">
@@ -672,7 +672,7 @@ export default function FaqPage() {
               ))
             ) : (
               <div className="rounded-2xl border border-[var(--splity-line)] bg-white p-8 text-center shadow-[0_10px_30px_rgba(12,21,56,0.04)]">
-                <p className="font-[var(--splity-display)] text-xl">
+                <p className="splity-display text-xl">
                   No questions found.
                 </p>
                 <p className="mt-2 text-sm text-[var(--splity-muted)]">
@@ -689,12 +689,12 @@ export default function FaqPage() {
         id="contact">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-[var(--splity-mono)] text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
+            <p className=" text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               Still stuck?
             </p>
-            <h2 className="mt-3 font-[var(--splity-display)] text-3xl">
+            <h2 className="mt-3 splity-display text-3xl">
               Talk to a{" "}
-              <span className="font-[var(--splity-serif)] italic">human.</span>
+              <span className="italic">human.</span>
             </h2>
             <p className="mt-3 max-w-[520px] text-[14px] leading-6 text-[var(--splity-muted)]">
               Drop us a note and we&apos;ll get back to you, usually within a
@@ -718,7 +718,7 @@ export default function FaqPage() {
         </div>
       </section>
 
-      <footer className="mt-12 flex flex-col gap-3 pb-3 font-[var(--splity-mono)] text-xs uppercase tracking-[0.12em] text-[var(--splity-muted)] sm:flex-row sm:items-center sm:justify-between">
+      <footer className="mt-12 flex flex-col gap-3 pb-3 text-xs uppercase tracking-[0.12em] text-[var(--splity-muted)] sm:flex-row sm:items-center sm:justify-between">
         <span>+ Splity · 2026</span>
         <span>Made with care by Winnie</span>
       </footer>

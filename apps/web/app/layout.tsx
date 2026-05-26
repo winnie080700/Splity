@@ -26,7 +26,7 @@ export default function RootLayout({
       <body>
         <I18nProvider>
           {children}
-          <div className="m-2 flex items-center justify-between gap-4 border-t border-[var(--splity-line)] px-10 py-4 font-[var(--splity-mono)] text-xs uppercase text-[var(--splity-muted)] sm:px-20">
+          <div className="m-2 flex items-center justify-between gap-4 border-t border-[var(--splity-line)] px-10 py-4 text-xs uppercase text-[var(--splity-muted)] sm:px-20">
             <span><T k="app.footerLeft" /></span>
             <span><T k="app.footerRight" /></span>
             <LanguageSelect />

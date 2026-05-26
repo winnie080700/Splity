@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,16 @@ export function GroupManagement({
   const deleteBody = t("groups.deleteBody")
     .replace("{count}", String(participantCount))
     .replace("{plural}", participantCount === 1 ? "" : "s");
+
+  useEffect(() => {
+    if (renameState.success) toast.success(renameState.success);
+    if (renameState.error) toast.error(renameState.error);
+  }, [renameState.error, renameState.success]);
+
+  useEffect(() => {
+    if (statusState.success) toast.success(statusState.success);
+    if (statusState.error) toast.error(statusState.error);
+  }, [statusState.error, statusState.success]);
 
   return (
     <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">

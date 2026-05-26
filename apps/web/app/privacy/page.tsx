@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--splity-muted)]">
             Legal
           </p>
-          <h1 className="mt-3 font-[var(--splity-display)] text-4xl sm:text-5xl">
+          <h1 className="mt-3 splity-display text-4xl sm:text-5xl">
             Privacy Policy
           </h1>
           <p className={`mt-4 text-sm ${MUTED}`}>Last updated: 21 May 2026</p>

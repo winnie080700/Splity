@@ -20,6 +20,7 @@ export default function ResetPasswordPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    if (state.error) toast.error(state.error);
     if (!state.success) return;
 
     toast.success(state.success, { duration: 2000 });
@@ -28,7 +29,7 @@ export default function ResetPasswordPage() {
     }, 1000);
 
     return () => window.clearTimeout(timeout);
-  }, [router, state.success]);
+  }, [router, state.error, state.success]);
 
   return (
     <main className="grid min-h-dvh place-items-center bg-[radial-gradient(900px_480px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(760px_420px_at_100%_10%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] px-4 py-8 text-[var(--splity-ink)]">
@@ -45,7 +46,7 @@ export default function ResetPasswordPage() {
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
               {t("auth.accountRecovery")}
             </p>
-            <h1 className="mt-1 font-[var(--splity-display)] text-[clamp(2.4rem,6vw,3.15rem)] leading-[1.02] tracking-tight">
+            <h1 className="mt-1 splity-display text-[clamp(2.4rem,6vw,3.15rem)] leading-[1.02] tracking-tight">
               {t("auth.setNewPasswordTitle")}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--splity-muted)]">

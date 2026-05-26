@@ -183,12 +183,12 @@ export default async function DashboardPage() {
     <div className="mx-auto grid w-full max-w-7xl gap-7">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-[var(--splity-mono)] text-xs font-semibold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
+          <p className=" text-xs uppercase tracking-[0.12em] text-[var(--splity-muted)]">
             {appUser?.username ? `@${appUser.username}` : user.email}
           </p>
-          <h1 className="mt-2 font-[var(--splity-display)] text-4xl font-bold tracking-tight text-[var(--splity-ink)]">
+          <h1 className="mt-2  font-bold text-4xl tracking-tight text-[var(--splity-ink)]">
             <T k="dashboard.greeting" />{" "}
-            <span className="font-[var(--splity-serif)] font-normal italic text-[var(--splity-navy)]">
+            <span className="font-normal italic text-[var(--splity-navy)]">
               {displayName}
             </span>
           </h1>
@@ -209,7 +209,7 @@ export default async function DashboardPage() {
               <T k="dashboard.totalGroups" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className="font-[var(--splity-display)] text-6xl font-bold leading-none text-[var(--splity-navy)]">
+              <span className=" text-6xl font-bold leading-none text-[var(--splity-navy)]">
                 {groups.length}
               </span>
               <Users className="h-6 w-6 text-[var(--splity-navy)]/55" />
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
               <T k="dashboard.needsAttention" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className="font-[var(--splity-display)] text-5xl font-bold leading-none text-[var(--splity-rose)]">
+              <span className=" text-5xl font-bold leading-none text-[var(--splity-rose)]">
                 {unresolvedCount + invitations.length}
               </span>
               <AlertCircle className="h-6 w-6 text-[var(--splity-rose)]/70" />
@@ -234,7 +234,7 @@ export default async function DashboardPage() {
               <T k="dashboard.trackedBills" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className="font-[var(--splity-display)] text-5xl font-bold leading-none text-[var(--splity-ink)]">
+              <span className=" text-5xl font-bold leading-none text-[var(--splity-ink)]">
                 {billCount}
               </span>
               <ReceiptText className="h-6 w-6 text-[var(--splity-muted)]" />
@@ -291,7 +291,7 @@ export default async function DashboardPage() {
           title={
             <>
               <T k="dashboard.whereMoneyIs" />{" "}
-              <span className="font-[var(--splity-serif)] font-normal italic text-[var(--splity-navy)]">
+              <span className="font-normal italic text-[var(--splity-navy)]">
                 <T k="dashboard.inMotionShort" />
               </span>
             </>
@@ -319,7 +319,7 @@ export default async function DashboardPage() {
           title={
             <>
               <T k="dashboard.whoPays" />{" "}
-              <span className="font-[var(--splity-serif)] font-normal italic text-[var(--splity-navy)]">
+              <span className="font-normal italic text-[var(--splity-navy)]">
                 <T k="dashboard.whom" />
               </span>
             </>
@@ -352,7 +352,7 @@ export default async function DashboardPage() {
             title={
               <>
                 <T k="dashboard.lastEightWeeks" />{" "}
-                <span className="font-[var(--splity-serif)] font-normal italic text-[var(--splity-navy)]">
+                <span className="font-normal italic text-[var(--splity-navy)]">
                   <T k="dashboard.atAGlance" />
                 </span>
               </>
@@ -416,7 +416,7 @@ function StatusCount({
 
   return (
     <div className="rounded-xl bg-white/70 p-3 text-center">
-      <div className={`font-[var(--splity-display)] text-2xl font-bold ${toneClass}`}>{count}</div>
+      <div className={` text-2xl font-bold ${toneClass}`}>{count}</div>
       <div className="mt-1 truncate text-[11px] font-semibold text-[var(--splity-muted)]">
         <T k={labelKey} />
       </div>
@@ -431,7 +431,7 @@ function SectionTitle({ eyebrow, title }: { eyebrow: ReactNode; title: ReactNode
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
         {eyebrow}
       </p>
-      <h2 className="mt-2 font-[var(--splity-display)] text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+      <h2 className="mt-2  text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
         {title}
       </h2>
     </div>
@@ -501,11 +501,11 @@ function AttentionCard({
         <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${toneClass.icon}`}>
           {count > 0 ? icon : <CheckCircle2 className="h-5 w-5 text-[var(--splity-mint)]" />}
         </span>
-        <span className="rounded-full bg-[color:var(--splity-bg)] px-2.5 py-1 font-[var(--splity-mono)] text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--splity-ink)]">
+        <span className="rounded-full bg-[color:var(--splity-bg)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--splity-ink)]">
           {count}
         </span>
       </div>
-      <h3 className="relative mt-6 font-[var(--splity-display)] text-lg font-bold tracking-tight">{label}</h3>
+      <h3 className="relative mt-6  text-lg font-bold tracking-tight">{label}</h3>
       <span className={`relative mt-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold ${toneClass.button}`}>
         <T k="dashboard.review" />
         <ArrowRight className="h-3.5 w-3.5" />
@@ -539,13 +539,13 @@ function ActiveGroupRow({
       href={`/groups/${group.id}`}
     >
       <div className="min-w-0">
-        <h3 className="truncate font-[var(--splity-display)] text-lg font-bold tracking-tight">{group.name}</h3>
+        <h3 className="truncate  text-lg font-bold tracking-tight">{group.name}</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div className="flex -space-x-1">
             {participantLabels.length ? (
               participantLabels.map((participant, index) => (
                 <span
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--splity-navy)] font-[var(--splity-display)] text-[9px] font-bold text-white"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--splity-navy)]  text-[9px] font-bold text-white"
                   key={participant.id}
                   style={{ backgroundColor: ["#1b2a6b", "#c46920", "#2e8a5e", "#6b3ce7"][index % 4] }}
                 >
@@ -553,12 +553,12 @@ function ActiveGroupRow({
                 </span>
               ))
             ) : (
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--splity-navy)] font-[var(--splity-display)] text-[9px] font-bold text-white">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--splity-navy)]  text-[9px] font-bold text-white">
                 S
               </span>
             )}
           </div>
-          <span className="font-[var(--splity-mono)] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--splity-muted)]">
+          <span className=" text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--splity-muted)]">
             {group.participantCount} PPL · {bills.length} BILLS
           </span>
           <Badge tone={meta.badgeTone}>
@@ -568,7 +568,7 @@ function ActiveGroupRow({
       </div>
 
       <div>
-        <div className="mb-1 flex items-center justify-between font-[var(--splity-mono)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
+        <div className="mb-1 flex items-center justify-between  text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
           <span><T k="dashboard.settledLabel" /></span>
           <span>{progress}%</span>
         </div>
@@ -581,12 +581,12 @@ function ActiveGroupRow({
       </div>
 
       <div className="sm:text-right">
-        <div className="font-[var(--splity-mono)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
+        <div className=" text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
           <T k="dashboard.yourBalance" />
         </div>
         <div
           className={[
-            "mt-1 font-[var(--splity-mono)] text-sm font-bold",
+            "mt-1  text-sm font-bold",
             Number(currentBalance ?? 0) > 0
               ? "text-[var(--splity-mint)]"
               : Number(currentBalance ?? 0) < 0
@@ -625,14 +625,14 @@ function SettlementQueueRow({
       href={`/groups/${group.id}/settlements`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--splity-navy)] font-[var(--splity-display)] text-xs font-bold text-white">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--splity-navy)]  text-xs font-bold text-white">
           {initials(isCurrentPayer ? "You" : from)}
         </span>
         <div className="min-w-0">
           <div className="truncate text-sm font-bold">
             {isCurrentPayer ? "You" : from} → {isCurrentReceiver ? "You" : to}
           </div>
-          <div className="mt-1 truncate font-[var(--splity-mono)] text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
+          <div className="mt-1 truncate  text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
             {group.name}
           </div>
         </div>
@@ -640,13 +640,13 @@ function SettlementQueueRow({
       <div className="flex items-center justify-between gap-3 sm:justify-end">
         <div
           className={[
-            "font-[var(--splity-mono)] text-sm font-bold",
+            " text-sm font-bold",
             signedAmount >= 0 ? "text-[var(--splity-mint)]" : "text-[var(--splity-rose)]",
           ].join(" ")}
         >
           {signedMoney(signedAmount)}
         </div>
-        <span className="inline-flex h-8 items-center rounded-full bg-white px-3 font-[var(--splity-mono)] text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--splity-navy)]">
+        <span className="inline-flex h-8 items-center rounded-full bg-white px-3  text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--splity-navy)]">
           {isCurrentPayer ? <T k="dashboard.payNow" /> : <T k="dashboard.remind" />}
         </span>
       </div>
@@ -665,12 +665,12 @@ function Metric({
 }) {
   return (
     <div>
-      <div className="font-[var(--splity-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--splity-muted)]">
+      <div className=" text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--splity-muted)]">
         {label}
       </div>
       <div
         className={[
-          "mt-1 font-[var(--splity-display)] text-xl font-bold",
+          "mt-1  text-xl font-bold",
           tone === "green" ? "text-[var(--splity-mint)]" : tone === "red" ? "text-[var(--splity-rose)]" : "",
         ].join(" ")}
       >
@@ -696,7 +696,7 @@ function WeeklyChart({ totals }: { totals: { label: string; total: number }[] })
             ].join(" ")}
             style={{ height: `${Math.max((entry.total / max) * 100, entry.total > 0 ? 8 : 2)}%` }}
           />
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 font-[var(--splity-mono)] text-[10px] font-bold uppercase text-[var(--splity-muted)]">
+          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2  text-[10px] font-bold uppercase text-[var(--splity-muted)]">
             {entry.label}
           </span>
         </div>
@@ -720,7 +720,7 @@ function SpendRow({
     <div>
       <div className="mb-2 flex items-center justify-between gap-3 text-sm font-bold">
         <span className="min-w-0 truncate">{label}</span>
-        <span className="font-[var(--splity-mono)] text-xs">{money(value)}</span>
+        <span className=" text-xs">{money(value)}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(12,21,56,0.08)]">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max((value / Math.max(max, 1)) * 100, 4)}%` }} />

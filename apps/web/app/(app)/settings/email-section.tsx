@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ function SubmitButton({ cooldown }: { cooldown: number }) {
   const disabled = pending || cooldown > 0;
 
   return (
-    <Button disabled={disabled} type="submit" variant="secondary">
+    <Button className="rounded-full" disabled={disabled} type="submit" variant="secondary">
       {pending
         ? t("common.sending")
         : cooldown > 0
@@ -43,6 +44,11 @@ export function EmailSection({ email, isVerified }: EmailSectionProps) {
   }, [isVerified, state.success]);
 
   useEffect(() => {
+    if (state.success) toast.success(state.success);
+    if (state.error) toast.error(state.error);
+  }, [state.error, state.success]);
+
+  useEffect(() => {
     if (cooldown <= 0) return;
 
     const timer = window.setTimeout(() => setCooldown((current) => Math.max(0, current - 1)), 1000);
@@ -50,25 +56,28 @@ export function EmailSection({ email, isVerified }: EmailSectionProps) {
   }, [cooldown]);
 
   return (
-    <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="grid gap-3 rounded-xl border border-[var(--splity-line)] bg-[#fffefa] px-4 py-4">
+      <div className="grid min-h-[42px] gap-3 sm:grid-cols-[minmax(150px,0.18fr)_1fr_auto] sm:items-center">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-950">{t("settings.emailTitle")}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{email}</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-[var(--splity-gold-strong)]">
+            {t("settings.emailAddress")}
+          </p>
+          <p className="mt-1 text-xs text-[var(--splity-muted)]">{t("settings.emailAddressHint")}</p>
         </div>
+        <p className="min-w-0 break-all text-sm font-bold text-[var(--splity-ink)]">{email}</p>
         <span
           className={[
-            "rounded-full border px-3 py-1 text-xs font-semibold uppercase",
+            "inline-flex h-7 items-center rounded-full px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] before:mr-2 before:content-['•']",
             isVerified
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-amber-200 bg-amber-50 text-amber-800",
+              ? "bg-emerald-50 text-emerald-700 before:text-emerald-500"
+              : "bg-amber-50 text-amber-800 before:text-amber-500",
           ].join(" ")}
         >
           {isVerified ? t("settings.emailVerified") : t("settings.emailPending")}
         </span>
       </div>
       {!isVerified ? (
-        <form action={formAction} className="grid gap-3">
+        <form action={formAction} className="grid gap-3 border-t border-dashed border-[var(--splity-line)] pt-3">
           <Alert tone="error">{state.error}</Alert>
           <Alert tone="success">{state.success}</Alert>
           <div>

@@ -13,10 +13,12 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { T } from "@/components/i18n/t";
 import { signOut } from "@/lib/auth/actions";
+import { useTranslation } from "@/lib/i18n";
 
 type AppShellProps = {
   children: ReactNode;
@@ -56,11 +58,13 @@ function NavLink({
     <Link
       aria-current={active ? "page" : undefined}
       className={[
-        "group flex h-11 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-semibold transition-all duration-300 ease-out",
+        "group h-11 overflow-hidden rounded-xl text-sm font-semibold transition-all duration-300 ease-out",
         active
           ? "bg-[var(--splity-navy)] text-white shadow-[0_8px_18px_rgba(27,42,107,0.18)]"
           : "text-[var(--splity-ink)] hover:bg-white/70",
-        collapsed ? "justify-center" : "",
+        collapsed
+          ? "grid w-11 place-items-center"
+          : "flex items-center gap-3 px-3",
       ].join(" ")}
       href={item.href}
       title={collapsed && typeof item.label === "string" ? item.label : undefined}
@@ -71,22 +75,19 @@ function NavLink({
           active ? "text-[var(--splity-gold)]" : "text-[var(--splity-muted)]",
         ].join(" ")}
       />
-      <span
-        className={[
-          "min-w-0 flex-1 truncate transition-all duration-300 ease-out",
-          collapsed ? "w-0 max-w-0 opacity-0" : "max-w-40 opacity-100",
-        ].join(" ")}
-      >
-        {item.label}
-      </span>
-      {typeof item.count === "number" ? (
+      {collapsed ? null : (
+        <span className="min-w-0 flex-1 truncate transition-all duration-300 ease-out">
+          {item.label}
+        </span>
+      )}
+      {!collapsed && typeof item.count === "number" ? (
         <span
           className={[
             "ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums transition-all duration-300 ease-out",
             active
               ? "bg-white/15 text-[var(--splity-gold)]"
               : "bg-[rgba(233,177,66,0.18)] text-[var(--splity-gold-strong)]",
-            collapsed ? "w-0 max-w-0 overflow-hidden px-0 opacity-0" : "max-w-12 opacity-100",
+            "max-w-12 opacity-100",
           ].join(" ")}
         >
           {item.count}
@@ -105,6 +106,7 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true");
@@ -127,7 +129,7 @@ export function AppShell({
     },
     {
       count: groupCount,
-      href: "/dashboard",
+      href: "/groups",
       icon: Users,
       isActive: (current) => current.startsWith("/groups"),
       label: <T k="dashboard.groupsTitle" />,
@@ -164,14 +166,24 @@ export function AppShell({
           : "lg:grid-cols-[260px_minmax(0,1fr)]",
       ].join(" ")}
     >
-      <aside className="sticky top-0 z-20 flex max-h-screen flex-col gap-5 overflow-hidden px-4 py-5 transition-all duration-300 ease-out max-lg:static max-lg:max-h-none">
-        <div className="flex items-center justify-between gap-2 px-1">
-          <Link className={["transition-all duration-300 ease-out", collapsed ? "mx-auto" : ""].join(" ")} href="/dashboard">
+      <aside
+        className={[
+          "sticky top-0 z-20 flex max-h-screen flex-col gap-5 overflow-hidden border-r border-[var(--splity-line)] bg-[#f7f5ee] py-5 shadow-[8px_0_24px_rgba(12,21,56,0.04)] transition-all duration-300 ease-out max-lg:static max-lg:max-h-none",
+          collapsed ? "items-stretch px-0" : "px-4",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "flex w-full items-center gap-2 px-1",
+            collapsed ? "flex-col justify-center px-0" : "justify-between",
+          ].join(" ")}
+        >
+          <Link className="transition-all duration-300 ease-out" href="/dashboard">
             <BrandMark compact={collapsed} size="md" />
           </Link>
           <button
             aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
             className={[
               "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--splity-line)] bg-white/70 text-[var(--splity-muted)] transition-all duration-300 hover:bg-white hover:text-[var(--splity-ink)]",
               collapsed ? "hidden lg:inline-flex" : "",
@@ -183,8 +195,8 @@ export function AppShell({
           </button>
         </div>
 
-        <div className="grid gap-5">
-          <nav className="grid gap-1">
+        <div className={["grid gap-5", collapsed ? "w-full" : ""].join(" ")}>
+          <nav className={["grid gap-1", collapsed ? "justify-items-center" : ""].join(" ")}>
             {collapsed ? null : (
               <div className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--splity-muted)] transition-opacity duration-200">
                 <T k="nav.general" />
@@ -195,7 +207,7 @@ export function AppShell({
             ))}
           </nav>
 
-          <nav className="grid gap-1">
+          <nav className={["grid gap-1", collapsed ? "justify-items-center" : ""].join(" ")}>
             {collapsed ? null : (
               <div className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--splity-muted)] transition-opacity duration-200">
                 <T k="nav.support" />
@@ -211,24 +223,24 @@ export function AppShell({
 
         <div
           className={[
-            "flex items-center gap-3 overflow-hidden rounded-[14px] border border-[var(--splity-line)] bg-white p-3 shadow-sm transition-all duration-300 ease-out",
-            collapsed ? "justify-center" : "",
+            "flex items-center gap-3 overflow-hidden rounded-[14px] border border-[var(--splity-line)] bg-white shadow-sm transition-all duration-300 ease-out",
+            collapsed ? "h-11 w-11 justify-center p-0" : "p-3",
           ].join(" ")}
         >
-          <span className="inline-flex h-8 w-8 shrink-0 rotate-[-3deg] items-center justify-center rounded-[10px] bg-[var(--splity-navy)] font-[var(--splity-display)] text-sm font-extrabold text-white">
+          <span className="inline-flex h-8 w-8 shrink-0 rotate-[-3deg] items-center justify-center rounded-[10px] bg-[var(--splity-navy)] splity-display text-sm font-extrabold text-white">
             {initial(userName || userEmail)}
           </span>
           {collapsed ? null : (
             <>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{userName}</div>
-                <div className="truncate font-[var(--splity-mono)] text-[11px] text-[var(--splity-muted)]">
+                <div className="truncate text-[11px] text-[var(--splity-muted)]">
                   {userEmail}
                 </div>
               </div>
-              <form action={signOut}>
+              <form action={signOut} onSubmit={() => toast.loading(t("settings.signingOut"))}>
                 <button
-                  aria-label="Sign out"
+                  aria-label={t("dashboard.signOut")}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--splity-bg)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-line)] hover:text-[var(--splity-ink)]"
                   type="submit"
                 >

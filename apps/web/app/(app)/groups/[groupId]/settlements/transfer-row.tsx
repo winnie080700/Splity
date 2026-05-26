@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState, type ChangeEvent } from "react";
+import { useActionState, useEffect, useState, type ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +98,14 @@ export function TransferRow({
       : transfer.status === SETTLEMENT_TRANSFER_STATUS.markedPaid
         ? t("settlements.status.markedPaid")
         : t("settlements.status.pending");
+
+  useEffect(() => {
+    const success = paidState.success ?? receivedState.success;
+    const error = proofError ?? paidState.error ?? receivedState.error;
+
+    if (success) toast.success(success);
+    if (error) toast.error(error);
+  }, [paidState.error, paidState.success, proofError, receivedState.error, receivedState.success]);
 
   async function handleProofSelected(event: ChangeEvent<HTMLInputElement>) {
     setProofError(null);

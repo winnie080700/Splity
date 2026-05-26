@@ -13,6 +13,12 @@ export class GroupLockedError extends Error {
   }
 }
 
+export class InvitedParticipantEditError extends Error {
+  constructor() {
+    super("Invited participant names cannot be edited.");
+  }
+}
+
 async function requireEditableGroup(groupId: string) {
   const group = await getGroup(groupId);
   if (!group) throw new Error("Group not found.");
@@ -62,6 +68,7 @@ export async function listParticipants(groupId: string) {
     .from("participants")
     .select("id, group_id, name, username, invited_user_id, invitation_status, created_at_utc")
     .eq("group_id", groupId)
+    .order("created_at_utc", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) throw error;
@@ -113,6 +120,7 @@ export async function updateParticipant(
     .single();
 
   if (currentError) throw currentError;
+  if (current.invited_user_id) throw new InvitedParticipantEditError();
 
   const username = normalizeUsername(input.username);
   const invitation = await resolveInvitation({

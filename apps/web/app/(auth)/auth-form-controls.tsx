@@ -54,7 +54,7 @@ export function AuthField({
       </span>
       <span className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-[#fbfaf5] px-3.5 transition focus-within:border-[var(--splity-navy)] focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(27,42,107,0.08)]">
         {prefix ? (
-          <span className="font-[var(--splity-mono)] text-sm text-[var(--splity-muted)]">
+          <span className=" text-sm text-[var(--splity-muted)]">
             {prefix}
           </span>
         ) : null}
@@ -63,7 +63,7 @@ export function AuthField({
           autoComplete={autoComplete}
           className={[
             "min-w-0 flex-1 bg-transparent py-3 text-[15px] text-[var(--splity-ink)] outline-none placeholder:text-[rgba(90,96,121,0.55)]",
-            mono ? "font-[var(--splity-mono)] text-sm" : "",
+            mono ? " text-sm" : "",
           ]
             .filter(Boolean)
             .join(" ")}

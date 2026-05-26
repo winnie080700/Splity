@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,11 @@ function SubmitButton() {
 export function VerifyEmailForm({ email }: { email: string }) {
   const [state, formAction] = useActionState(resendVerification, initialState);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (state.success) toast.success(state.success);
+    if (state.error) toast.error(state.error);
+  }, [state.error, state.success]);
 
   return (
     <div className="grid gap-6">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,14 @@ export function ShareForm({
   const [state, formAction] = useActionState(action.bind(null, groupId), initialState);
   const [deactivateState, deactivateAction] = useActionState(deactivateShareAction.bind(null, groupId), initialState);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const success = state.success ?? deactivateState.success;
+    const error = state.error ?? deactivateState.error;
+
+    if (success) toast.success(success);
+    if (error) toast.error(error);
+  }, [deactivateState.error, deactivateState.success, state.error, state.success]);
 
   return (
     <div className="grid gap-4">

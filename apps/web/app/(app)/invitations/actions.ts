@@ -1,23 +1,60 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
+import { en, type MessageKey } from "@/lib/i18n/messages/en";
+import { zh } from "@/lib/i18n/messages/zh";
 import { acceptInvitation, declineInvitation } from "@/lib/services/invitations";
 
-export async function acceptInvitationAction(formData: FormData) {
-  const participantId = String(formData.get("participantId") ?? "");
-  if (!participantId) throw new Error("Invitation is required.");
+export type InvitationActionState = {
+  error: string | null;
+  success: string | null;
+};
 
-  await acceptInvitation(participantId);
-  revalidatePath("/invitations");
-  revalidatePath("/dashboard");
+const emptyState: InvitationActionState = { error: null, success: null };
+
+async function serverT(key: MessageKey) {
+  const locale = (await cookies()).get("splity.locale")?.value;
+  return locale === "zh" ? (zh[key] ?? en[key]) : en[key];
 }
 
-export async function declineInvitationAction(formData: FormData) {
+export async function acceptInvitationAction(
+  _prevState: InvitationActionState,
+  formData: FormData
+): Promise<InvitationActionState> {
   const participantId = String(formData.get("participantId") ?? "");
-  if (!participantId) throw new Error("Invitation is required.");
+  if (!participantId) return { ...emptyState, error: await serverT("invitations.errorRequired") };
 
-  await declineInvitation(participantId);
-  revalidatePath("/invitations");
-  revalidatePath("/dashboard");
+  try {
+    await acceptInvitation(participantId);
+    revalidatePath("/invitations");
+    revalidatePath("/dashboard");
+    return { ...emptyState, success: await serverT("invitations.accepted") };
+  } catch (error) {
+    return {
+      ...emptyState,
+      error: error instanceof Error ? error.message : await serverT("invitations.acceptFailed"),
+    };
+  }
+}
+
+export async function declineInvitationAction(
+  _prevState: InvitationActionState,
+  formData: FormData
+): Promise<InvitationActionState> {
+  const participantId = String(formData.get("participantId") ?? "");
+  if (!participantId) return { ...emptyState, error: await serverT("invitations.errorRequired") };
+
+  try {
+    await declineInvitation(participantId);
+    revalidatePath("/invitations");
+    revalidatePath("/dashboard");
+    return { ...emptyState, success: await serverT("invitations.declined") };
+  } catch (error) {
+    return {
+      ...emptyState,
+      error: error instanceof Error ? error.message : await serverT("invitations.declineFailed"),
+    };
+  }
 }

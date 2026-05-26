@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { GROUP_STATUS, type GroupStatus } from "@/lib/domain/status";
+import { normalizeUsername } from "@/lib/services/users";
 export {
   GROUP_STATUS,
   GROUP_STATUS_LABELS,
@@ -84,6 +85,14 @@ export async function createGroup(input: { name: string }) {
 
   if (userError || !user) throw new Error("You must be signed in.");
 
+  const { data: appUser, error: appUserError } = await supabase
+    .from("app_users")
+    .select("name, username")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (appUserError) throw appUserError;
+
   const { data, error } = await supabase
     .from("groups")
     .insert({
@@ -95,6 +104,30 @@ export async function createGroup(input: { name: string }) {
     .single();
 
   if (error) throw error;
+
+  const participantName =
+    appUser?.name ??
+    (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : null) ??
+    user.email ??
+    "You";
+  const username = normalizeUsername(
+    appUser?.username ??
+      (typeof user.user_metadata?.username === "string" ? user.user_metadata.username : null)
+  );
+
+  const { error: participantError } = await supabase.from("participants").insert({
+    group_id: data.id,
+    name: participantName,
+    username,
+    invited_user_id: user.id,
+    invitation_status: 2,
+  });
+
+  if (participantError) {
+    await supabase.from("groups").delete().eq("id", data.id);
+    throw participantError;
+  }
+
   return data;
 }
 

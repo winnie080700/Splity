@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
+import { en, type MessageKey } from "@/lib/i18n/messages/en";
+import { zh } from "@/lib/i18n/messages/zh";
 import { createClient } from "@/lib/supabase/server";
 
 export type SettingsActionState = {
@@ -39,8 +42,18 @@ function isDuplicateUsernameError(error: unknown) {
   );
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+async function serverT(key: MessageKey) {
+  const locale = (await cookies()).get("splity.locale")?.value;
+
+  if (locale === "zh") {
+    return zh[key] ?? en[key];
+  }
+
+  return en[key];
+}
+
+async function getErrorMessage(error: unknown, fallbackKey: MessageKey) {
+  return error instanceof Error ? error.message : serverT(fallbackKey);
 }
 
 export async function updateProfileAction(
@@ -51,15 +64,11 @@ export async function updateProfileAction(
   const username = normalizeUsername(value(formData, "username"));
 
   if (name.length < 1 || name.length > 150) {
-    return { error: "Display name must be 1-150 characters.", success: null };
+    return { error: await serverT("settings.errorDisplayNameLength"), success: null };
   }
 
   if (!USERNAME_PATTERN.test(username)) {
-    return {
-      error:
-        "Username must be 3-30 characters and use only letters, numbers, dot, underscore, or dash.",
-      success: null,
-    };
+    return { error: await serverT("settings.errorUsernameInvalid"), success: null };
   }
 
   try {
@@ -70,7 +79,7 @@ export async function updateProfileAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return { error: "Not authenticated.", success: null };
+      return { error: await serverT("settings.errorNotAuthenticated"), success: null };
     }
 
     const { error } = await supabase
@@ -80,7 +89,7 @@ export async function updateProfileAction(
 
     if (error) {
       if (isDuplicateUsernameError(error)) {
-        return { error: "Username already taken.", success: null };
+        return { error: await serverT("settings.errorUsernameTaken"), success: null };
       }
 
       throw error;
@@ -88,9 +97,9 @@ export async function updateProfileAction(
 
     revalidatePath("/settings");
     revalidatePath("/dashboard");
-    return { error: null, success: "Profile saved." };
+    return { error: null, success: await serverT("settings.profileSaved") };
   } catch (error) {
-    return { error: getErrorMessage(error, "Failed to save profile."), success: null };
+    return { error: await getErrorMessage(error, "settings.profileSaveFailed"), success: null };
   }
 }
 
@@ -106,23 +115,23 @@ export async function updatePaymentProfileAction(
   const paymentQrDataUrl = nullableValue(formData, "paymentQrDataUrl");
 
   if (payeeName && payeeName.length > 150) {
-    return { error: "Payee name must be 150 characters or fewer.", success: null };
+    return { error: await serverT("settings.errorPayeeLength"), success: null };
   }
 
   if (paymentMethod && paymentMethod.length > 120) {
-    return { error: "Payment method must be 120 characters or fewer.", success: null };
+    return { error: await serverT("settings.errorPaymentMethodLength"), success: null };
   }
 
   if (accountName && accountName.length > 150) {
-    return { error: "Account name must be 150 characters or fewer.", success: null };
+    return { error: await serverT("settings.errorAccountNameLength"), success: null };
   }
 
   if (accountNumber && accountNumber.length > 120) {
-    return { error: "Account number must be 120 characters or fewer.", success: null };
+    return { error: await serverT("settings.errorAccountNumberLength"), success: null };
   }
 
   if (notes && notes.length > 2000) {
-    return { error: "Notes must be 2000 characters or fewer.", success: null };
+    return { error: await serverT("settings.errorNotesLength"), success: null };
   }
 
   if (paymentQrDataUrl) {
@@ -130,10 +139,7 @@ export async function updatePaymentProfileAction(
       paymentQrDataUrl.length > MAX_QR_DATA_URL_LENGTH ||
       !QR_DATA_URL_PATTERN.test(paymentQrDataUrl)
     ) {
-      return {
-        error: "QR code must be a PNG, JPEG, or WebP image no larger than 5MB.",
-        success: null,
-      };
+      return { error: await serverT("settings.errorQrInvalid"), success: null };
     }
   }
 
@@ -145,7 +151,7 @@ export async function updatePaymentProfileAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return { error: "Not authenticated.", success: null };
+      return { error: await serverT("settings.errorNotAuthenticated"), success: null };
     }
 
     const { error } = await supabase
@@ -163,10 +169,10 @@ export async function updatePaymentProfileAction(
     if (error) throw error;
 
     revalidatePath("/settings");
-    return { error: null, success: "Payment profile saved." };
+    return { error: null, success: await serverT("settings.paymentSaved") };
   } catch (error) {
     return {
-      error: getErrorMessage(error, "Failed to save payment profile."),
+      error: await getErrorMessage(error, "settings.paymentSaveFailed"),
       success: null,
     };
   }
@@ -181,15 +187,15 @@ export async function changePasswordAction(
   const confirmNewPassword = String(formData.get("confirmNewPassword") ?? "");
 
   if (!currentPassword) {
-    return { error: "Current password is required.", success: null };
+    return { error: await serverT("settings.errorCurrentPasswordRequired"), success: null };
   }
 
   if (newPassword.length < 6) {
-    return { error: "Password must be at least 6 characters.", success: null };
+    return { error: await serverT("settings.errorPasswordMin"), success: null };
   }
 
   if (newPassword !== confirmNewPassword) {
-    return { error: "Passwords do not match.", success: null };
+    return { error: await serverT("settings.errorPasswordsMismatch"), success: null };
   }
 
   try {
@@ -200,7 +206,7 @@ export async function changePasswordAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user?.email) {
-      return { error: "Not authenticated.", success: null };
+      return { error: await serverT("settings.errorNotAuthenticated"), success: null };
     }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -209,15 +215,15 @@ export async function changePasswordAction(
     });
 
     if (signInError) {
-      return { error: "Current password is incorrect.", success: null };
+      return { error: await serverT("settings.errorCurrentPasswordIncorrect"), success: null };
     }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
 
-    return { error: null, success: "Password updated." };
+    return { error: null, success: await serverT("settings.passwordUpdated") };
   } catch (error) {
-    return { error: getErrorMessage(error, "Failed to update password."), success: null };
+    return { error: await getErrorMessage(error, "settings.passwordUpdateFailed"), success: null };
   }
 }
 
@@ -233,11 +239,11 @@ export async function resendVerificationAction(
     } = await supabase.auth.getUser();
 
     if (authError || !user?.email) {
-      return { error: "Not authenticated.", success: null };
+      return { error: await serverT("settings.errorNotAuthenticated"), success: null };
     }
 
     if (user.email_confirmed_at) {
-      return { error: null, success: "Email is already verified." };
+      return { error: null, success: await serverT("settings.emailAlreadyVerified") };
     }
 
     const { error } = await supabase.auth.resend({
@@ -250,10 +256,10 @@ export async function resendVerificationAction(
 
     if (error) throw error;
 
-    return { error: null, success: "Verification email sent." };
+    return { error: null, success: await serverT("settings.verificationSent") };
   } catch (error) {
     return {
-      error: getErrorMessage(error, "Failed to send verification email."),
+      error: await getErrorMessage(error, "settings.verificationSendFailed"),
       success: null,
     };
   }

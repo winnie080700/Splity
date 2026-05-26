@@ -1,25 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
+import { en, type MessageKey } from "@/lib/i18n/messages/en";
+import { zh } from "@/lib/i18n/messages/zh";
 import {
   createParticipant,
   deleteParticipant,
+  InvitedParticipantEditError,
   updateParticipant,
 } from "@/lib/services/participants";
 import { searchUserByUsername } from "@/lib/services/users";
 
 export type ParticipantActionState = {
+  added: { mode: "manual" | "invite"; name: string; username: string | null } | null;
   error: string | null;
   lookup: { id: string; name: string; username: string } | null;
   success: string | null;
 };
 
 const emptyState: ParticipantActionState = {
+  added: null,
   error: null,
   lookup: null,
   success: null,
 };
+
+async function serverT(key: MessageKey) {
+  const locale = (await cookies()).get("splity.locale")?.value;
+  return locale === "zh" ? (zh[key] ?? en[key]) : en[key];
+}
 
 export async function addParticipantAction(
   groupId: string,
@@ -27,35 +38,66 @@ export async function addParticipantAction(
   formData: FormData
 ): Promise<ParticipantActionState> {
   const intent = String(formData.get("intent") ?? "add");
+  const mode = String(formData.get("mode") ?? "manual");
   const name = String(formData.get("name") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim();
+  const lookupId = String(formData.get("lookupId") ?? "").trim();
 
   if (intent === "lookup") {
     if (!username) {
-      return { ...emptyState, error: "Username is required for lookup." };
+      return { ...emptyState, error: await serverT("groupDetail.error.lookupUsernameRequired") };
     }
 
     try {
       const lookup = await searchUserByUsername(username);
       if (!lookup) {
-        return { ...emptyState, error: "No user found for that username." };
+        return { ...emptyState, error: await serverT("groupDetail.error.noUserFound") };
       }
       return { ...emptyState, lookup };
     } catch (error) {
-      return { ...emptyState, error: getErrorMessage(error, "Lookup failed.") };
+      return { ...emptyState, error: await getErrorMessage(error, "groupDetail.error.lookupFailed") };
     }
   }
 
-  if (name.length < 1 || name.length > 150) {
-    return { ...emptyState, error: "Participant name must be 1-150 characters." };
-  }
-
   try {
-    await createParticipant({ groupId, name, username });
+    if (mode === "invite") {
+      if (!username) {
+        return { ...emptyState, error: await serverT("groupDetail.error.lookupUsernameRequired") };
+      }
+      if (!lookupId) {
+        return { ...emptyState, error: await serverT("groupDetail.error.lookupBeforeInvite") };
+      }
+
+      const lookup = await searchUserByUsername(username);
+      if (!lookup) {
+        return { ...emptyState, error: await serverT("groupDetail.error.noUserFound") };
+      }
+      if (lookup.id !== lookupId) {
+        return { ...emptyState, error: await serverT("groupDetail.error.lookupBeforeInvite") };
+      }
+
+      await createParticipant({ groupId, name: lookup.name, username: lookup.username });
+      revalidatePath(`/groups/${groupId}`);
+      return {
+        ...emptyState,
+        added: { mode: "invite", name: lookup.name, username: lookup.username },
+        success: await serverT("groupDetail.action.participantAdded"),
+      };
+    }
+
+    if (name.length < 1 || name.length > 150) {
+      return { ...emptyState, error: await serverT("groupDetail.error.participantNameLength") };
+    }
+
+    await createParticipant({ groupId, name, username: null });
     revalidatePath(`/groups/${groupId}`);
-    return { ...emptyState, success: "Participant added." };
+    return {
+      ...emptyState,
+      added: { mode: "manual", name, username: null },
+      success: await serverT("groupDetail.action.participantAdded"),
+    };
   } catch (error) {
-    return { ...emptyState, error: toParticipantError(error) };
+    return { ...emptyState, error: await toParticipantError(error) };
   }
 }
 
@@ -66,26 +108,24 @@ export async function renameParticipantAction(
   formData: FormData
 ): Promise<ParticipantActionState> {
   const name = String(formData.get("name") ?? "").trim();
-  const username = String(formData.get("username") ?? "").trim();
 
   if (name.length < 1 || name.length > 150) {
-    return { ...emptyState, error: "Participant name must be 1-150 characters." };
+    return { ...emptyState, error: await serverT("groupDetail.error.participantNameLength") };
   }
 
   if (name.startsWith("@")) {
     return {
       ...emptyState,
-      error:
-        "Manual participant rename cannot start with @. Use the username field to invite a user.",
+      error: await serverT("groupDetail.error.participantAtPrefix"),
     };
   }
 
   try {
-    await updateParticipant(groupId, participantId, { name, username });
+    await updateParticipant(groupId, participantId, { name, username: null });
     revalidatePath(`/groups/${groupId}`);
-    return { ...emptyState, success: "Participant updated." };
+    return { ...emptyState, success: await serverT("groupDetail.action.participantUpdated") };
   } catch (error) {
-    return { ...emptyState, error: toParticipantError(error) };
+    return { ...emptyState, error: await toParticipantError(error) };
   }
 }
 
@@ -97,29 +137,33 @@ export async function removeParticipantAction(
   try {
     await deleteParticipant(groupId, participantId);
     revalidatePath(`/groups/${groupId}`);
-    return { ...emptyState, success: "Participant removed." };
+    return { ...emptyState, success: await serverT("groupDetail.action.participantRemoved") };
   } catch (error) {
-    return { ...emptyState, error: toParticipantError(error) };
+    return { ...emptyState, error: await toParticipantError(error) };
   }
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+async function getErrorMessage(error: unknown, fallbackKey: MessageKey) {
+  return error instanceof Error ? error.message : serverT(fallbackKey);
 }
 
-function toParticipantError(error: unknown) {
-  const message = getErrorMessage(error, "Participant action failed.");
+async function toParticipantError(error: unknown) {
+  if (error instanceof InvitedParticipantEditError) {
+    return serverT("groupDetail.error.invitedParticipantReadOnly");
+  }
+
+  const message = await getErrorMessage(error, "groupDetail.error.participantActionFailed");
   const code =
     typeof error === "object" && error !== null && "code" in error
       ? String((error as { code?: unknown }).code)
       : "";
 
   if (code === "23503" || /foreign key/i.test(message)) {
-    return "Cannot remove this participant because they appear on a bill or settlement transfer.";
+    return serverT("groupDetail.error.participantInUse");
   }
 
   if (code === "23505" || /duplicate|unique/i.test(message)) {
-    return "A participant with that name already exists in this group.";
+    return serverT("groupDetail.error.participantDuplicate");
   }
 
   return message;

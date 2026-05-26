@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getGroup, GROUP_STATUS } from "@/lib/services/groups";
 import { listBillFormParticipants } from "@/lib/services/bills";
 import { BillForm } from "./bill-form";
-import { createBillAction } from "../actions";
+import { createBillAction } from "./actions";
 
 type NewBillPageProps = {
   params: Promise<{ groupId: string }>;

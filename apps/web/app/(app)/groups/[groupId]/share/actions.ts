@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
+import { en, type MessageKey } from "@/lib/i18n/messages/en";
+import { zh } from "@/lib/i18n/messages/zh";
 import {
   createShare,
   deactivateShare,
@@ -16,6 +19,11 @@ export type ShareActionState = {
 
 const ok = (success: string): ShareActionState => ({ error: null, success });
 const fail = (error: string): ShareActionState => ({ error, success: null });
+
+async function serverT(key: MessageKey) {
+  const locale = (await cookies()).get("splity.locale")?.value;
+  return locale === "zh" ? (zh[key] ?? en[key]) : en[key];
+}
 
 function normalizeDate(value: FormDataEntryValue | null, endOfDay = false) {
   const raw = String(value ?? "").trim();
@@ -47,9 +55,9 @@ export async function createShareAction(
     await createShare(groupId, inputFromForm(formData));
     revalidatePath(`/groups/${groupId}/share`);
     revalidatePath(`/groups/${groupId}`);
-    return ok("Public share link generated.");
+    return ok(await serverT("share.actionGenerated"));
   } catch (error) {
-    return fail(getErrorMessage(error, "Failed to generate public share link."));
+    return fail(await getErrorMessage(error, "share.generateFailed"));
   }
 }
 
@@ -61,9 +69,10 @@ export async function regenerateShareAction(
   try {
     await regenerateShare(groupId, inputFromForm(formData));
     revalidatePath(`/groups/${groupId}/share`);
-    return ok("Public share link regenerated.");
+    revalidatePath(`/groups/${groupId}`);
+    return ok(await serverT("share.actionRegenerated"));
   } catch (error) {
-    return fail(getErrorMessage(error, "Failed to regenerate public share link."));
+    return fail(await getErrorMessage(error, "share.regenerateFailed"));
   }
 }
 
@@ -74,12 +83,13 @@ export async function deactivateShareAction(
   try {
     await deactivateShare(groupId);
     revalidatePath(`/groups/${groupId}/share`);
-    return ok("Public share link deactivated.");
+    revalidatePath(`/groups/${groupId}`);
+    return ok(await serverT("share.actionDeactivated"));
   } catch (error) {
-    return fail(getErrorMessage(error, "Failed to deactivate public share link."));
+    return fail(await getErrorMessage(error, "share.deactivateFailed"));
   }
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+async function getErrorMessage(error: unknown, fallbackKey: MessageKey) {
+  return error instanceof Error ? error.message : serverT(fallbackKey);
 }
