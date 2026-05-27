@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,34 +11,23 @@ import {
 
 import { T } from "@/components/i18n/t";
 import { GROUP_STATUS, getGroup, isGroupStatus } from "@/lib/services/groups";
-import { getBill, listBills } from "@/lib/services/bills";
-import {
-  listParticipants,
-  type Participant,
-} from "@/lib/services/participants";
+import { listBillDetails } from "@/lib/services/bills";
+import { listParticipants } from "@/lib/services/participants";
 import { getActiveShare } from "@/lib/services/settlement-shares";
-import { listUserPaymentProfiles } from "@/lib/services/users";
-import { createBillAction, deleteBillAction, updateBillAction } from "./bills/actions";
-import { BillDeleteForm } from "./bills/bill-delete-form";
-import { BillPreview } from "./bills/bill-preview";
-import { BillForm } from "./bills/bill-form";
 import { BillExportButton } from "./bill-export-button";
+import { BillModal } from "./bill-modal";
 import { GroupHeaderActions } from "./group-header-actions";
 import { ParticipantsForm } from "./participants-form";
-import {
-  ShareSettlementModal,
-  type SettlementReceiverInfo,
-} from "./share-settlement-modal";
+import { ShareSettlementModal } from "./share-settlement-modal";
+import { SettlementParticipantCards } from "./settlement-participant-cards";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTitle } from "@/components/ui/section-title";
-import { BillModalFrame } from "@/components/ui/bill-modal-frame";
-import { BillModalSkeleton } from "@/components/ui/bill-modal-skeleton";
 import { BillsTable } from "@/components/ui/bill-table";
-import { TransfersList } from "@/components/ui/transfer-list";
-import { groupTotal, groupFees, pendingTransferCount, formatDate, money, formatTableDate } from "@/lib/services/utils";
+import { groupTotal, groupFees, pendingTransferCount, formatDate, money, formatTableDate, splitModeLabel } from "@/lib/services/utils";
 import { GroupPageProps, statusMeta } from "./type";
 import { getSettlement } from "@/lib/services/settlements";
-import { type SettlementResultDto } from "@splity/api-client";
+import { buildSettlementReceiverInfos } from "./settlement-receiver-info";
+import { buildParticipantSettlementCards } from "./settlement-participant-data";
 
 export default async function GroupPage({ params, searchParams }: GroupPageProps) {
   const { groupId } = await params;
@@ -59,7 +47,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
 
   const [participants, bills, settlement, activeShare] = await Promise.all([
     listParticipants(groupId),
-    listBills(groupId),
+    listBillDetails(groupId),
     getSettlement(groupId).catch(() => null),
     getActiveShare(groupId).catch(() => null),
   ]);
@@ -77,6 +65,11 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const transfersPending = pendingTransferCount(settlement);
   const groupHref = `/groups/${group.id}`;
   const receiverInfos = await buildSettlementReceiverInfos(participants, settlement);
+  const settlementCards = buildParticipantSettlementCards({
+    bills,
+    participants,
+    settlement,
+  });
 
   return (
     <div className="mx-auto grid w-full max-w-[1640px] gap-7">
@@ -166,9 +159,23 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                 date: formatTableDate(bill.transactionDateUtc),
                 fees: money(bill.totalFeeAmount, bill.currencyCode),
                 grandTotal: money(bill.grandTotalAmount, bill.currencyCode),
+                items: bill.items.map((item) => ({
+                  amount: money(item.amount, bill.currencyCode),
+                  description: item.description,
+                  participants: item.responsibleParticipantIds
+                    .map((participantId) => participantById.get(participantId)?.name ?? "")
+                    .filter(Boolean),
+                })),
                 payer:
                   participantById.get(bill.primaryPayerParticipantId)?.name ??
                   "",
+                shares: bill.shares.map((share) => ({
+                  fee: money(share.feeAmount, bill.currencyCode),
+                  participant: participantById.get(share.participantId)?.name ?? "",
+                  preFee: money(share.preFeeAmount, bill.currencyCode),
+                  total: money(share.totalShareAmount, bill.currencyCode),
+                })),
+                splitModeKey: splitModeLabel(bill.splitMode),
                 storeName: bill.storeName,
                 subtotal: money(bill.subtotalAmount, bill.currencyCode),
               }))}
@@ -253,10 +260,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
           ) : null}
         </div>
 
-        <TransfersList
-          participantById={participantById}
-          settlement={settlement}
-        />
+        <SettlementParticipantCards cards={settlementCards} />
       </section>
 
       <BillModal
@@ -276,198 +280,6 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
       />
     </div>
   );
-}
-
-async function buildSettlementReceiverInfos(
-  participants: Participant[],
-  settlement: SettlementResultDto | null
-): Promise<SettlementReceiverInfo[]> {
-  if (!settlement) return [];
-
-  const participantById = new Map(
-    participants.map((participant) => [participant.id, participant])
-  );
-  const receiverIds = Array.from(
-    new Set(settlement.transfers.map((transfer) => transfer.toParticipantId))
-  );
-  const invitedUserIds = receiverIds
-    .map((participantId) => participantById.get(participantId)?.invited_user_id)
-    .filter((id): id is string => Boolean(id));
-  const profiles = await listUserPaymentProfiles(invitedUserIds);
-
-  return receiverIds.map((participantId) => {
-    const participant = participantById.get(participantId);
-    const profile = participant?.invited_user_id
-      ? profiles.get(participant.invited_user_id)
-      : null;
-    const incomingTransfers = settlement.transfers.filter(
-      (transfer) => transfer.toParticipantId === participantId
-    );
-
-    return {
-      accountName: profile?.accountName ?? "",
-      accountNumber: profile?.accountNumber ?? "",
-      incomingCount: incomingTransfers.length,
-      locked: Boolean(participant?.invited_user_id),
-      notes: profile?.notes ?? "",
-      paidCount: incomingTransfers.filter((transfer) => transfer.status === 2).length,
-      participantId,
-      paymentMethod: profile?.paymentMethod ?? "",
-      paymentQrDataUrl: profile?.paymentQrDataUrl ?? "",
-      receiverName: profile?.payeeName ?? participant?.name ?? "",
-    };
-  });
-}
-
-function BillModal({
-  billId,
-  canEdit,
-  closeHref,
-  groupId,
-  mode,
-  participants,
-}: {
-  billId: string | null;
-  canEdit: boolean;
-  closeHref: string;
-  groupId: string;
-  mode: "new" | "view" | "edit" | "delete" | null;
-  participants: Participant[];
-}) {
-  if (!mode) return null;
-  if ((mode === "view" || mode === "edit" || mode === "delete") && !billId) {
-    return null;
-  }
-
-  if (mode === "new") {
-    return (
-      <BillModalFrame
-        closeHref={closeHref}
-        kicker={<T k="bills.input" />}
-        title={<T k="groups.newBill" />}
-      >
-        <BillForm
-          action={createBillAction.bind(null, groupId)}
-          canEdit={canEdit}
-          groupId={groupId}
-          participants={participants}
-        />
-      </BillModalFrame>
-    );
-  }
-
-  if (mode === "edit" && billId) {
-    return (
-      <BillModalFrame
-        closeHref={closeHref}
-        kicker={<T k="bills.input" />}
-        title={<T k="bills.editBill" />}
-      >
-        <Suspense fallback={<BillModalSkeleton />}>
-          <BillModalBillContent
-            billId={billId}
-            canEdit={canEdit}
-            closeHref={closeHref}
-            groupId={groupId}
-            mode={mode}
-            participants={participants}
-          />
-        </Suspense>
-      </BillModalFrame>
-    );
-  }
-
-  if (mode === "delete" && billId) {
-    return (
-      <BillModalFrame
-        closeHref={closeHref}
-        kicker={<T k="groupDetail.actions" />}
-        title={<T k="bills.deleteTitle" />}
-      >
-        <Suspense fallback={<BillModalSkeleton compact />}>
-          <BillModalBillContent
-            billId={billId}
-            canEdit={canEdit}
-            closeHref={closeHref}
-            groupId={groupId}
-            mode={mode}
-            participants={participants}
-          />
-        </Suspense>
-      </BillModalFrame>
-    );
-  }
-
-  return billId ? (
-      <BillModalFrame
-        closeHref={closeHref}
-        kicker={<T k="bills.billDetails" />}
-        title={<T k="bills.billDetails" />}
-        width="narrow"
-      >
-        <Suspense fallback={<BillModalSkeleton />}>
-        <BillModalBillContent
-          billId={billId}
-          canEdit={canEdit}
-          closeHref={closeHref}
-          groupId={groupId}
-          mode="view"
-          participants={participants}
-        />
-      </Suspense>
-    </BillModalFrame>
-  ) : null;
-}
-
-async function BillModalBillContent({
-  billId,
-  canEdit,
-  closeHref,
-  groupId,
-  mode,
-  participants,
-}: {
-  billId: string;
-  canEdit: boolean;
-  closeHref: string;
-  groupId: string;
-  mode: "view" | "edit" | "delete";
-  participants: Participant[];
-}) {
-  const bill = await getBill(groupId, billId);
-
-  if (!bill) {
-    return (
-      <div className="rounded-2xl border border-dashed border-[var(--splity-line-strong)] p-8 text-center text-sm font-semibold text-[var(--splity-muted)]">
-        <T k="bills.unknown" />
-      </div>
-    );
-  }
-
-  if (mode === "edit") {
-    return (
-      <BillForm
-        action={updateBillAction.bind(null, groupId, bill.id)}
-        canEdit={canEdit}
-        groupId={groupId}
-        initialBill={bill}
-        participants={participants}
-      />
-    );
-  }
-
-  if (mode === "delete") {
-    return (
-      <BillDeleteForm
-        action={deleteBillAction}
-        billId={bill.id}
-        closeHref={closeHref}
-        groupId={groupId}
-      />
-    );
-  }
-
-  return <BillPreview bill={bill} hideHeader participants={participants} />;
 }
 
 

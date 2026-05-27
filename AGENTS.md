@@ -4,4 +4,4 @@
 - Do not use `font-[var(--splity-display)]`. Use the `.splity-display` class from `apps/web/app/globals.css` with separate weight classes such as `font-bold` or `font-extrabold`.
 - Before handing off UI work, run `rg -n 'font-\[var\(--splity-display\)\]' apps/web` and fix every result.
 - For Group Detail work, keep actions in the current page with modal popups and toast feedback unless the user explicitly asks for a separate route.
-- Never open a new port to check, always use 3000 to check.
+- Never open a new port to check, always use 3000 to check. If its already started, just prompt user to check.

@@ -4,14 +4,12 @@ import { GROUP_STATUS, type GroupStatus } from "@/lib/domain/status";
 import { normalizeUsername } from "@/lib/services/users";
 export {
   GROUP_STATUS,
-  GROUP_STATUS_LABELS,
-  GROUP_STATUS_OPTIONS,
   isGroupStatus,
   toGroupStatus,
   type GroupStatus,
 } from "@/lib/domain/status";
 
-export type Group = Database["public"]["Tables"]["groups"]["Row"];
+type Group = Database["public"]["Tables"]["groups"]["Row"];
 export type GroupSummary = Group & {
   billCount: number;
   participantCount: number;

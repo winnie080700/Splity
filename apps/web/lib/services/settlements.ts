@@ -28,7 +28,7 @@ export type SettlementTransferDto = {
   markedReceivedAtUtc: string | null;
 };
 
-export type ParticipantNetBalanceDto = {
+type ParticipantNetBalanceDto = {
   participantId: string;
   participantName: string;
   netAmount: string;
@@ -76,14 +76,14 @@ const billSelect = `
   )
 `;
 
-export class SettlementGroupLockedError extends Error {
+class SettlementGroupLockedError extends Error {
   constructor() {
     super("This group does not accept settlement actions in its current status.");
     this.name = "SettlementGroupLockedError";
   }
 }
 
-export class SettlementPermissionError extends Error {
+class SettlementPermissionError extends Error {
   constructor() {
     super("Only the group creator can update settlements.");
     this.name = "SettlementPermissionError";

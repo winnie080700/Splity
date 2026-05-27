@@ -3,7 +3,7 @@ import Decimal from "decimal.js";
 import { FEE_TYPE, SPLIT_MODE, type CalculatedFee, type SplitMode } from "./types";
 import { roundToCurrency } from "./bill-calculator";
 
-export type BillItemRow = {
+type BillItemRow = {
   id: string;
   bill_id: string;
   description: string;
@@ -11,7 +11,7 @@ export type BillItemRow = {
   bill_item_responsibilities?: { participant_id: string }[] | null;
 };
 
-export type BillFeeRow = {
+type BillFeeRow = {
   id: string;
   bill_id: string;
   name: string;
@@ -19,7 +19,7 @@ export type BillFeeRow = {
   value: number | string;
 };
 
-export type BillShareRow = {
+type BillShareRow = {
   id: string;
   bill_id: string;
   participant_id: string;
@@ -29,7 +29,7 @@ export type BillShareRow = {
   total_share_amount: number | string;
 };
 
-export type PaymentContributionRow = {
+type PaymentContributionRow = {
   id: string;
   bill_id: string;
   participant_id: string;
@@ -52,11 +52,6 @@ export type BillProjectionRow = {
   bill_fees?: BillFeeRow[] | null;
   bill_shares?: BillShareRow[] | null;
   payment_contributions?: PaymentContributionRow[] | null;
-};
-
-export type BillParticipant = {
-  id: string;
-  name: string;
 };
 
 export type BillDetail = {

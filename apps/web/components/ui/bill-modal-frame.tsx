@@ -1,4 +1,5 @@
-import { Link, X } from "lucide-react";
+import Link from "next/link";
+import { X } from "lucide-react";
 import { ReactNode } from "react";
 import { T } from "../i18n/t";
 

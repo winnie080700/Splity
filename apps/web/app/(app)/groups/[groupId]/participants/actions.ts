@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
@@ -12,6 +13,7 @@ import {
   updateParticipant,
 } from "@/lib/services/participants";
 import { searchUserByUsername } from "@/lib/services/users";
+import { formDataObject } from "@/lib/validation/form-data";
 
 export type ParticipantActionState = {
   added: { mode: "manual" | "invite"; name: string; username: string | null } | null;
@@ -26,6 +28,16 @@ const emptyState: ParticipantActionState = {
   lookup: null,
   success: null,
 };
+const participantFormSchema = z.object({
+  intent: z.enum(["add", "lookup"]).catch("add"),
+  lookupId: z.coerce.string().trim(),
+  mode: z.enum(["manual", "invite"]).catch("manual"),
+  name: z.coerce.string().trim(),
+  username: z.coerce.string().trim(),
+});
+const participantNameSchema = z.object({
+  name: z.coerce.string().trim().min(1).max(150),
+});
 
 async function serverT(key: MessageKey) {
   const locale = (await cookies()).get("splity.locale")?.value;
@@ -37,11 +49,9 @@ export async function addParticipantAction(
   _prevState: ParticipantActionState,
   formData: FormData
 ): Promise<ParticipantActionState> {
-  const intent = String(formData.get("intent") ?? "add");
-  const mode = String(formData.get("mode") ?? "manual");
-  const name = String(formData.get("name") ?? "").trim();
-  const username = String(formData.get("username") ?? "").trim();
-  const lookupId = String(formData.get("lookupId") ?? "").trim();
+  const { intent, lookupId, mode, name, username } = participantFormSchema.parse(
+    formDataObject(formData, ["intent", "mode", "name", "username", "lookupId"])
+  );
 
   if (intent === "lookup") {
     if (!username) {
@@ -107,11 +117,13 @@ export async function renameParticipantAction(
   _prevState: ParticipantActionState,
   formData: FormData
 ): Promise<ParticipantActionState> {
-  const name = String(formData.get("name") ?? "").trim();
+  const result = participantNameSchema.safeParse(formDataObject(formData, ["name"]));
 
-  if (name.length < 1 || name.length > 150) {
+  if (!result.success) {
     return { ...emptyState, error: await serverT("groupDetail.error.participantNameLength") };
   }
+
+  const { name } = result.data;
 
   if (name.startsWith("@")) {
     return {

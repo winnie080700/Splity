@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { CheckCircle2, Pencil, Share2, Trash2, X } from "lucide-react";
+import { CheckCircle2, Pencil, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -151,13 +150,6 @@ export function GroupHeaderActions({
         ) : null}
         {isSettling ? (
           <>
-            <Link
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
-              href={`/groups/${groupId}?shareSettlement=1`}
-            >
-              <Share2 className="h-4 w-4" />
-              {t("groupDetail.shareSettlement")}
-            </Link>
             <button
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--splity-mint)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#26764f]"
               onClick={() => setOpenModal("settled")}

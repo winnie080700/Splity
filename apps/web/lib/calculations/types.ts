@@ -11,7 +11,7 @@ export const SPLIT_MODE = {
 export type FeeType = (typeof FEE_TYPE)[keyof typeof FEE_TYPE];
 export type SplitMode = (typeof SPLIT_MODE)[keyof typeof SPLIT_MODE];
 
-export type ParticipantSplitInput = {
+type ParticipantSplitInput = {
   participantId: string;
   weight: string;
 };
@@ -29,7 +29,7 @@ export type BillCalculationFeeInput = {
   value: string;
 };
 
-export type BillCalculationContributionInput = {
+type BillCalculationContributionInput = {
   participantId: string;
   amount: string;
 };
@@ -42,7 +42,7 @@ export type BillCalculationInput = {
   extraContributions: BillCalculationContributionInput[];
 };
 
-export type CalculatedShare = {
+type CalculatedShare = {
   participantId: string;
   weight: string;
   preFeeAmount: string;
@@ -50,7 +50,7 @@ export type CalculatedShare = {
   totalShareAmount: string;
 };
 
-export type CalculatedContribution = {
+type CalculatedContribution = {
   participantId: string;
   amount: string;
 };

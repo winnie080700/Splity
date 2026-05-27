@@ -32,7 +32,7 @@ export function formatTableDate(value: string) {
   }).format(new Date(value));
 }
 
-export function currencyLabel(currencyCode: string) {
+function currencyLabel(currencyCode: string) {
   return currencyCode === "MYR" ? "RM" : currencyCode;
 }
 

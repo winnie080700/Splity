@@ -5,9 +5,8 @@ import { getGroup } from "@/lib/services/groups";
 import { normalizeUsername, searchUserByUsername } from "@/lib/services/users";
 
 export type Participant = Database["public"]["Tables"]["participants"]["Row"];
-export type { InvitationStatus } from "@/lib/domain/status";
 
-export class GroupLockedError extends Error {
+class GroupLockedError extends Error {
   constructor() {
     super("This group is locked because settlement has already started.");
   }

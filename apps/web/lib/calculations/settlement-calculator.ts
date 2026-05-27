@@ -95,7 +95,7 @@ export function calculateTransfers(netBalances: readonly NetBalance[]): Settleme
   return transfers;
 }
 
-export function toCents(amount: Decimal.Value) {
+function toCents(amount: Decimal.Value) {
   // SettlementCalculator.cs:66
   const cents = decimal(amount).mul(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
   if (cents.lt(INT_MIN) || cents.gt(INT_MAX)) {

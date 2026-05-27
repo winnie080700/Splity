@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
-import { useTranslation } from "@/lib/i18n";
 import {
   acceptInvitationAction,
   declineInvitationAction,
@@ -16,7 +15,7 @@ import {
 
 const initialState: InvitationActionState = { error: null, success: null };
 
-export function InvitationActionButton({
+function InvitationActionButton({
   children,
   icon,
   variant = "primary",
@@ -26,7 +25,6 @@ export function InvitationActionButton({
   variant?: "primary" | "secondary";
 }) {
   const { pending } = useFormStatus();
-  const { t } = useTranslation();
 
   return (
     <button

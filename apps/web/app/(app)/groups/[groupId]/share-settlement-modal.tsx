@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { X } from "lucide-react";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
@@ -36,11 +36,30 @@ type ShareSettlementModalProps = {
   receivers: SettlementReceiverInfo[];
 };
 
-const initialState: ShareActionState = { error: null, success: null };
+const initialState: ShareActionState = { error: null, shareToken: null, success: null };
 
 function SubmitButton({ activeShare }: { activeShare: boolean }) {
   const { pending } = useFormStatus();
   const { t } = useTranslation();
+  const toastId = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (pending && toastId.current === null) {
+      toastId.current = toast.loading(t("common.saving"));
+    }
+
+    if (!pending && toastId.current !== null) {
+      toast.dismiss(toastId.current);
+      toastId.current = null;
+    }
+
+    return () => {
+      if (toastId.current !== null) {
+        toast.dismiss(toastId.current);
+        toastId.current = null;
+      }
+    };
+  }, [pending, t]);
 
   return (
     <button
@@ -75,8 +94,9 @@ export function ShareSettlementModal({
   }, [receivers]);
 
   useEffect(() => {
-    setExistingUrl(activeShare ? `${window.location.origin}/share/${activeShare.shareToken}` : "");
-  }, [activeShare]);
+    const shareToken = state.shareToken ?? activeShare?.shareToken;
+    setExistingUrl(shareToken ? `${window.location.origin}/share/${shareToken}` : "");
+  }, [activeShare?.shareToken, state.shareToken]);
 
   useEffect(() => {
     if (state.success) toast.success(state.success);
@@ -117,6 +137,7 @@ export function ShareSettlementModal({
   }
 
   const firstReceiver = receiverState[0];
+  const hasShare = Boolean(activeShare || state.shareToken);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-4 py-6 backdrop-blur-sm splity-modal-backdrop">
@@ -139,7 +160,7 @@ export function ShareSettlementModal({
           </Link>
         </div>
 
-        {activeShare ? (
+        {existingUrl ? (
           <div className="mb-5 rounded-2xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/35 p-4">
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
               {t("share.currentLink")}
@@ -156,7 +177,6 @@ export function ShareSettlementModal({
         <form
           action={formAction}
           className="grid gap-4"
-          onSubmit={() => toast.loading(t("common.saving"))}
         >
           <input name="receiverPaymentInfosJson" type="hidden" value={receiverPaymentInfosJson} />
           <input name="creatorName" type="hidden" value="" />
@@ -227,7 +247,7 @@ export function ShareSettlementModal({
             })}
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--splity-line)] pt-4">
-            <SubmitButton activeShare={Boolean(activeShare)} />
+            <SubmitButton activeShare={hasShare} />
           </div>
         </form>
       </div>

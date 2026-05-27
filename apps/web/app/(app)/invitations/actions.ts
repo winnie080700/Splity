@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
 import { acceptInvitation, declineInvitation } from "@/lib/services/invitations";
+import { formDataObject } from "@/lib/validation/form-data";
 
 export type InvitationActionState = {
   error: string | null;
@@ -13,6 +15,9 @@ export type InvitationActionState = {
 };
 
 const emptyState: InvitationActionState = { error: null, success: null };
+const invitationFormSchema = z.object({
+  participantId: z.coerce.string().min(1),
+});
 
 async function serverT(key: MessageKey) {
   const locale = (await cookies()).get("splity.locale")?.value;
@@ -23,11 +28,11 @@ export async function acceptInvitationAction(
   _prevState: InvitationActionState,
   formData: FormData
 ): Promise<InvitationActionState> {
-  const participantId = String(formData.get("participantId") ?? "");
-  if (!participantId) return { ...emptyState, error: await serverT("invitations.errorRequired") };
+  const result = invitationFormSchema.safeParse(formDataObject(formData, ["participantId"]));
+  if (!result.success) return { ...emptyState, error: await serverT("invitations.errorRequired") };
 
   try {
-    await acceptInvitation(participantId);
+    await acceptInvitation(result.data.participantId);
     revalidatePath("/invitations");
     revalidatePath("/dashboard");
     return { ...emptyState, success: await serverT("invitations.accepted") };
@@ -43,11 +48,11 @@ export async function declineInvitationAction(
   _prevState: InvitationActionState,
   formData: FormData
 ): Promise<InvitationActionState> {
-  const participantId = String(formData.get("participantId") ?? "");
-  if (!participantId) return { ...emptyState, error: await serverT("invitations.errorRequired") };
+  const result = invitationFormSchema.safeParse(formDataObject(formData, ["participantId"]));
+  if (!result.success) return { ...emptyState, error: await serverT("invitations.errorRequired") };
 
   try {
-    await declineInvitation(participantId);
+    await declineInvitation(result.data.participantId);
     revalidatePath("/invitations");
     revalidatePath("/dashboard");
     return { ...emptyState, success: await serverT("invitations.declined") };

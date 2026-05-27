@@ -24,16 +24,44 @@ export default async function PublicSharePage({ params }: PublicSharePageProps) 
 
   if (!share) notFound();
 
+  const generatedAt = new Date(share.created_at_utc).toLocaleString();
+  const period =
+    share.from_date_utc || share.to_date_utc
+      ? {
+          from: share.from_date_utc
+            ? new Date(share.from_date_utc).toLocaleDateString()
+            : "-",
+          to: share.to_date_utc ? new Date(share.to_date_utc).toLocaleDateString() : "-",
+        }
+      : null;
+
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-950">
-      <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
-        <header className="border-b border-zinc-200 pb-5">
-          <p className="text-sm font-semibold text-zinc-500">
-            <T k="share.settlementFrom" />
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {share.creator_name ?? "Splity"}
-          </h1>
+    <main className="min-h-screen bg-[var(--splity-bg)] text-[var(--splity-ink)]">
+      <div className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 sm:py-8">
+        <header className="rounded-2xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--splity-muted)]">
+                <T k="share.settlementFrom" />
+              </p>
+              <h1 className="splity-display mt-1 text-3xl font-extrabold text-[var(--splity-ink)] sm:text-4xl">
+                {share.creator_name ?? <T k="common.appName" />}
+              </h1>
+            </div>
+            <span className="inline-flex h-8 items-center rounded-md border border-sky-200 bg-sky-50 px-3 text-sm font-bold text-sky-700">
+              <T k="share.active" />
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-[var(--splity-muted)]">
+            <span className="rounded-md border border-[var(--splity-line)] bg-[var(--splity-bg)] px-3 py-2">
+              <T k="share.generated" values={{ date: generatedAt }} />
+            </span>
+            {period ? (
+              <span className="rounded-md border border-[var(--splity-line)] bg-[var(--splity-bg)] px-3 py-2">
+                <T k="share.period" values={period} />
+              </span>
+            ) : null}
+          </div>
         </header>
         <ShareDisplay share={share} />
       </div>

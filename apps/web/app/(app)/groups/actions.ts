@@ -2,17 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
+import { serverErrorMessage, serverT } from "@/lib/i18n/server";
 import { createGroup, deleteGroup, updateGroup } from "@/lib/services/groups";
+import { formDataObject } from "@/lib/validation/form-data";
+
+const groupFormSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+});
+
+const groupIdFormSchema = z.object({
+  groupId: z.string().min(1),
+});
 
 export async function createGroupFromGroupsAction(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
+  const result = groupFormSchema.safeParse(formDataObject(formData, ["name"]));
 
-  if (name.length < 1 || name.length > 200) {
-    return;
-  }
+  if (!result.success) return;
 
-  const group = await createGroup({ name });
+  const group = await createGroup({ name: result.data.name });
   revalidatePath("/groups");
   revalidatePath("/dashboard");
   redirect(`/groups/${group.id}`);
@@ -30,30 +39,32 @@ export async function renameGroupFromGroupsAction(
   _prevState: GroupsPageActionState,
   formData: FormData
 ): Promise<GroupsPageActionState> {
-  const groupId = String(formData.get("groupId") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
+  const result = groupIdFormSchema.merge(groupFormSchema).safeParse(formDataObject(formData, ["groupId", "name"]));
 
-  if (!groupId) return fail("Missing group.");
-  if (name.length < 1 || name.length > 200) {
-    return fail("Group name must be 1-200 characters.");
+  if (!result.success && result.error.issues.some((issue) => issue.path[0] === "groupId")) {
+    return fail(await serverT("groupDetail.error.groupNotFound"));
+  }
+  if (!result.success) {
+    return fail(await serverT("groupDetail.error.groupNameLength"));
   }
 
   try {
+    const { groupId, name } = result.data;
     await updateGroup(groupId, { name });
     revalidatePath("/groups");
     revalidatePath("/dashboard");
     revalidatePath(`/groups/${groupId}`);
-    return ok("Group renamed.");
+    return ok(await serverT("groupDetail.action.groupRenamed"));
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Failed to rename group.");
+    return fail(await serverErrorMessage(error, "groupDetail.action.renameFailed"));
   }
 }
 
 export async function deleteGroupFromGroupsAction(formData: FormData) {
-  const groupId = String(formData.get("groupId") ?? "");
-  if (!groupId) return;
+  const result = groupIdFormSchema.safeParse(formDataObject(formData, ["groupId"]));
+  if (!result.success) return;
 
-  await deleteGroup(groupId);
+  await deleteGroup(result.data.groupId);
   revalidatePath("/groups");
   revalidatePath("/dashboard");
   redirect("/groups");

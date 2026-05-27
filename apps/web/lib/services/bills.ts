@@ -19,7 +19,7 @@ import {
 } from "@/lib/calculations/types";
 import { calculateBillShares } from "@/lib/calculations/bill-calculator";
 
-export class GroupLockedError extends Error {
+class GroupLockedError extends Error {
   constructor() {
     super("This group is locked because settlement has already started.");
     this.name = "GroupLockedError";
@@ -39,7 +39,7 @@ export type BillWriteInput = {
   extraContributions: { participantId: string; amount: string }[];
 };
 
-const billSelect = `
+export const billSelect = `
   id,
   group_id,
   store_name,
@@ -161,6 +161,19 @@ export async function listBills(groupId: string): Promise<BillSummary[]> {
 
   if (error) throw error;
   return (data as unknown as BillProjectionRow[]).map(projectBillToSummary);
+}
+
+export async function listBillDetails(groupId: string): Promise<BillDetail[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bills")
+    .select(billSelect)
+    .eq("group_id", groupId)
+    .order("transaction_date_utc", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  return (data as unknown as BillProjectionRow[]).map(projectBillToDetail);
 }
 
 export async function getBill(groupId: string, billId: string): Promise<BillDetail | null> {

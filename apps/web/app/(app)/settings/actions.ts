@@ -2,10 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
 import { createClient } from "@/lib/supabase/server";
+import { formDataObject } from "@/lib/validation/form-data";
+import { zodErrorMessage } from "@/lib/validation/zod";
 
 export type SettingsActionState = {
   error: string | null;
@@ -20,18 +23,53 @@ function getSiteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
-function value(formData: FormData, name: string) {
-  return String(formData.get(name) ?? "").trim();
-}
-
-function nullableValue(formData: FormData, name: string) {
-  const next = value(formData, name);
-  return next.length ? next : null;
-}
-
 function normalizeUsername(input: string) {
   return input.replace(/^@+/, "").trim().toLowerCase();
 }
+
+const nullableTrimmedString = (maxLength: number, message: MessageKey) =>
+  z.coerce
+    .string()
+    .trim()
+    .transform((value) => (value.length ? value : null))
+    .refine((value) => value === null || value.length <= maxLength, { message });
+
+const profileSchema = z.object({
+  name: z.coerce
+    .string()
+    .trim()
+    .min(1, "settings.errorDisplayNameLength")
+    .max(150, "settings.errorDisplayNameLength"),
+  username: z.coerce
+    .string()
+    .transform(normalizeUsername)
+    .refine((value) => USERNAME_PATTERN.test(value), {
+      message: "settings.errorUsernameInvalid",
+    }),
+});
+
+const paymentProfileSchema = z.object({
+  payeeName: nullableTrimmedString(150, "settings.errorPayeeLength"),
+  paymentMethod: nullableTrimmedString(120, "settings.errorPaymentMethodLength"),
+  accountName: nullableTrimmedString(150, "settings.errorAccountNameLength"),
+  accountNumber: nullableTrimmedString(120, "settings.errorAccountNumberLength"),
+  notes: nullableTrimmedString(2000, "settings.errorNotesLength"),
+  paymentQrDataUrl: nullableTrimmedString(MAX_QR_DATA_URL_LENGTH, "settings.errorQrInvalid").refine(
+    (value) => value === null || QR_DATA_URL_PATTERN.test(value),
+    { message: "settings.errorQrInvalid" }
+  ),
+});
+
+const passwordSchema = z
+  .object({
+    currentPassword: z.coerce.string().min(1, "settings.errorCurrentPasswordRequired"),
+    newPassword: z.coerce.string().min(6, "settings.errorPasswordMin"),
+    confirmNewPassword: z.coerce.string(),
+  })
+  .refine((value) => value.newPassword === value.confirmNewPassword, {
+    message: "settings.errorPasswordsMismatch",
+    path: ["confirmNewPassword"],
+  });
 
 function isDuplicateUsernameError(error: unknown) {
   return (
@@ -60,18 +98,13 @@ export async function updateProfileAction(
   _prevState: SettingsActionState,
   formData: FormData
 ): Promise<SettingsActionState> {
-  const name = value(formData, "name");
-  const username = normalizeUsername(value(formData, "username"));
-
-  if (name.length < 1 || name.length > 150) {
-    return { error: await serverT("settings.errorDisplayNameLength"), success: null };
-  }
-
-  if (!USERNAME_PATTERN.test(username)) {
-    return { error: await serverT("settings.errorUsernameInvalid"), success: null };
+  const result = profileSchema.safeParse(formDataObject(formData, ["name", "username"]));
+  if (!result.success) {
+    return { error: await zodErrorMessage(result.error, "settings.profileSaveFailed"), success: null };
   }
 
   try {
+    const { name, username } = result.data;
     const supabase = await createClient();
     const {
       data: { user },
@@ -107,43 +140,22 @@ export async function updatePaymentProfileAction(
   _prevState: SettingsActionState,
   formData: FormData
 ): Promise<SettingsActionState> {
-  const payeeName = nullableValue(formData, "payeeName");
-  const paymentMethod = nullableValue(formData, "paymentMethod");
-  const accountName = nullableValue(formData, "accountName");
-  const accountNumber = nullableValue(formData, "accountNumber");
-  const notes = nullableValue(formData, "notes");
-  const paymentQrDataUrl = nullableValue(formData, "paymentQrDataUrl");
-
-  if (payeeName && payeeName.length > 150) {
-    return { error: await serverT("settings.errorPayeeLength"), success: null };
-  }
-
-  if (paymentMethod && paymentMethod.length > 120) {
-    return { error: await serverT("settings.errorPaymentMethodLength"), success: null };
-  }
-
-  if (accountName && accountName.length > 150) {
-    return { error: await serverT("settings.errorAccountNameLength"), success: null };
-  }
-
-  if (accountNumber && accountNumber.length > 120) {
-    return { error: await serverT("settings.errorAccountNumberLength"), success: null };
-  }
-
-  if (notes && notes.length > 2000) {
-    return { error: await serverT("settings.errorNotesLength"), success: null };
-  }
-
-  if (paymentQrDataUrl) {
-    if (
-      paymentQrDataUrl.length > MAX_QR_DATA_URL_LENGTH ||
-      !QR_DATA_URL_PATTERN.test(paymentQrDataUrl)
-    ) {
-      return { error: await serverT("settings.errorQrInvalid"), success: null };
-    }
+  const result = paymentProfileSchema.safeParse(
+    formDataObject(formData, [
+      "payeeName",
+      "paymentMethod",
+      "accountName",
+      "accountNumber",
+      "notes",
+      "paymentQrDataUrl",
+    ])
+  );
+  if (!result.success) {
+    return { error: await zodErrorMessage(result.error, "settings.paymentSaveFailed"), success: null };
   }
 
   try {
+    const { accountName, accountNumber, notes, payeeName, paymentMethod, paymentQrDataUrl } = result.data;
     const supabase = await createClient();
     const {
       data: { user },
@@ -182,23 +194,15 @@ export async function changePasswordAction(
   _prevState: SettingsActionState,
   formData: FormData
 ): Promise<SettingsActionState> {
-  const currentPassword = String(formData.get("currentPassword") ?? "");
-  const newPassword = String(formData.get("newPassword") ?? "");
-  const confirmNewPassword = String(formData.get("confirmNewPassword") ?? "");
-
-  if (!currentPassword) {
-    return { error: await serverT("settings.errorCurrentPasswordRequired"), success: null };
-  }
-
-  if (newPassword.length < 6) {
-    return { error: await serverT("settings.errorPasswordMin"), success: null };
-  }
-
-  if (newPassword !== confirmNewPassword) {
-    return { error: await serverT("settings.errorPasswordsMismatch"), success: null };
+  const result = passwordSchema.safeParse(
+    formDataObject(formData, ["currentPassword", "newPassword", "confirmNewPassword"])
+  );
+  if (!result.success) {
+    return { error: await zodErrorMessage(result.error, "settings.passwordUpdateFailed"), success: null };
   }
 
   try {
+    const { currentPassword, newPassword } = result.data;
     const supabase = await createClient();
     const {
       data: { user },

@@ -34,11 +34,6 @@ export async function listMyInvitations() {
   return ((data ?? []) as InvitationRow[]).map(toInvitation);
 }
 
-export async function countMyInvitations() {
-  const invitations = await listMyInvitations();
-  return invitations.length;
-}
-
 export async function acceptInvitation(participantId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("accept_invitation", {

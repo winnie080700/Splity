@@ -1,0 +1,3 @@
+{
+  "ignore": ["apps/web/lib/supabase/database.types.ts"]
+}

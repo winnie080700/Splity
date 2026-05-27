@@ -13,7 +13,7 @@ const variants = {
     "text-zinc-700 hover:bg-zinc-100 focus-visible:outline-zinc-950",
 };
 
-export function buttonClassName(variant: ButtonProps["variant"] = "primary") {
+function buttonClassName(variant: ButtonProps["variant"] = "primary") {
   return [
     "inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
     variants[variant],

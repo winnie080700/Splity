@@ -127,7 +127,7 @@ export function getTransferFromSnapshot(
   return transfer;
 }
 
-export class SettlementTransferNotFoundError extends Error {
+class SettlementTransferNotFoundError extends Error {
   constructor() {
     super("Settlement transfer not found for the current filters.");
     this.name = "SettlementTransferNotFoundError";
@@ -145,7 +145,7 @@ function formatRoundTripDate(value: string | null | undefined) {
   return date.toISOString().replace(/(\.\d{3})Z$/, "$10000Z");
 }
 
-export class SettlementValidationDateError extends Error {
+class SettlementValidationDateError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "SettlementValidationDateError";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useActionState } from "react";
+import { useEffect, useMemo, useRef, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
@@ -36,7 +36,6 @@ type FormContribution = {
 type BillFormProps = {
   action: (prevState: BillActionState, formData: FormData) => Promise<BillActionState>;
   canEdit: boolean;
-  groupId: string;
   initialBill?: BillDetail;
   participants: Participant[];
 };
@@ -50,6 +49,26 @@ function toDateInput(value?: string) {
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   const { t } = useTranslation();
+  const toastId = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (pending && toastId.current === null) {
+      toastId.current = toast.loading(t("common.saving"));
+    }
+
+    if (!pending && toastId.current !== null) {
+      toast.dismiss(toastId.current);
+      toastId.current = null;
+    }
+
+    return () => {
+      if (toastId.current !== null) {
+        toast.dismiss(toastId.current);
+        toastId.current = null;
+      }
+    };
+  }, [pending, t]);
+
   return (
     <Button disabled={disabled || pending} type="submit">
       {pending ? t("common.saving") : t("bills.saveBill")}
@@ -60,7 +79,6 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 export function BillForm({
   action,
   canEdit,
-  groupId,
   initialBill,
   participants,
 }: BillFormProps) {
@@ -222,7 +240,7 @@ export function BillForm({
   }, [state.error]);
 
   return (
-    <form action={formAction} className="grid gap-5" onSubmit={() => toast.loading(t("common.saving"))}>
+    <form action={formAction} className="grid gap-5">
       <input name="payload" type="hidden" value={payload} />
       <Alert tone="error">{state.error}</Alert>
       {!canEdit ? <Alert tone="info">{t("bills.groupLocked")}</Alert> : null}

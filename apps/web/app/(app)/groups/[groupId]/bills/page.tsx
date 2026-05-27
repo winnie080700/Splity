@@ -22,7 +22,6 @@ export default async function NewBillPage({ params }: NewBillPageProps) {
     <BillForm
       action={createBillAction.bind(null, groupId)}
       canEdit={group.status === GROUP_STATUS.unresolved}
-      groupId={groupId}
       participants={participants}
     />
   );

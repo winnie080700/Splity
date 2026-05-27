@@ -1,12 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ZodError, z } from "zod";
 
+import { serverErrorMessage, serverT } from "@/lib/i18n/server";
 import {
   markSettlementPaid,
   markSettlementReceived,
   type SettlementActionInput,
 } from "@/lib/services/settlements";
+import { formDataObject } from "@/lib/validation/form-data";
+import { zodErrorMessage } from "@/lib/validation/zod";
 
 export type SettlementActionState = {
   error: string | null;
@@ -16,26 +20,35 @@ export type SettlementActionState = {
 const ok = (success: string): SettlementActionState => ({ error: null, success });
 const fail = (error: string): SettlementActionState => ({ error, success: null });
 
+const nullableString = z.coerce
+  .string()
+  .trim()
+  .transform((value) => (value.length ? value : null));
+
+const settlementActionSchema = z.object({
+  fromParticipantId: z.coerce.string().min(1, "settlements.error.participantRequired"),
+  toParticipantId: z.coerce.string().min(1, "settlements.error.participantRequired"),
+  amount: z.coerce.string().refine((value) => value.length > 0 && Number.isFinite(Number(value)), {
+    message: "settlements.error.amountInvalid",
+  }),
+  fromDateUtc: nullableString,
+  toDateUtc: nullableString,
+  actorParticipantId: z.coerce.string().min(1, "settlements.error.participantRequired"),
+  proofScreenshotDataUrl: nullableString,
+});
+
 function inputFromForm(formData: FormData): SettlementActionInput {
-  return {
-    fromParticipantId: String(formData.get("fromParticipantId") ?? ""),
-    toParticipantId: String(formData.get("toParticipantId") ?? ""),
-    amount: String(formData.get("amount") ?? ""),
-    fromDateUtc: String(formData.get("fromDateUtc") ?? "") || null,
-    toDateUtc: String(formData.get("toDateUtc") ?? "") || null,
-    actorParticipantId: String(formData.get("actorParticipantId") ?? ""),
-    proofScreenshotDataUrl: String(formData.get("proofScreenshotDataUrl") ?? "") || null,
-  };
-}
-
-function validateInput(input: SettlementActionInput) {
-  if (!input.fromParticipantId || !input.toParticipantId || !input.actorParticipantId) {
-    throw new Error("Participant selection is required.");
-  }
-
-  if (!input.amount || Number.isNaN(Number(input.amount))) {
-    throw new Error("Transfer amount is invalid.");
-  }
+  return settlementActionSchema.parse(
+    formDataObject(formData, [
+      "fromParticipantId",
+      "toParticipantId",
+      "amount",
+      "fromDateUtc",
+      "toDateUtc",
+      "actorParticipantId",
+      "proofScreenshotDataUrl",
+    ])
+  );
 }
 
 export async function markPaidAction(
@@ -45,13 +58,12 @@ export async function markPaidAction(
 ): Promise<SettlementActionState> {
   try {
     const input = inputFromForm(formData);
-    validateInput(input);
     await markSettlementPaid(groupId, input);
     revalidatePath(`/groups/${groupId}/settlements`);
     revalidatePath(`/groups/${groupId}`);
-    return ok("Transfer marked as paid.");
+    return ok(await serverT("settlements.action.markedPaid"));
   } catch (error) {
-    return fail(getErrorMessage(error, "Failed to mark transfer as paid."));
+    return fail(await getSettlementErrorMessage(error, "settlements.error.markPaidFailed"));
   }
 }
 
@@ -62,16 +74,19 @@ export async function markReceivedAction(
 ): Promise<SettlementActionState> {
   try {
     const input = inputFromForm(formData);
-    validateInput(input);
     await markSettlementReceived(groupId, input);
     revalidatePath(`/groups/${groupId}/settlements`);
     revalidatePath(`/groups/${groupId}`);
-    return ok("Transfer marked as received.");
+    return ok(await serverT("settlements.action.markedReceived"));
   } catch (error) {
-    return fail(getErrorMessage(error, "Failed to mark transfer as received."));
+    return fail(await getSettlementErrorMessage(error, "settlements.error.markReceivedFailed"));
   }
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+async function getSettlementErrorMessage(error: unknown, fallback: "settlements.error.markPaidFailed" | "settlements.error.markReceivedFailed") {
+  if (error instanceof ZodError) {
+    return zodErrorMessage(error, fallback);
+  }
+
+  return serverErrorMessage(error, fallback);
 }

@@ -27,14 +27,13 @@ import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
+import type { StatusFilter } from "./types";
 import {
   createGroupFromGroupsAction,
   deleteGroupFromGroupsAction,
   renameGroupFromGroupsAction,
   type GroupsPageActionState,
 } from "./actions";
-
-type StatusFilter = "all" | "unresolved" | "settling" | "settled";
 
 type SearchableGroup = {
   id: string;
@@ -209,7 +208,6 @@ function EditGroupModal({
   open: boolean;
 }) {
   const [state, formAction] = useActionState(renameGroupFromGroupsAction, initialActionState);
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (state.success) {
@@ -563,7 +561,7 @@ function NoSearchResults() {
   );
 }
 
-export function StartGroupCard() {
+function StartGroupCard() {
   return (
     <NewGroupDialogTrigger>
       {(open) => (
@@ -592,19 +590,20 @@ export function StartGroupCard() {
 export function CardActions({ groupId, groupName }: CardActionsProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <>
       <div className="absolute bottom-5 right-5 z-20 flex translate-y-2 gap-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
         <Link
-          aria-label={`View ${groupName}`}
+          aria-label={t("groupsView.viewGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
           href={`/groups/${groupId}`}
         >
           <Eye className="h-4 w-4" />
         </Link>
         <button
-          aria-label={`Edit ${groupName}`}
+          aria-label={t("groupsView.editGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
           onClick={() => setEditOpen(true)}
           type="button"
@@ -612,7 +611,7 @@ export function CardActions({ groupId, groupName }: CardActionsProps) {
           <Pencil className="h-4 w-4" />
         </button>
         <button
-          aria-label={`Delete ${groupName}`}
+          aria-label={t("groupsView.deleteGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-red-200 hover:text-[var(--splity-rose)]"
           onClick={() => setDeleteOpen(true)}
           type="button"

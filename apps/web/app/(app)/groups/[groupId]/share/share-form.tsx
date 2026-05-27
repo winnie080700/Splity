@@ -29,7 +29,7 @@ type ShareFormProps = {
   groupId: string;
 };
 
-const initialState: ShareActionState = { error: null, success: null };
+const initialState: ShareActionState = { error: null, shareToken: null, success: null };
 
 function SubmitButton({
   children,

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
@@ -14,6 +15,7 @@ import {
   updateGroup,
   updateGroupStatus,
 } from "@/lib/services/groups";
+import { formDataObject } from "@/lib/validation/form-data";
 
 export type GroupActionState = {
   error: string | null;
@@ -22,6 +24,17 @@ export type GroupActionState = {
 
 const ok = (success: string): GroupActionState => ({ error: null, success });
 const fail = (error: string): GroupActionState => ({ error, success: null });
+const renameGroupSchema = z.object({
+  name: z.string().trim().min(1, "groupDetail.error.groupNameLength").max(200, "groupDetail.error.groupNameLength"),
+});
+const statusFormSchema = z.object({
+  status: z.coerce.number().refine((value) => value === GROUP_STATUS.settling || value === GROUP_STATUS.settled, {
+    message: "groupDetail.error.statusForwardOnly",
+  }),
+});
+const deleteGroupSchema = z.object({
+  groupId: z.string().min(1),
+});
 
 async function serverT(key: MessageKey) {
   const locale = (await cookies()).get("splity.locale")?.value;
@@ -33,12 +46,13 @@ export async function renameGroupAction(
   _prevState: GroupActionState,
   formData: FormData
 ): Promise<GroupActionState> {
-  const name = String(formData.get("name") ?? "").trim();
-  if (name.length < 1 || name.length > 200) {
+  const result = renameGroupSchema.safeParse(formDataObject(formData, ["name"]));
+  if (!result.success) {
     return fail(await serverT("groupDetail.error.groupNameLength"));
   }
 
   try {
+    const { name } = result.data;
     await updateGroup(groupId, { name });
     revalidatePath("/dashboard");
     revalidatePath(`/groups/${groupId}`);
@@ -54,7 +68,10 @@ export async function changeStatusAction(
   formData: FormData
 ): Promise<GroupActionState> {
   try {
-    const status = toGroupStatus(String(formData.get("status") ?? ""));
+    const result = statusFormSchema.safeParse(formDataObject(formData, ["status"]));
+    if (!result.success) return fail(await serverT("groupDetail.error.statusForwardOnly"));
+
+    const status = toGroupStatus(result.data.status);
     const group = await getGroup(groupId);
     if (!group) return fail(await serverT("groupDetail.error.groupNotFound"));
     if (
@@ -74,10 +91,10 @@ export async function changeStatusAction(
 }
 
 export async function deleteGroupAction(formData: FormData) {
-  const groupId = String(formData.get("groupId") ?? "");
-  if (!groupId) return;
+  const result = deleteGroupSchema.safeParse(formDataObject(formData, ["groupId"]));
+  if (!result.success) return;
 
-  await deleteGroup(groupId);
+  await deleteGroup(result.data.groupId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }

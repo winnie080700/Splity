@@ -75,4 +75,4 @@ export const PARTICIPANTS = [
   { id: p3, name: "Carl" },
 ];
 
-export { p1, p2, p3, p4 };
+export { p1, p2, p3 };
