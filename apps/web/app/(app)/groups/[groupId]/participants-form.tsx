@@ -94,7 +94,7 @@ function Modal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,21,56,0.28)] px-4 py-6">
-      <div className="w-full max-w-xl rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_80px_rgba(12,21,56,0.25)]">
+      <div className="w-full max-w-xl rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] sm:rounded-3xl sm:p-5 sm:shadow-[0_24px_80px_rgba(12,21,56,0.25)]">
         <div className="flex items-center justify-between gap-4">
           <h3 className="splity-display text-2xl font-bold text-[var(--splity-ink)]">
             {title}
@@ -206,8 +206,8 @@ export function ParticipantsForm({
   }, [addState.added]);
 
   return (
-    <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_60px_rgba(12,21,56,0.06)] sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
+      <div className="grid gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <SectionTitle
           badge={
             <T
@@ -219,11 +219,11 @@ export function ParticipantsForm({
           title={<T k="groupDetail.peopleInSplit" />}
         />
 
-        <div className="flex items-center gap-2">
+        <div className="grid gap-2 sm:flex sm:items-center">
           {!canEdit ? <Badge tone="amber">{t("groups.locked")}</Badge> : null}
           {canEdit ? (
             <button
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
               onClick={() => setIsAddOpen(true)}
               type="button">
               <Plus className="h-4 w-4" />
@@ -277,7 +277,7 @@ export function ParticipantsForm({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 rounded-full border border-[var(--splity-line)] bg-[var(--splity-bg)] p-1">
+            <div className="grid grid-cols-2 rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)] p-1 sm:rounded-full">
               {(["manual", "invite"] satisfies AddMode[]).map((mode) => (
                 <button
                   className={[

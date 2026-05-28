@@ -48,7 +48,7 @@ export function SectionTitle({ eyebrow, title }: { eyebrow: ReactNode; title: Re
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
         {eyebrow}
       </p>
-      <h2 className="mt-2  text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+      <h2 className="mt-2 text-xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-2xl">
         {title}
       </h2>
     </div>
@@ -67,7 +67,7 @@ export function Panel({
   title: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <SectionTitle eyebrow={eyebrow} title={title} />
         {action}

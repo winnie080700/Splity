@@ -57,14 +57,14 @@ export default async function GroupsPage({
 
   return (
     <GroupsSearchProvider>
-      <div className="mx-auto grid w-full max-w-[1640px] gap-7">
+      <div className="mx-auto grid w-full max-w-[1640px] gap-5 sm:gap-7">
         <header className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
               <T k="groupsView.eyebrow" />
             </p>
-            <h1 className="mt-5 text-5xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-6xl">
+            <h1 className="mt-4 text-4xl font-bold tracking-tight text-[var(--splity-ink)] sm:mt-5 sm:text-6xl">
               <T k="groupsView.title" />{" "}
               <span className="font-normal italic text-[var(--splity-navy)]">· {groups.length}</span>
             </h1>
@@ -76,7 +76,7 @@ export default async function GroupsPage({
           <GroupsHeaderActions />
         </header>
 
-        <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_24px_50px_rgba(12,21,56,0.06)]">
+        <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-3 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <StatusFilterBar counts={statusCounts} />
             <div className="flex items-center gap-2">

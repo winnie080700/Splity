@@ -119,11 +119,11 @@ export function GroupHeaderActions({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid w-full gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
         {isUnresolved ? (
           <>
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
               onClick={() => setOpenModal("edit")}
               type="button"
             >
@@ -131,7 +131,7 @@ export function GroupHeaderActions({
               {t("common.rename")}
             </button>
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
               onClick={() => setOpenModal("settling")}
               type="button"
             >
@@ -139,7 +139,7 @@ export function GroupHeaderActions({
               {t("groupDetail.markAsSettling")}
             </button>
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-bold text-red-700 transition hover:bg-red-50"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-bold text-red-700 transition hover:bg-red-50"
               onClick={() => setOpenModal("delete")}
               type="button"
             >
@@ -151,7 +151,7 @@ export function GroupHeaderActions({
         {isSettling ? (
           <>
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--splity-mint)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#26764f]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-mint)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#26764f]"
               onClick={() => setOpenModal("settled")}
               type="button"
             >

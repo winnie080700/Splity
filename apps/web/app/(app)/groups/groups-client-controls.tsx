@@ -126,11 +126,11 @@ function LiveGroupSearch() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-12 min-w-0 items-center gap-2 rounded-2xl border border-[var(--splity-line)] bg-white px-4 shadow-[0_18px_44px_rgba(27,42,107,0.08)] transition">
+    <div className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-3 shadow-[0_2px_8px_rgba(27,42,107,0.08)] transition sm:h-12 sm:px-4">
       <Search className="h-4 w-4 shrink-0 text-[var(--splity-muted)]" />
       <input
         aria-label={t("groupsView.search")}
-        className="w-48 min-w-0 bg-transparent text-sm font-medium text-[var(--splity-ink)] outline-none placeholder:text-[var(--splity-muted)] sm:w-64"
+        className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[var(--splity-ink)] outline-none placeholder:text-[var(--splity-muted)] sm:w-64"
         onChange={(event) => setQuery(event.target.value)}
         placeholder={t("groupsView.search")}
         value={query}
@@ -360,12 +360,12 @@ function NewGroupDialogTrigger({
 
 export function GroupsHeaderActions() {
   return (
-    <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+    <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center xl:justify-end">
       <LiveGroupSearch />
       <NewGroupDialogTrigger>
         {(open) => (
           <button
-            className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[var(--splity-navy)] px-5 text-sm font-bold text-white shadow-[0_18px_36px_rgba(27,42,107,0.22)] transition hover:-translate-y-0.5 hover:bg-[#25377f]"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#25377f] sm:h-12 sm:px-5"
             onClick={open}
             type="button"
           >
@@ -386,7 +386,7 @@ export function StatusFilterBar({
   const { status, setStatus } = useGroupsSearch();
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
       <StatusButton active={status === "all"} count={counts.all} onClick={() => setStatus("all")}>
         <T k="groupsView.tabAll" />
       </StatusButton>
@@ -434,7 +434,7 @@ function StatusButton({
   return (
     <button
       className={[
-        "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold transition",
+        "inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-bold transition sm:rounded-xl sm:px-4",
         active
           ? "border-[var(--splity-navy)] bg-[var(--splity-navy)] text-white shadow-[0_10px_22px_rgba(27,42,107,0.18)]"
           : "border-[var(--splity-line)] bg-white text-[var(--splity-ink)] hover:border-[var(--splity-line-strong)]",
@@ -594,7 +594,7 @@ export function CardActions({ groupId, groupName }: CardActionsProps) {
 
   return (
     <>
-      <div className="absolute bottom-5 right-5 z-20 flex translate-y-2 gap-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+      <div className="absolute bottom-4 right-4 z-20 flex gap-2 opacity-100 transition duration-200 sm:bottom-5 sm:right-5 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100">
         <Link
           aria-label={t("groupsView.viewGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"

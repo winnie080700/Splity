@@ -140,14 +140,14 @@ export function ShareSettlementModal({
   const hasShare = Boolean(activeShare || state.shareToken);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-4 py-6 backdrop-blur-sm splity-modal-backdrop">
-      <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-white/70 bg-white p-5 shadow-[0_28px_100px_rgba(12,21,56,0.32)] splity-modal-panel sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
+      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {t("groupDetail.settlementPlan")}
             </p>
-            <h2 className="splity-display mt-1 text-3xl font-extrabold text-[var(--splity-ink)]">
+            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
               {t("groupDetail.shareSettlement")}
             </h2>
           </div>
@@ -246,7 +246,7 @@ export function ShareSettlementModal({
               );
             })}
           </div>
-          <div className="flex justify-end gap-2 border-t border-[var(--splity-line)] pt-4">
+          <div className="grid gap-2 border-t border-[var(--splity-line)] pt-4 sm:flex sm:justify-end">
             <SubmitButton activeShare={hasShare} />
           </div>
         </form>

@@ -39,13 +39,13 @@ export default async function InvitationsPage() {
   const latestInvite = invitations[0];
 
   return (
-    <div className="mx-auto grid w-full max-w-[1640px] gap-7">
+    <div className="mx-auto grid w-full max-w-[1640px] gap-5 sm:gap-7">
       <header>
         <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
           <T k="invitations.eyebrow" />
         </p>
-        <h1 className="mt-5 text-5xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-6xl">
+        <h1 className="mt-4 text-4xl font-bold tracking-tight text-[var(--splity-ink)] sm:mt-5 sm:text-6xl">
           <T k="invitations.heading" />{" "}
           <span className="font-normal italic text-[var(--splity-navy)]">
             <T k="invitations.headingAccent" />
@@ -57,7 +57,7 @@ export default async function InvitationsPage() {
         </p>
       </header>
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_24px_50px_rgba(12,21,56,0.06)]">
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-3 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-2">
             <StatusPill active count={invitations.length} icon={<Inbox className="h-3.5 w-3.5" />}>
@@ -114,7 +114,7 @@ function StatusPill({
   return (
     <span
       className={[
-        "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+        "inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-bold sm:rounded-xl sm:px-4",
         active
           ? "border-[var(--splity-navy)] bg-[var(--splity-navy)] text-white shadow-[0_10px_22px_rgba(27,42,107,0.18)]"
           : "border-[var(--splity-line)] bg-white text-[var(--splity-ink)]",
@@ -129,7 +129,7 @@ function StatusPill({
 
 function InvitationCard({ invitation, tone }: { invitation: Invitation; tone: string }) {
   return (
-    <article className="relative overflow-hidden rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(12,21,56,0.08)] sm:p-6">
+    <article className="relative overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm transition sm:rounded-3xl sm:p-6 sm:hover:-translate-y-0.5 sm:hover:shadow-[0_18px_40px_rgba(12,21,56,0.08)]">
       <span className="absolute inset-y-5 right-0 w-1 rounded-l-full bg-[var(--splity-gold-strong)]" />
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -159,7 +159,7 @@ function InvitationCard({ invitation, tone }: { invitation: Invitation; tone: st
       </div>
 
       <div className="mt-5 rounded-2xl border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/35 p-5">
-        <h2 className="truncate text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+        <h2 className="truncate text-xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-2xl">
           {invitation.groupName}
         </h2>
         <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">

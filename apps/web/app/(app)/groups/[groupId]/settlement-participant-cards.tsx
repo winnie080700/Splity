@@ -54,10 +54,10 @@ export function SettlementParticipantCards({ cards }: SettlementParticipantCards
 
   return (
     <>
-      <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <button
-            className="group overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white text-left shadow-[0_18px_45px_rgba(12,21,56,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(12,21,56,0.1)]"
+            className="group overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white text-left shadow-[0_2px_8px_rgba(12,21,56,0.06)] transition sm:hover:-translate-y-0.5 sm:hover:shadow-[0_18px_45px_rgba(12,21,56,0.08)]"
             key={card.participantId}
             onClick={() => setSelectedParticipantId(card.participantId)}
             type="button"
@@ -128,14 +128,14 @@ function ParticipantSettlementModal({
   const { t } = useTranslation();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-4 py-6 backdrop-blur-sm splity-modal-backdrop">
-      <div className="mx-auto w-full max-w-5xl rounded-[28px] border border-white/70 bg-white p-5 shadow-[0_28px_100px_rgba(12,21,56,0.32)] splity-modal-panel sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
+      <div className="mx-auto w-full max-w-5xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {t("groupDetail.settlementPlan")}
             </p>
-            <h2 className="splity-display mt-1 text-3xl font-extrabold text-[var(--splity-ink)]">
+            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
               {card.name}
             </h2>
           </div>

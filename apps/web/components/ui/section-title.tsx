@@ -12,12 +12,12 @@ export function SectionTitle({
   title: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
       <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
         {kicker}
       </p>
-      <h2 className="splity-display text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+      <h2 className="min-w-0 break-words splity-display text-xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-2xl">
         {title}
       </h2>
       {badge ? (

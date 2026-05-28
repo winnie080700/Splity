@@ -17,10 +17,10 @@ export function BillModalFrame({
   width?: "wide" | "narrow";
 }) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-4 py-6 backdrop-blur-sm splity-modal-backdrop">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
       <div
         className={[
-          "mx-auto w-full rounded-[28px] border border-white/70 bg-white p-5 shadow-[0_28px_100px_rgba(12,21,56,0.32)] splity-modal-panel sm:p-6",
+          "mx-auto w-full rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]",
           width === "narrow" ? "max-w-3xl" : "max-w-7xl",
         ].join(" ")}
       >
@@ -29,7 +29,7 @@ export function BillModalFrame({
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {kicker}
             </p>
-            <h2 className="splity-display mt-1 text-3xl font-extrabold text-[var(--splity-ink)]">
+            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
               {title}
             </h2>
           </div>

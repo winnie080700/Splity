@@ -108,13 +108,13 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-7">
+    <div className="mx-auto grid w-full max-w-7xl gap-5 sm:gap-7">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className=" text-xs uppercase tracking-[0.12em] text-[var(--splity-muted)]">
             {appUser?.username ? `@${appUser.username}` : user.email}
           </p>
-          <h1 className="mt-2  font-bold text-4xl tracking-tight text-[var(--splity-ink)]">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-4xl">
             <T k="dashboard.greeting" />{" "}
             <span className="font-normal italic text-[var(--splity-navy)]">
               {displayName}
@@ -123,7 +123,7 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_50px_rgba(12,21,56,0.06)] sm:p-6">
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
               <T k="dashboard.totalGroups" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className=" text-6xl font-bold leading-none text-[var(--splity-navy)]">
+              <span className="text-5xl font-bold leading-none text-[var(--splity-navy)] sm:text-6xl">
                 {groups.length}
               </span>
               <Users className="h-6 w-6 text-[var(--splity-navy)]/55" />
@@ -148,7 +148,7 @@ export default async function DashboardPage() {
               <T k="dashboard.needsAttention" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className=" text-5xl font-bold leading-none text-[var(--splity-rose)]">
+              <span className="text-4xl font-bold leading-none text-[var(--splity-rose)] sm:text-5xl">
                 {unresolvedCount + invitations.length}
               </span>
               <AlertCircle className="h-6 w-6 text-[var(--splity-rose)]/70" />
@@ -162,7 +162,7 @@ export default async function DashboardPage() {
               <T k="dashboard.trackedBills" />
             </span>
             <div className="mt-5 flex items-end justify-between gap-3">
-              <span className=" text-5xl font-bold leading-none text-[var(--splity-ink)]">
+              <span className="text-4xl font-bold leading-none text-[var(--splity-ink)] sm:text-5xl">
                 {billCount}
               </span>
               <ReceiptText className="h-6 w-6 text-[var(--splity-muted)]" />
@@ -273,7 +273,7 @@ export default async function DashboardPage() {
         </Panel>
       </section>
 
-      <section className="grid gap-4 rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)] sm:p-6">
+      <section className="grid gap-4 rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)]">
         <div>
           <SectionTitle
             eyebrow={<T k="dashboard.spendingInsights" />}

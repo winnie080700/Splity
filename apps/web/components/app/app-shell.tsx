@@ -97,6 +97,47 @@ function NavLink({
   );
 }
 
+function MobileNavLink({
+  item,
+  pathname,
+}: {
+  item: NavItem;
+  pathname: string;
+}) {
+  const Icon = item.icon;
+  const active = item.isActive(pathname);
+
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={[
+        "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-bold transition-colors",
+        active
+          ? "text-[var(--splity-navy)]"
+          : "text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
+      ].join(" ")}
+      href={item.href}
+    >
+      <span
+        className={[
+          "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors",
+          active
+            ? "border-[var(--splity-navy)] bg-[var(--splity-navy)] text-white"
+            : "border-transparent bg-transparent",
+        ].join(" ")}
+      >
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="w-full truncate text-center leading-tight">{item.label}</span>
+      {typeof item.count === "number" && item.count > 0 ? (
+        <span className="absolute right-2 top-1 min-w-4 rounded-full bg-[var(--splity-gold)] px-1 text-center text-[10px] font-extrabold leading-4 text-[var(--splity-ink)]">
+          {item.count > 99 ? "99+" : item.count}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 export function AppShell({
   children,
   groupCount,
@@ -156,6 +197,7 @@ export function AppShell({
       label: <T k="nav.help" />,
     },
   ];
+  const mobileItems = [...generalItems, ...supportItems];
 
   return (
     <main
@@ -168,7 +210,7 @@ export function AppShell({
     >
       <aside
         className={[
-          "sticky top-0 z-20 flex max-h-screen flex-col gap-5 overflow-hidden border-r border-[var(--splity-line)] bg-[#f7f5ee] py-5 shadow-[8px_0_24px_rgba(12,21,56,0.04)] transition-all duration-300 ease-out max-lg:static max-lg:max-h-none",
+          "sticky top-0 z-20 hidden max-h-screen flex-col gap-5 overflow-hidden border-r border-[var(--splity-line)] bg-[#f7f5ee] py-5 shadow-[8px_0_24px_rgba(12,21,56,0.04)] transition-all duration-300 ease-out lg:flex",
           collapsed ? "items-stretch px-0" : "px-4",
         ].join(" ")}
       >
@@ -252,7 +294,34 @@ export function AppShell({
         </div>
       </aside>
 
-      <section className="min-w-0 px-4 py-6 sm:px-6 lg:px-10">{children}</section>
+      <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--splity-line)] bg-[#f7f5ee]/95 px-3 lg:hidden">
+        <Link href="/dashboard">
+          <BrandMark compact size="sm" />
+        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="max-w-[9rem] truncate text-xs font-bold text-[var(--splity-muted)]">
+            {userName}
+          </span>
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--splity-navy)] splity-display text-xs font-extrabold text-white">
+            {initial(userName || userEmail)}
+          </span>
+        </div>
+      </div>
+
+      <section className="min-w-0 px-3 py-4 pb-24 sm:px-6 lg:px-10 lg:py-6 lg:pb-6">
+        {children}
+      </section>
+
+      <nav
+        aria-label={t("nav.general")}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--splity-line)] bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-2px_8px_rgba(12,21,56,0.08)] lg:hidden"
+      >
+        <div className="mx-auto flex max-w-lg items-stretch gap-1">
+          {mobileItems.map((item) => (
+            <MobileNavLink item={item} key={item.href} pathname={pathname} />
+          ))}
+        </div>
+      </nav>
     </main>
   );
 }

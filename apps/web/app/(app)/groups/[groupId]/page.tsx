@@ -72,27 +72,27 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   });
 
   return (
-    <div className="mx-auto grid w-full max-w-[1640px] gap-7">
-      <nav className="flex items-center gap-2 text-sm font-semibold text-[var(--splity-muted)]">
+    <div className="mx-auto grid w-full max-w-[1640px] gap-5 sm:gap-7">
+      <nav className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--splity-muted)]">
         <Link
-          className="inline-flex items-center gap-2 transition hover:text-[var(--splity-ink)]"
+          className="inline-flex shrink-0 items-center gap-2 transition hover:text-[var(--splity-ink)]"
           href="/groups">
           <ArrowLeft className="h-4 w-4" />
           <T k="dashboard.groupsTitle" />
         </Link>
-        <span>/</span>
-        <span className="text-[var(--splity-ink)]">{group.name}</span>
+        <span className="shrink-0">/</span>
+        <span className="min-w-0 truncate text-[var(--splity-ink)]">{group.name}</span>
       </nav>
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_60px_rgba(12,21,56,0.06)] sm:p-7">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
+        <div className="grid gap-4 lg:flex lg:items-end lg:justify-between">
           <SectionTitle
             kicker={<T k="groupDetail.overview" />}
             title={group.name}
             badge={formatDate(group.created_at_utc)}
           />
           {status !== GROUP_STATUS.settled ? (
-            <div className="flex justify-end">
+            <div className="w-full lg:w-auto">
               <GroupHeaderActions
                 groupId={group.id}
                 name={group.name}
@@ -144,8 +144,8 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
         participants={participants}
       />
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_60px_rgba(12,21,56,0.06)] sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
+        <div className="grid gap-4 lg:flex lg:items-start lg:justify-between">
           <SectionTitle
             badge={
               <T k="groupDetail.billCount" values={{ count: bills.length }} />
@@ -153,7 +153,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
             kicker={<T k="groupDetail.billsKicker" />}
             title={<T k="groupDetail.everythingLogged" />}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap lg:justify-end">
             <BillExportButton
               bills={bills.map((bill) => ({
                 date: formatTableDate(bill.transactionDateUtc),
@@ -188,7 +188,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
             />
             {canEdit ? (
               <Link
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
                 href={`${groupHref}?billMode=new`}>
                 <Plus className="h-4 w-4" />
                 <T k="groups.newBill" />
@@ -204,7 +204,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
           participantById={participantById}
         />
         {bills.length ? (
-          <div className="flex flex-wrap justify-end gap-8 rounded-b-2xl border-x border-b border-amber-200 bg-amber-50 px-4 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--splity-gold-strong)]">
+          <div className="mt-3 grid gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--splity-gold-strong)] sm:flex sm:flex-wrap sm:justify-end sm:gap-8 md:mt-0 md:rounded-t-none">
             <span>
               <T k="bills.subtotal" />{" "}
               <strong className="ml-2 text-[var(--splity-ink)]">
@@ -227,8 +227,8 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
         ) : null}
       </section>
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_60px_rgba(12,21,56,0.06)] sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
+        <div className="grid gap-4 lg:flex lg:items-start lg:justify-between">
           <SectionTitle
             badge={
               <T
@@ -241,19 +241,19 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
           />
           {status === GROUP_STATUS.settling ? (
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-3 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-3 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
               href={`${groupHref}?shareSettlement=1`}
             >
               <Share2 className="h-4 w-4" />
               <T k="groupDetail.shareSettlement" />
             </Link>
           ) : status === GROUP_STATUS.unresolved ? (
-            <div className="grid justify-items-end gap-1">
-              <span className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/55 px-3 text-sm font-bold text-[var(--splity-muted)]">
+            <div className="grid gap-1 lg:justify-items-end">
+              <span className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/55 px-3 text-sm font-bold text-[var(--splity-muted)]">
                 <Share2 className="h-4 w-4" />
                 <T k="groupDetail.shareSettlement" />
               </span>
-              <p className="text-xs font-semibold text-[var(--splity-muted)]">
+              <p className="text-xs font-semibold text-[var(--splity-muted)] lg:text-right">
                 <T k="groupDetail.shareAfterResolvedHint" />
               </p>
             </div>
