@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
+import { getAuthCallbackUrl } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 import { formDataObject } from "@/lib/validation/form-data";
 import { zodErrorMessage } from "@/lib/validation/zod";
@@ -18,10 +19,6 @@ export type SettingsActionState = {
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/;
 const QR_DATA_URL_PATTERN = /^data:image\/(png|jpeg|webp);base64,/;
 const MAX_QR_DATA_URL_LENGTH = 7_200_000;
-
-function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 function normalizeUsername(input: string) {
   return input.replace(/^@+/, "").trim().toLowerCase();
@@ -254,7 +251,7 @@ export async function resendVerificationAction(
       type: "signup",
       email: user.email,
       options: {
-        emailRedirectTo: `${getSiteUrl()}/auth/callback/signup`,
+        emailRedirectTo: await getAuthCallbackUrl("signup"),
       },
     });
 

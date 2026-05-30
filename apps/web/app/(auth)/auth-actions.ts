@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthCallbackUrl } from "@/lib/auth/site-url";
 
 export type AuthActionState = {
   error: string | null;
@@ -14,10 +15,6 @@ export type PasswordActionState = {
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/;
-
-function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 function normalizeUsername(value: FormDataEntryValue | null) {
   return String(value ?? "")
@@ -109,7 +106,7 @@ export async function signUp(
     password,
     options: {
       data: { name, username },
-      emailRedirectTo: `${getSiteUrl()}/auth/callback/signup`,
+      emailRedirectTo: await getAuthCallbackUrl("signup"),
     },
   });
 
@@ -146,7 +143,7 @@ export async function requestPasswordReset(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getSiteUrl()}/auth/callback/recovery`,
+    redirectTo: await getAuthCallbackUrl("recovery"),
   });
 
   if (error) {

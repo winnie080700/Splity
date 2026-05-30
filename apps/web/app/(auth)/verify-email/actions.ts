@@ -1,15 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthCallbackUrl } from "@/lib/auth/site-url";
 
 export type ResendVerificationState = {
   error: string | null;
   success: string | null;
 };
-
-function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 export async function resendVerification(
   _prevState: ResendVerificationState,
@@ -28,7 +25,7 @@ export async function resendVerification(
     type: "signup",
     email,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback/signup`,
+      emailRedirectTo: await getAuthCallbackUrl("signup"),
     },
   });
 
