@@ -25,7 +25,7 @@
 | | F11 | 公开 share 链接通过自定义域名访问可见 | 验证 anon 路径 |
 | **成本基线** | F12 | 记录"上线第 1 天"基线数据：Supabase DB 大小 / Vercel build min / 邮件发送数 / egress GB | 用于 30 天对照 PRD §7 第 8 条验收 |
 | **文档** | F13 | `docs/deploy-runbook.md` | ~80 行：生产部署步骤 + 回滚步骤 + 紧急联系点 |
-| | F14 | `README.md` 末尾加 "Production: https://splity.vercel.app"（或自定义域名）+ "Status: live" badge | 标记完成 |
+| | F14 | `README.md` 末尾加 "Production: https://splity-web-two.vercel.app"（或自定义域名）+ "Status: live" badge | 标记完成 |
 | | F15 | 更新 todo list：Phase 9 → completed；迁移完成 | 项目终态 |
 
 **不交付**：
@@ -99,7 +99,7 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://YOUR.supabase.co` | Production + Preview |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...`（Supabase Dashboard 拿） | Production + Preview |
 | `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` | **Production only** ←【不要开 Preview】 |
-| `NEXT_PUBLIC_SITE_URL` | `https://splity.vercel.app`（或自定义域名） | Production + Preview |
+| `NEXT_PUBLIC_SITE_URL` | `https://splity-web-two.vercel.app`（或自定义域名） | Production + Preview |
 
 **Step 3：触发首次部署（15 分钟）**
 
@@ -113,11 +113,15 @@
 **Step 4：Supabase Auth Redirect URL 配置（5 分钟）**
 
 Supabase Dashboard → Auth → URL Configuration：
-- **Site URL**: `https://splity.vercel.app`（或自定义域名）
+- **Site URL**: `https://splity-web-two.vercel.app`（或自定义域名）
 - **Redirect URLs**（每行一个）：
-  - `https://splity.vercel.app/auth/callback`
-  - `https://*.vercel.app/auth/callback` ←【支持 Preview deployments】
-  - `http://localhost:3000/auth/callback` ←【保留本地开发】
+  - `https://splity-web-two.vercel.app/auth/callback?type=signup`
+  - `https://splity-web-two.vercel.app/auth/callback?type=recovery`
+  - `https://*-<team-or-account-slug>.vercel.app/**` ←【按 Vercel team/account slug 替换；支持 Preview deployments】
+  - `http://localhost:3000/auth/callback?type=signup` ←【保留本地开发】
+  - `http://localhost:3000/auth/callback?type=recovery` ←【保留本地开发】
+
+应用发送的 Supabase Auth callback 带有 `type` query string。生产 Redirect URLs 必须包含完整 URL，否则 Supabase 会忽略应用传入的 `redirectTo` 并回退到 Site URL，邮件链接点击后只会进入 landing page。修改配置后要重新发送验证或重设密码邮件；旧邮件里的链接不会更新。
 
 Auth → Providers → Email → ✅ **Enable Confirm Email**（D4）
 
@@ -148,7 +152,7 @@ Auth → Providers → Email → ✅ **Enable Confirm Email**（D4）
 ### 5.1 部署验收
 
 - [ ] **Vercel build < 3 分钟**（PRD §7 第 5 条放宽到 3 min）
-- [ ] **Production URL 返回 200**：`curl -I https://splity.vercel.app` 应 200 而非 404/500
+- [ ] **Production URL 返回 200**：`curl -I https://splity-web-two.vercel.app` 应 200 而非 404/500
 - [ ] **Production typecheck**：Vercel build log 无 TS 错误
 - [ ] **Supabase migrations 已 push**：Studio SQL Editor 跑 `SELECT * FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;` 看到最新的 `20260520...` migrations
 
@@ -198,9 +202,9 @@ Auth → Providers → Email → ✅ **Enable Confirm Email**（D4）
 | P9-R1 | Vercel build 因 monorepo 配置错误失败 | 🟡 中 | F1 Root Directory **必填** `apps/web`；Install Command 加 `--filter splity-web...` 拉 workspace 依赖；本地先跑 `pnpm --filter splity-web build` 确认通过 |
 | P9-R2 | Supabase Production schema 与本地不同（之前忘 push 某个 migration） | 🔴 高 | F4 必跑 `SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC;` 对照本地 `ls supabase/migrations/` 文件名；不一致立刻 `supabase db push` |
 | P9-R3 | Email confirmation 开启后真实账号收不到邮件 | 🟡 中 | F5 走 Supabase 默认 SMTP（限速 3/h）；若产品月活 > 100，提前接 SendGrid Free（100/day） |
-| P9-R4 | Redirect URLs 配错 → 邮件链接点回 localhost 而不是生产 | 🔴 高 | F5 + Step 4 严格按生产 URL 配置；本地用 NEXT_PUBLIC_SITE_URL 区分；Vercel preview 用 `*.vercel.app` 通配 |
+| P9-R4 | Redirect URLs 配错 → 邮件链接点回 localhost 或 landing page，而不是 callback | 🔴 高 | F5 + Step 4 严格按生产 URL 配置；本地用 NEXT_PUBLIC_SITE_URL 区分；Vercel preview 用带 team/account slug 的 glob |
 | P9-R5 | service_role key 泄漏到 Preview 环境（不该有） | 🔴 高 | F2 Step 2：service role 只勾 **Production**，**不**勾 Preview/Development |
-| P9-R6 | 自定义域名 DNS 没生效但 Site URL 已切 → 邮件验证全挂 | 🟡 中 | F7 先确认 DNS propagation 完成（`dig` / `nslookup`）→ 再改 Site URL；过渡期保留 `*.vercel.app` 在 Redirect URLs |
+| P9-R6 | 自定义域名 DNS 没生效但 Site URL 已切 → 邮件验证全挂 | 🟡 中 | F7 先确认 DNS propagation 完成（`dig` / `nslookup`）→ 再改 Site URL；过渡期保留 Vercel preview glob |
 | P9-R7 | 旧测试 fixture 数据没清干净 → 真实用户邮箱碰撞 | 🟢 低 | F6 / D5 单条 SQL 清；如果忘了，真实用户注册时会得到 "email already taken"，至少不是 silent 错 |
 | P9-R8 | Phase 8 末删了 `apps/frontend` 但 git history 还在 → 仓库 size 不变 | 🟢 低 | 不处理；`git gc` 不会破坏 history；想缩小仓库的话 Phase 9 后单独跑 BFG Repo-Cleaner |
 | P9-R9 | 上线后用户量爆增超免费档 | 🟢 低（个人项目） | 30 天后看 F12 基线；超 50% 提前升 Supabase Pro（$25/月） |

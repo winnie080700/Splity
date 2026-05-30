@@ -42,7 +42,7 @@
 | ID | 任务 | 阻塞哪一步 |
 |---|---|---|
 | PRE-1 | Phase 2 已完成；云端项目 schema 已 push；`database.types.ts` 已生成 | Step 1 |
-| PRE-2 | Supabase Dashboard → Authentication → URL Configuration：`Site URL` 设为 `http://localhost:3000`；`Redirect URLs` 加 `http://localhost:3000/auth/callback` | 验证邮件、reset 链接才能正常跳回 |
+| PRE-2 | Supabase Dashboard → Authentication → URL Configuration：`Site URL` 设为 `http://localhost:3000`；`Redirect URLs` 加 `http://localhost:3000/auth/callback?type=signup` 和 `http://localhost:3000/auth/callback?type=recovery` | 验证邮件、reset 链接才能正常跳回 |
 | PRE-3 | Authentication → Email Templates 可选自定义（本期用默认即可） | 不阻塞 |
 | PRE-4 | Authentication → Providers → Email：确认"Enable email confirmations" 打开（默认开） | 验证流程要它 |
 
@@ -151,7 +151,7 @@ export async function signUp(_prev: SignUpResult, formData: FormData): Promise<S
     options: {
       // raw_user_meta_data —— trigger 读这里
       data: { name, username: username || null },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=signup`,
     },
   });
 
