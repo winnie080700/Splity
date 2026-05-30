@@ -115,13 +115,13 @@
 Supabase Dashboard → Auth → URL Configuration：
 - **Site URL**: `https://splity-web-two.vercel.app`（或自定义域名）
 - **Redirect URLs**（每行一个）：
-  - `https://splity-web-two.vercel.app/auth/callback?type=signup`
-  - `https://splity-web-two.vercel.app/auth/callback?type=recovery`
+  - `https://splity-web-two.vercel.app/auth/callback/signup`
+  - `https://splity-web-two.vercel.app/auth/callback/recovery`
   - `https://*-<team-or-account-slug>.vercel.app/**` ←【按 Vercel team/account slug 替换；支持 Preview deployments】
-  - `http://localhost:3000/auth/callback?type=signup` ←【保留本地开发】
-  - `http://localhost:3000/auth/callback?type=recovery` ←【保留本地开发】
+  - `http://localhost:3000/auth/callback/signup` ←【保留本地开发】
+  - `http://localhost:3000/auth/callback/recovery` ←【保留本地开发】
 
-应用发送的 Supabase Auth callback 带有 `type` query string。生产 Redirect URLs 必须包含完整 URL，否则 Supabase 会忽略应用传入的 `redirectTo` 并回退到 Site URL，邮件链接点击后只会进入 landing page。修改配置后要重新发送验证或重设密码邮件；旧邮件里的链接不会更新。
+应用使用独立 callback path 区分 signup 和 recovery。生产 Redirect URLs 必须包含完整 URL，否则 Supabase 会忽略应用传入的 `redirectTo` 并回退到 Site URL，邮件链接点击后只会进入 landing page。修改配置后要重新发送验证或重设密码邮件；旧邮件里的链接不会更新。
 
 Auth → Providers → Email → ✅ **Enable Confirm Email**（D4）
 

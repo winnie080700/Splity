@@ -254,7 +254,7 @@ export async function resendVerificationAction(
       type: "signup",
       email: user.email,
       options: {
-        emailRedirectTo: `${getSiteUrl()}/auth/callback?type=signup`,
+        emailRedirectTo: `${getSiteUrl()}/auth/callback/signup`,
       },
     });
 

@@ -109,7 +109,7 @@ export async function signUp(
     password,
     options: {
       data: { name, username },
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?type=signup`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback/signup`,
     },
   });
 
@@ -146,7 +146,7 @@ export async function requestPasswordReset(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getSiteUrl()}/auth/callback?type=recovery`,
+    redirectTo: `${getSiteUrl()}/auth/callback/recovery`,
   });
 
   if (error) {

@@ -42,7 +42,7 @@
 | ID | 任务 | 阻塞哪一步 |
 |---|---|---|
 | PRE-1 | Phase 2 已完成；云端项目 schema 已 push；`database.types.ts` 已生成 | Step 1 |
-| PRE-2 | Supabase Dashboard → Authentication → URL Configuration：`Site URL` 设为 `http://localhost:3000`；`Redirect URLs` 加 `http://localhost:3000/auth/callback?type=signup` 和 `http://localhost:3000/auth/callback?type=recovery` | 验证邮件、reset 链接才能正常跳回 |
+| PRE-2 | Supabase Dashboard → Authentication → URL Configuration：`Site URL` 设为 `http://localhost:3000`；`Redirect URLs` 加 `http://localhost:3000/auth/callback/signup` 和 `http://localhost:3000/auth/callback/recovery` | 验证邮件、reset 链接才能正常跳回 |
 | PRE-3 | Authentication → Email Templates 可选自定义（本期用默认即可） | 不阻塞 |
 | PRE-4 | Authentication → Providers → Email：确认"Enable email confirmations" 打开（默认开） | 验证流程要它 |
 
@@ -151,7 +151,7 @@ export async function signUp(_prev: SignUpResult, formData: FormData): Promise<S
     options: {
       // raw_user_meta_data —— trigger 读这里
       data: { name, username: username || null },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=signup`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback/signup`,
     },
   });
 
@@ -314,7 +314,7 @@ export default async function Root() {
 - [ ] 在 `/sign-up` 填齐 name/username/email/password → 提交 → 跳 `/verify-email` 引导页。
 - [ ] Supabase Dashboard → Auth → Users 看到新用户，`email_confirmed_at = null`。
 - [ ] `public.app_users` 同步出现一行，含 `username`（不是 null）和 `name`（trigger 起效）。
-- [ ] 收到验证邮件；点链接跳回 `/auth/callback?code=...&type=signup` → 成功 → 跳 `/dashboard`。
+- [ ] 收到验证邮件；点链接跳回 `/auth/callback/signup?code=...` → 成功 → 跳 `/dashboard`。
 - [ ] Auth → Users 的 `email_confirmed_at` 现在有值。
 - [ ] **越权测试**：用 username 重复的邮箱再注册 → 友好提示 "Email or username already taken"，不是 raw "Database error saving new user"。
 
@@ -325,7 +325,7 @@ export default async function Root() {
 
 ### 7.3 忘密码
 - [ ] 在 `/forgot-password` 输邮箱 → 收到 recovery 邮件。
-- [ ] 点链接跳 `/auth/callback?code=...&type=recovery` → 跳 `/reset-password`。
+- [ ] 点链接跳 `/auth/callback/recovery?code=...` → 跳 `/reset-password`。
 - [ ] 输入新密码 → 提交 → 跳 `/sign-in`。
 - [ ] 用新密码登录成功。
 
