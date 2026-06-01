@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import type {
   ParticipantSettlementBill,
@@ -128,59 +129,61 @@ function ParticipantSettlementModal({
   const { t } = useTranslation();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
-      <div className="mx-auto w-full max-w-5xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4">
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent className="max-w-5xl" showClose={false}>
+        <DialogHeader className="mb-5 gap-4 border-b border-[var(--splity-line)] pb-4 pr-0 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {t("groupDetail.settlementPlan")}
             </p>
-            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
+            <DialogTitle className="mt-1 text-2xl font-extrabold sm:text-3xl">
               {card.name}
-            </h2>
+            </DialogTitle>
           </div>
-          <div className="flex gap-2">
-            <button
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white"
-              onClick={() => exportParticipantPng(card, t)}
-              type="button"
-            >
-              <span className="sr-only">{t("settlements.downloadParticipantPng")}</span>
-              <Download className="h-4 w-4" />
-            </button>
-            <button
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white"
-              onClick={onClose}
-              type="button"
-            >
-              <span className="sr-only">{t("common.close")}</span>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-          <aside className="rounded-2xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/35 p-4">
-            <div className={`mb-4 h-1.5 rounded-full ${roleStripe[card.role]}`} />
-            <Badge tone={card.role === "receiver" ? "blue" : card.role === "payer" ? "red" : "neutral"}>
-              {t(roleLabelKey(card.role))}
-            </Badge>
-            <div className="mt-3">
+          <div className="grid gap-3 sm:grid-cols-[auto_auto_auto] sm:items-center">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={card.role === "receiver" ? "blue" : card.role === "payer" ? "red" : "neutral"}>
+                {t(roleLabelKey(card.role))}
+              </Badge>
               <Badge tone={paymentStatusTone[card.paymentStatus]}>
                 {t(paymentStatusLabelKey(card.paymentStatus))}
               </Badge>
             </div>
-            <p className="splity-display mt-4 text-3xl font-extrabold text-[var(--splity-navy)]">
-              {card.netAmount}
-            </p>
-            <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--splity-muted)]">
-              {t("settlements.netAmount")}
-            </p>
+            <div className="sm:text-right">
+              <p className="splity-display text-2xl font-extrabold text-[var(--splity-navy)]">
+                {card.netAmount}
+              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--splity-muted)]">
+                {t("settlements.netAmount")}
+              </p>
+            </div>
+            <div className="flex gap-2 sm:justify-end">
+              <button
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white"
+                onClick={() => exportParticipantPng(card, t)}
+                type="button"
+              >
+                <span className="sr-only">{t("settlements.downloadParticipantPng")}</span>
+                <Download className="h-4 w-4" />
+              </button>
+              <button
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white"
+                onClick={onClose}
+                type="button"
+              >
+                <span className="sr-only">{t("common.close")}</span>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </DialogHeader>
 
-            <div className="mt-6 grid gap-3">
-              <h3 className="text-sm font-extrabold text-[var(--splity-ink)]">
-                {t("settlements.relatedTransfers")}
-              </h3>
+        <div className="grid gap-5">
+          <section className="grid gap-3">
+            <h3 className="text-sm font-extrabold text-[var(--splity-ink)]">
+              {t("settlements.relatedTransfers")}
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {card.transfers.length ? (
                 card.transfers.map((transfer) => (
                   <div
@@ -213,9 +216,9 @@ function ParticipantSettlementModal({
                 </p>
               )}
             </div>
-          </aside>
+          </section>
 
-          <div className="grid gap-3">
+          <section className="grid gap-3">
             <h3 className="text-sm font-extrabold text-[var(--splity-ink)]">
               {t("settlements.involvedBills")}
             </h3>
@@ -226,10 +229,10 @@ function ParticipantSettlementModal({
                 {t("settlements.noParticipantBills")}
               </p>
             )}
-          </div>
+          </section>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

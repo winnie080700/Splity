@@ -2,11 +2,11 @@
 
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { useActionState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n";
 import { changePasswordAction, type SettingsActionState } from "./actions";
@@ -14,18 +14,17 @@ import { changePasswordAction, type SettingsActionState } from "./actions";
 const initialState: SettingsActionState = { error: null, success: null };
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
 
   return (
-    <Button
+    <PendingActionButton
       className="gap-2 rounded-full bg-[var(--splity-navy)] px-5 hover:bg-[#142258]"
-      disabled={pending}
+      pendingLabel={t("settings.updating")}
       type="submit"
     >
-      {pending ? t("settings.updating") : t("settings.updatePassword")}
+      {t("settings.updatePassword")}
       <ArrowRight className="h-4 w-4" />
-    </Button>
+    </PendingActionButton>
   );
 }
 

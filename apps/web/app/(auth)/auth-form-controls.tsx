@@ -1,7 +1,11 @@
 "use client";
 
 import { ArrowRightIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
+
+import { Spinner } from "@/components/ui/spinner";
 
 export function AuthSubmitButton({
   idleLabel,
@@ -11,6 +15,20 @@ export function AuthSubmitButton({
   pendingLabel: string;
 }) {
   const { pending } = useFormStatus();
+  const toastId = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (pending && toastId.current === null) {
+      toastId.current = toast.loading(pendingLabel);
+    }
+    if (!pending && toastId.current !== null) {
+      toast.dismiss(toastId.current);
+      toastId.current = null;
+    }
+    return () => {
+      if (toastId.current !== null) toast.dismiss(toastId.current);
+    };
+  }, [pending, pendingLabel]);
 
   return (
     <button
@@ -18,8 +36,8 @@ export function AuthSubmitButton({
       disabled={pending}
       type="submit"
     >
+      {pending ? <Spinner /> : <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
       <span>{pending ? pendingLabel : idleLabel}</span>
-      <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
     </button>
   );
 }

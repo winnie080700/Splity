@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import type { PublicSettlementShare } from "@/lib/services/settlement-shares";
 import {
@@ -693,11 +694,11 @@ function SubmitButton({ disabled, label }: { disabled: boolean; label: string })
 
   return (
     <button
-      className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--splity-navy)] px-4 text-sm font-extrabold text-white transition-colors hover:bg-[var(--splity-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--splity-navy)] px-4 text-sm font-extrabold text-white transition-colors hover:bg-[var(--splity-ink)] disabled:cursor-not-allowed disabled:opacity-50"
       disabled={disabled || pending}
       type="submit"
     >
-      {pending ? t("common.saving") : label}
+      {pending ? <><Spinner />{t("common.saving")}</> : label}
     </button>
   );
 }

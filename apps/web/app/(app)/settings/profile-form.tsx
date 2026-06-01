@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { ArrowRight, Pencil } from "lucide-react";
 import { useActionState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation } from "@/lib/i18n";
 import { updateProfileAction, type SettingsActionState } from "./actions";
 
@@ -97,6 +98,12 @@ export function ProfileForm({ formId, name, username }: ProfileFormProps) {
 
       <Alert tone="error">{state.error}</Alert>
       <Alert tone="success">{state.success}</Alert>
+      <div className="mt-2 flex justify-end border-t border-dashed border-[var(--splity-line)] pt-4">
+        <PendingActionButton className="rounded-full px-6" type="submit">
+          {t("common.saveChanges")}
+          <ArrowRight className="h-4 w-4" />
+        </PendingActionButton>
+      </div>
     </form>
   );
 }

@@ -26,6 +26,16 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import type { StatusFilter } from "./types";
 import {
@@ -116,7 +126,7 @@ function SubmitButton({
       disabled={pending}
       type="submit"
     >
-      {pending ? <T k="common.saving" /> : children}
+      {pending ? <><Spinner /><T k="common.saving" /></> : children}
     </button>
   );
 }
@@ -170,9 +180,9 @@ function NewGroupModal({
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
           <T k="groupsView.eyebrow" />
         </p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight text-[var(--splity-ink)]">
+        <DialogTitle className="mt-2 text-3xl font-bold tracking-tight text-[var(--splity-ink)]">
           <T k="groupsView.startTitle" />
-        </h2>
+        </DialogTitle>
         <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--splity-muted)]">
           <T k="groupsView.startBody" />
         </p>
@@ -226,9 +236,9 @@ function EditGroupModal({
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
             <T k="groups.settings" />
           </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+          <DialogTitle className="mt-2 text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
             <T k="groups.rename" />
-          </h2>
+          </DialogTitle>
         </div>
         <CloseButton onClose={onClose} />
       </div>
@@ -264,34 +274,24 @@ function DeleteGroupModal({
   onClose: () => void;
   open: boolean;
 }) {
-  const { t } = useTranslation();
-
   if (!open) return null;
 
   return (
-    <ModalFrame onClose={onClose}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--splity-rose)]">
-            <T k="groups.deleteGroup" />
-          </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
-            <T k="groups.deleteTitle" />
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">
-            {groupName}
-          </p>
-        </div>
-        <CloseButton onClose={onClose} />
-      </div>
-      <form action={deleteGroupFromGroupsAction} className="mt-5 grid gap-3" onSubmit={() => toast.loading(t("groups.deleting"))}>
+    <AlertDialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle><T k="groups.deleteTitle" /></AlertDialogTitle>
+          <AlertDialogDescription>{groupName}</AlertDialogDescription>
+        </AlertDialogHeader>
+      <form action={deleteGroupFromGroupsAction} className="mt-5 grid gap-3">
         <input name="groupId" type="hidden" value={groupId} />
-        <button
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--splity-rose)] px-4 text-sm font-bold text-white transition hover:bg-[#a83e3e]"
-          type="submit"
+        <AlertDialogFooter className="grid gap-2 sm:grid-cols-2">
+        <SubmitButton
+          className="bg-[var(--splity-rose)] hover:bg-[#a83e3e]"
+          pendingToastKey="groups.deleting"
         >
           <T k="groups.deleteGroup" />
-        </button>
+        </SubmitButton>
         <button
           className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
           onClick={onClose}
@@ -299,8 +299,10 @@ function DeleteGroupModal({
         >
           <T k="common.cancel" />
         </button>
+        </AlertDialogFooter>
       </form>
-    </ModalFrame>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -311,20 +313,12 @@ function ModalFrame({
   children: ReactNode;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
-
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,21,56,0.30)] px-4 py-8 backdrop-blur-sm">
-      <button
-        aria-label={t("common.close")}
-        className="absolute inset-0 cursor-default"
-        onClick={onClose}
-        type="button"
-      />
-      <div className="relative w-full max-w-md rounded-3xl border border-[var(--splity-line)] bg-white p-4 shadow-2xl sm:p-5">
+    <Dialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open>
+      <DialogContent className="max-w-md">
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -386,7 +380,7 @@ export function StatusFilterBar({
   const { status, setStatus } = useGroupsSearch();
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+    <div className="flex flex-wrap gap-2">
       <StatusButton active={status === "all"} count={counts.all} onClick={() => setStatus("all")}>
         <T k="groupsView.tabAll" />
       </StatusButton>

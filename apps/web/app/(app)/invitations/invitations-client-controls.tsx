@@ -1,12 +1,14 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
+import { Spinner } from "@/components/ui/spinner";
+import { useTranslation } from "@/lib/i18n";
 import {
   acceptInvitationAction,
   declineInvitationAction,
@@ -25,6 +27,21 @@ function InvitationActionButton({
   variant?: "primary" | "secondary";
 }) {
   const { pending } = useFormStatus();
+  const toastId = useRef<string | number | null>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (pending && toastId.current === null) {
+      toastId.current = toast.loading(t("common.saving"));
+    }
+    if (!pending && toastId.current !== null) {
+      toast.dismiss(toastId.current);
+      toastId.current = null;
+    }
+    return () => {
+      if (toastId.current !== null) toast.dismiss(toastId.current);
+    };
+  }, [pending, t]);
 
   return (
     <button
@@ -38,7 +55,7 @@ function InvitationActionButton({
       type="submit"
     >
       {pending ? (
-        <T k="common.saving" />
+        <><Spinner /><T k="common.saving" /></>
       ) : (
         <>
           {icon}

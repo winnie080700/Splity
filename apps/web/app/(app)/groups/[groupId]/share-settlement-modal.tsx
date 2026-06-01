@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { useTranslation } from "@/lib/i18n";
 import type { ActiveSettlementShare } from "@/lib/services/settlement-shares";
 import {
@@ -63,12 +65,12 @@ function SubmitButton({ activeShare }: { activeShare: boolean }) {
 
   return (
     <button
-      className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white transition hover:bg-[#15225a] disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white transition hover:bg-[#15225a] disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
       type="submit"
     >
       {pending
-        ? t("common.saving")
+        ? <><Spinner />{t("common.saving")}</>
         : activeShare
           ? t("share.regenerate")
           : t("share.saveAndGenerate")}
@@ -87,6 +89,7 @@ export function ShareSettlementModal({
   const [state, formAction] = useActionState(action.bind(null, groupId), initialState);
   const [receiverState, setReceiverState] = useState(receivers);
   const [existingUrl, setExistingUrl] = useState("");
+  const [copied, setCopied] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -139,17 +142,28 @@ export function ShareSettlementModal({
   const firstReceiver = receiverState[0];
   const hasShare = Boolean(activeShare || state.shareToken);
 
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(existingUrl);
+      setCopied(true);
+      toast.success(t("share.linkCopied"));
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t("share.copyFailed"));
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4">
+    <Dialog open={open}>
+      <DialogContent className="max-w-4xl" showClose={false}>
+        <DialogHeader className="mb-5 items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4 pr-0" layout="row">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {t("groupDetail.settlementPlan")}
             </p>
-            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
+            <DialogTitle className="mt-1 text-2xl font-extrabold sm:text-3xl">
               {t("groupDetail.shareSettlement")}
-            </h2>
+            </DialogTitle>
           </div>
           <Link
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white"
@@ -158,15 +172,25 @@ export function ShareSettlementModal({
             <span className="sr-only">{t("common.close")}</span>
             <X className="h-4 w-4" />
           </Link>
-        </div>
+        </DialogHeader>
 
         {existingUrl ? (
           <div className="mb-5 rounded-2xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/35 p-4">
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
               {t("share.currentLink")}
             </p>
-            <div className="mt-2 break-all rounded-xl bg-white px-3 py-2 text-sm font-bold text-[var(--splity-ink)]">
-              {existingUrl}
+            <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <div className="break-all rounded-xl bg-white px-3 py-2 text-sm font-bold text-[var(--splity-ink)]">
+                {existingUrl}
+              </div>
+              <button
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--splity-line)] bg-white px-3 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
+                onClick={copyLink}
+                type="button"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {t(copied ? "share.linkCopied" : "share.copyLink")}
+              </button>
             </div>
             <p className="mt-2 text-xs font-semibold text-[var(--splity-muted)]">
               {t("share.regenerateHint")}
@@ -250,7 +274,7 @@ export function ShareSettlementModal({
             <SubmitButton activeShare={hasShare} />
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

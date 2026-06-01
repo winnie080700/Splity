@@ -1,15 +1,24 @@
 "use client";
 
-import { Pencil, Plus, Search, Trash2, UserPlus, X } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { T } from "@/components/i18n/t";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import { type InvitationStatus } from "@/lib/domain/status";
 import type { Database } from "@/lib/supabase/database.types";
@@ -90,26 +99,15 @@ function Modal({
   onClose: () => void;
   title: string;
 }) {
-  const { t } = useTranslation();
-
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,21,56,0.28)] px-4 py-6">
-      <div className="w-full max-w-xl rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] sm:rounded-3xl sm:p-5 sm:shadow-[0_24px_80px_rgba(12,21,56,0.25)]">
-        <div className="flex items-center justify-between gap-4">
-          <h3 className="splity-display text-2xl font-bold text-[var(--splity-ink)]">
-            {title}
-          </h3>
-          <button
-            aria-label={t("common.close")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]"
-            onClick={onClose}
-            type="button">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         <div className="mt-5">{children}</div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -130,24 +128,23 @@ function SubmitButton({
   value?: string;
   variant?: "primary" | "secondary" | "ghost";
 }) {
-  const { pending } = useFormStatus();
-
   return (
-    <Button
+    <PendingActionButton
       className={[
         "gap-2",
         danger
           ? "bg-red-700 text-white hover:bg-red-800 focus-visible:outline-red-700"
           : "",
       ].join(" ")}
-      disabled={disabled || pending}
+      disabled={disabled}
+      pendingLabel={pendingLabel}
       name={value ? "intent" : undefined}
       type="submit"
       value={value}
       variant={variant}>
       {icon}
-      {pending ? pendingLabel : children}
-    </Button>
+      {children}
+    </PendingActionButton>
   );
 }
 
@@ -548,16 +545,20 @@ function ParticipantCard({
       ) : null}
 
       {openModal === "delete" ? (
-        <Modal
-          onClose={() => setOpenModal(null)}
-          title={format(t("groupDetail.deleteParticipantTitle"), {
-            name: participant.name,
-          })}>
+        <AlertDialog onOpenChange={(open) => !open && setOpenModal(null)} open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {format(t("groupDetail.deleteParticipantTitle"), {
+                  name: participant.name,
+                })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("groupDetail.deleteParticipantBody")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
           <form action={removeAction} className="grid gap-4">
-            <p className="text-sm leading-6 text-[var(--splity-muted)]">
-              {t("groupDetail.deleteParticipantBody")}
-            </p>
-            <div className="flex justify-end gap-2">
+            <AlertDialogFooter>
               <Button
                 onClick={() => setOpenModal(null)}
                 type="button"
@@ -570,9 +571,10 @@ function ParticipantCard({
                 pendingLabel={t("groups.removing")}>
                 {t("common.remove")}
               </SubmitButton>
-            </div>
+            </AlertDialogFooter>
           </form>
-        </Modal>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
     </article>
   );

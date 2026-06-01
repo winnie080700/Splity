@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -70,8 +71,8 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   }, [pending, t]);
 
   return (
-    <Button disabled={disabled || pending} type="submit">
-      {pending ? t("common.saving") : t("bills.saveBill")}
+    <Button className="gap-2" disabled={disabled || pending} type="submit">
+      {pending ? <><Spinner />{t("common.saving")}</> : t("bills.saveBill")}
     </Button>
   );
 }

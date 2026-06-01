@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowRight, CreditCard, LogOut, Settings, Trash2, UserRound } from "lucide-react";
+import { CreditCard, LogOut, Settings, Trash2, UserRound } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { toast } from "sonner";
 
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { signOut } from "@/lib/auth/actions";
 import { useTranslation } from "@/lib/i18n";
 import { ChangePasswordForm } from "./change-password-form";
@@ -213,14 +213,16 @@ function GeneralPanel() {
             <Trash2 className="h-4 w-4" />
             {t("settings.deleteAccount")}
           </button>
-          <form action={signOut} onSubmit={() => toast.loading(t("settings.signingOut"))}>
-            <button
+          <form action={signOut}>
+            <PendingActionButton
               className="inline-flex h-10 items-center gap-2 rounded-full bg-red-500 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-red-600"
+              pendingLabel={t("settings.signingOut")}
+              pendingToastKey="settings.signingOut"
               type="submit"
             >
               <LogOut className="h-4 w-4" />
               {t("settings.logOut")}
-            </button>
+            </PendingActionButton>
           </form>
         </div>
       </div>
@@ -278,16 +280,6 @@ export function SettingsClient({
               <ProfileForm formId={profileFormId} name={name} username={username} />
               <EmailSection email={email} isVerified={isEmailVerified} />
               <ChangePasswordForm />
-              <div className="mt-2 flex justify-end border-t border-dashed border-[var(--splity-line)] pt-4">
-                <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--splity-navy)] px-6 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(27,42,107,0.24)] transition hover:bg-[#142258] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--splity-navy)] disabled:cursor-not-allowed disabled:opacity-60"
-                  form={profileFormId}
-                  type="submit"
-                >
-                  {t("common.saveChanges")}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
             </div>
           ) : null}
 

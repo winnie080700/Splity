@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { T } from "@/components/i18n/t";
-import { BillModalFrame } from "@/components/ui/bill-modal-frame";
+import { BillAlertDialogFrame, BillModalFrame } from "@/components/ui/bill-modal-frame";
 import { BillModalSkeleton } from "@/components/ui/bill-modal-skeleton";
 import type { Participant } from "@/lib/services/participants";
 import { getBill } from "@/lib/services/bills";
@@ -82,9 +82,8 @@ export function BillModal({
 
   if (mode === "delete" && billId) {
     return (
-      <BillModalFrame
+      <BillAlertDialogFrame
         closeHref={closeHref}
-        kicker={<T k="groupDetail.actions" />}
         title={<T k="bills.deleteTitle" />}
       >
         <Suspense fallback={<BillModalSkeleton compact />}>
@@ -97,7 +96,7 @@ export function BillModal({
             participants={participants}
           />
         </Suspense>
-      </BillModalFrame>
+      </BillAlertDialogFrame>
     );
   }
 

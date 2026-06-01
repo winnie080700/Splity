@@ -12,11 +12,13 @@ import {
   Settings,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { T } from "@/components/i18n/t";
+import { Spinner } from "@/components/ui/spinner";
 import { signOut } from "@/lib/auth/actions";
 import { useTranslation } from "@/lib/i18n";
 
@@ -40,6 +42,38 @@ const COLLAPSED_STORAGE_KEY = "splity.sidebar.collapsed";
 
 function initial(value: string) {
   return value.trim().charAt(0).toUpperCase() || "S";
+}
+
+function SidebarSignOutButton() {
+  const { pending } = useFormStatus();
+  const toastId = useRef<string | number | null>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (pending && toastId.current === null) {
+      toastId.current = toast.loading(t("settings.signingOut"));
+    }
+
+    if (!pending && toastId.current !== null) {
+      toast.dismiss(toastId.current);
+      toastId.current = null;
+    }
+
+    return () => {
+      if (toastId.current !== null) toast.dismiss(toastId.current);
+    };
+  }, [pending, t]);
+
+  return (
+    <button
+      aria-label={t("dashboard.signOut")}
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--splity-bg)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-line)] hover:text-[var(--splity-ink)] disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      {pending ? <Spinner /> : <LogOut className="h-4 w-4" />}
+    </button>
+  );
 }
 
 function NavLink({
@@ -202,7 +236,7 @@ export function AppShell({
   return (
     <main
       className={[
-        "min-h-screen bg-[var(--splity-bg)] text-[var(--splity-ink)] transition-[grid-template-columns] duration-300 ease-out lg:grid",
+        "min-h-screen w-full min-w-0 overflow-x-clip bg-[var(--splity-bg)] text-[var(--splity-ink)] transition-[grid-template-columns] duration-300 ease-out lg:grid",
         collapsed
           ? "lg:grid-cols-[84px_minmax(0,1fr)]"
           : "lg:grid-cols-[260px_minmax(0,1fr)]",
@@ -280,14 +314,8 @@ export function AppShell({
                   {userEmail}
                 </div>
               </div>
-              <form action={signOut} onSubmit={() => toast.loading(t("settings.signingOut"))}>
-                <button
-                  aria-label={t("dashboard.signOut")}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--splity-bg)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-line)] hover:text-[var(--splity-ink)]"
-                  type="submit"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
+              <form action={signOut}>
+                <SidebarSignOutButton />
               </form>
             </>
           )}
@@ -305,10 +333,13 @@ export function AppShell({
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--splity-navy)] splity-display text-xs font-extrabold text-white">
             {initial(userName || userEmail)}
           </span>
+          <form action={signOut}>
+            <SidebarSignOutButton />
+          </form>
         </div>
       </div>
 
-      <section className="min-w-0 px-3 py-4 pb-24 sm:px-6 lg:px-10 lg:py-6 lg:pb-6">
+      <section className="w-full min-w-0 overflow-x-clip px-3 py-4 pb-24 sm:px-6 lg:px-10 lg:py-6 lg:pb-6">
         {children}
       </section>
 

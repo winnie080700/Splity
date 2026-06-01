@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Alert } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "@/lib/i18n";
 import {
   requestPasswordReset,
@@ -150,24 +151,18 @@ function ForgotPasswordModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,21,56,0.45)] px-4 backdrop-blur-sm"
-      role="presentation">
-      <section
-        aria-labelledby="forgot-password-title"
-        aria-modal="true"
-        className="w-full max-w-md rounded-[24px] border border-[var(--splity-line)] bg-white p-6 shadow-[0_30px_80px_rgba(12,21,56,0.25)]"
-        role="dialog">
-        <div className="flex items-start justify-between gap-4">
+    <Dialog onOpenChange={(open) => !open && onClose()} open={isOpen}>
+      <DialogContent className="max-w-md" showClose={false}>
+        <DialogHeader className="items-start justify-between gap-4" layout="row">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
               {text.account}
             </p>
-            <h3
+            <DialogTitle
               className="mt-1 splity-display text-3xl tracking-tight"
               id="forgot-password-title">
               {text.resetTitle}
-            </h3>
+            </DialogTitle>
           </div>
           <button
             aria-label={text.close}
@@ -176,7 +171,7 @@ function ForgotPasswordModal({
             type="button">
             <XIcon aria-hidden="true" className="h-4 w-4" />
           </button>
-        </div>
+        </DialogHeader>
         <p className="mt-3 text-sm leading-6 text-[var(--splity-muted)]">
           {text.resetBody}
         </p>
@@ -196,8 +191,8 @@ function ForgotPasswordModal({
             pendingLabel={text.resetPending}
           />
         </form>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -291,7 +286,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(1000px_520px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(850px_480px_at_100%_12%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] text-[var(--splity-ink)] lg:h-dvh">
       <nav className="flex shrink-0 items-center justify-between px-5 py-4 sm:px-10 lg:px-8 lg:py-3">
-        <Link href="/" aria-label="Splity home">
+        <Link href="/" aria-label={text.backHome}>
           <BrandMark />
         </Link>
         <div className="flex items-center gap-3">

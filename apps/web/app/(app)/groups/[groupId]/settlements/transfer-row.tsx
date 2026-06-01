@@ -1,12 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState, type ChangeEvent } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { Select } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n";
 import {
@@ -35,12 +34,11 @@ type TransferRowProps = {
 const initialState: SettlementActionState = { error: null, success: null };
 
 function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
   return (
-    <Button disabled={pending} type="submit" variant="secondary">
-      {pending ? t("common.saving") : label}
-    </Button>
+    <PendingActionButton pendingLabel={t("common.saving")} type="submit" variant="secondary">
+      {label}
+    </PendingActionButton>
   );
 }
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation } from "@/lib/i18n";
 import { resendVerificationAction, type SettingsActionState } from "./actions";
 
@@ -18,18 +18,15 @@ const initialState: SettingsActionState = { error: null, success: null };
 const COOLDOWN_SECONDS = 60;
 
 function SubmitButton({ cooldown }: { cooldown: number }) {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
-  const disabled = pending || cooldown > 0;
+  const disabled = cooldown > 0;
 
   return (
-    <Button className="rounded-full" disabled={disabled} type="submit" variant="secondary">
-      {pending
-        ? t("common.sending")
-        : cooldown > 0
+    <PendingActionButton className="rounded-full" disabled={disabled} pendingLabel={t("common.sending")} pendingToastKey="common.sending" type="submit" variant="secondary">
+      {cooldown > 0
           ? t("settings.resendIn").replace("{seconds}", String(cooldown))
           : t("settings.resendVerification")}
-    </Button>
+    </PendingActionButton>
   );
 }
 

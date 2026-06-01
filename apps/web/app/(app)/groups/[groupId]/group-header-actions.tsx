@@ -1,12 +1,27 @@
 "use client";
 
-import { CheckCircle2, Pencil, Trash2, X } from "lucide-react";
+import { CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { GROUP_STATUS } from "@/lib/domain/status";
 import { useTranslation } from "@/lib/i18n";
 import {
@@ -18,39 +33,6 @@ import {
 
 const initialState: GroupActionState = { error: null, success: null };
 
-function Modal({
-  children,
-  onClose,
-  title,
-}: {
-  children: ReactNode;
-  onClose: () => void;
-  title: string;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,21,56,0.28)] px-4 py-6">
-      <div className="w-full max-w-lg rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_24px_80px_rgba(12,21,56,0.25)]">
-        <div className="flex items-center justify-between gap-4">
-          <h3 className="splity-display text-2xl font-bold text-[var(--splity-ink)]">
-            {title}
-          </h3>
-          <button
-            aria-label={t("common.close")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]"
-            onClick={onClose}
-            type="button"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-5">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 function SubmitButton({
   children,
   danger,
@@ -60,20 +42,18 @@ function SubmitButton({
   danger?: boolean;
   pendingLabel: string;
 }) {
-  const { pending } = useFormStatus();
-
   return (
-    <Button
+    <PendingActionButton
       className={
         danger
           ? "bg-red-700 text-white hover:bg-red-800 focus-visible:outline-red-700"
           : undefined
       }
-      disabled={pending}
+      pendingLabel={pendingLabel}
       type="submit"
     >
-      {pending ? pendingLabel : children}
-    </Button>
+      {children}
+    </PendingActionButton>
   );
 }
 
@@ -163,74 +143,88 @@ export function GroupHeaderActions({
       </div>
 
       {openModal === "edit" ? (
-        <Modal onClose={() => setOpenModal(null)} title={t("groupDetail.editGroup")}>
+        <Dialog onOpenChange={(open) => !open && setOpenModal(null)} open>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t("groupDetail.editGroup")}</DialogTitle>
+            </DialogHeader>
           <form action={renameAction} className="grid gap-4">
             <Input defaultValue={name} label={t("groups.name")} name="name" required />
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
                 {t("common.cancel")}
               </Button>
               <SubmitButton pendingLabel={t("common.saving")}>{t("common.save")}</SubmitButton>
-            </div>
+            </DialogFooter>
           </form>
-        </Modal>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {openModal === "settling" ? (
-        <Modal onClose={() => setOpenModal(null)} title={t("groupDetail.markAsSettling")}>
+        <AlertDialog onOpenChange={(open) => !open && setOpenModal(null)} open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("groupDetail.markAsSettling")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("groupDetail.statusProgressConfirm")}</AlertDialogDescription>
+            </AlertDialogHeader>
           <form action={statusAction} className="grid gap-4">
             <input name="status" type="hidden" value={GROUP_STATUS.settling} />
-            <p className="text-sm leading-6 text-[var(--splity-muted)]">
-              {t("groupDetail.statusProgressConfirm")}
-            </p>
-            <div className="flex justify-end gap-2">
+            <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
                 {t("common.cancel")}
               </Button>
               <SubmitButton pendingLabel={t("settings.updating")}>
                 {t("groupDetail.markAsSettling")}
               </SubmitButton>
-            </div>
+            </AlertDialogFooter>
           </form>
-        </Modal>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
 
       {openModal === "settled" ? (
-        <Modal onClose={() => setOpenModal(null)} title={t("groupDetail.markAsSettled")}>
+        <AlertDialog onOpenChange={(open) => !open && setOpenModal(null)} open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("groupDetail.markAsSettled")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("groupDetail.statusProgressConfirm")}</AlertDialogDescription>
+            </AlertDialogHeader>
           <form action={statusAction} className="grid gap-4">
             <input name="status" type="hidden" value={GROUP_STATUS.settled} />
-            <p className="text-sm leading-6 text-[var(--splity-muted)]">
-              {t("groupDetail.statusProgressConfirm")}
-            </p>
-            <div className="flex justify-end gap-2">
+            <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
                 {t("common.cancel")}
               </Button>
               <SubmitButton pendingLabel={t("settings.updating")}>
                 {t("groupDetail.markAsSettled")}
               </SubmitButton>
-            </div>
+            </AlertDialogFooter>
           </form>
-        </Modal>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
 
       {openModal === "delete" ? (
-        <Modal onClose={() => setOpenModal(null)} title={t("groups.deleteTitle")}>
-          <form action={deleteGroupAction} className="grid gap-4" onSubmit={() => toast.loading(t("groups.deleting"))}>
+        <AlertDialog onOpenChange={(open) => !open && setOpenModal(null)} open>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("groups.deleteTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("groupDetail.deleteGroupBody")}</AlertDialogDescription>
+            </AlertDialogHeader>
+          <form action={deleteGroupAction} className="grid gap-4">
             <input name="groupId" type="hidden" value={groupId} />
-            <p className="text-sm leading-6 text-[var(--splity-muted)]">
-              {t("groupDetail.deleteGroupBody")}
-            </p>
-            <div className="flex justify-end gap-2">
+            <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
                 {t("common.cancel")}
               </Button>
               <SubmitButton danger pendingLabel={t("common.sending")}>
                 {t("groups.deleteGroup")}
               </SubmitButton>
-            </div>
+            </AlertDialogFooter>
           </form>
-        </Modal>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
     </>
   );

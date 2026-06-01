@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useActionState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation } from "@/lib/i18n";
 import {
   resendVerification,
@@ -20,13 +19,12 @@ const initialState: ResendVerificationState = {
 };
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
 
   return (
-    <Button disabled={pending} type="submit" variant="secondary">
-      {pending ? t("common.sending") : t("auth.resendEmail")}
-    </Button>
+    <PendingActionButton pendingLabel={t("common.sending")} pendingToastKey="common.sending" type="submit" variant="secondary">
+      {t("auth.resendEmail")}
+    </PendingActionButton>
   );
 }
 

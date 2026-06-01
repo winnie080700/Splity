@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
+import { Check, Copy } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation } from "@/lib/i18n";
 import type { ActiveSettlementShare } from "@/lib/services/settlement-shares";
 import {
@@ -40,13 +41,12 @@ function SubmitButton({
   disabled?: boolean;
   variant?: "primary" | "secondary";
 }) {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
 
   return (
-    <Button disabled={disabled || pending} type="submit" variant={variant}>
-      {pending ? t("common.saving") : children}
-    </Button>
+    <PendingActionButton disabled={disabled} pendingLabel={t("common.saving")} type="submit" variant={variant}>
+      {children}
+    </PendingActionButton>
   );
 }
 
@@ -69,7 +69,20 @@ export function ShareForm({
   const action = activeShare ? regenerateShareAction : createShareAction;
   const [state, formAction] = useActionState(action.bind(null, groupId), initialState);
   const [deactivateState, deactivateAction] = useActionState(deactivateShareAction.bind(null, groupId), initialState);
+  const [copied, setCopied] = useState(false);
   const { t } = useTranslation();
+
+  async function copyLink() {
+    if (!activeShare) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/share/${activeShare.shareToken}`);
+      setCopied(true);
+      toast.success(t("share.linkCopied"));
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t("share.copyFailed"));
+    }
+  }
 
   useEffect(() => {
     const success = state.success ?? deactivateState.success;
@@ -126,13 +139,17 @@ export function ShareForm({
       </form>
 
       {activeShare ? (
-        <form action={deactivateAction} className="flex justify-end">
+        <form action={deactivateAction} className="flex flex-wrap justify-end gap-2">
+          <Button className="gap-2" onClick={copyLink} type="button" variant="secondary">
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {t(copied ? "share.linkCopied" : "share.copyLink")}
+          </Button>
           <div className="grid gap-2">
             <Alert tone="error">{deactivateState.error}</Alert>
             <Alert tone="success">{deactivateState.success}</Alert>
-            <Button disabled={!canGenerate && !activeShare} type="submit" variant="secondary">
+            <PendingActionButton disabled={!canGenerate && !activeShare} type="submit" variant="secondary">
               {t("share.deactivate")}
-            </Button>
+            </PendingActionButton>
           </div>
         </form>
       ) : null}

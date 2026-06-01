@@ -2,6 +2,18 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { ReactNode } from "react";
 import { T } from "../i18n/t";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./dialog";
 
 export function BillModalFrame({
   children,
@@ -17,21 +29,22 @@ export function BillModalFrame({
   width?: "wide" | "narrow";
 }) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(12,21,56,0.36)] px-2 py-3 backdrop-blur-sm splity-modal-backdrop sm:px-4 sm:py-6">
-      <div
+    <Dialog open>
+      <DialogContent
         className={[
-          "mx-auto w-full rounded-2xl border border-white/70 bg-white p-4 shadow-[0_12px_36px_rgba(12,21,56,0.22)] splity-modal-panel sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_100px_rgba(12,21,56,0.32)]",
+          "p-4 sm:p-6",
           width === "narrow" ? "max-w-3xl" : "max-w-7xl",
         ].join(" ")}
+        showClose={false}
       >
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4">
+        <DialogHeader className="mb-5 items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4 pr-0" layout="row">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
               {kicker}
             </p>
-            <h2 className="splity-display mt-1 text-2xl font-extrabold text-[var(--splity-ink)] sm:text-3xl">
+            <DialogTitle className="mt-1 text-2xl font-extrabold sm:text-3xl">
               {title}
-            </h2>
+            </DialogTitle>
           </div>
           <Link
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white hover:text-[var(--splity-ink)]"
@@ -42,9 +55,39 @@ export function BillModalFrame({
               <T k="common.close" />
             </span>
           </Link>
-        </div>
+        </DialogHeader>
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function BillAlertDialogFrame({
+  children,
+  closeHref,
+  title,
+}: {
+  children: ReactNode;
+  closeHref: string;
+  title: ReactNode;
+}) {
+  return (
+    <AlertDialog open>
+      <AlertDialogContent>
+        <AlertDialogHeader className="grid-cols-[1fr_auto] items-start gap-4">
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <Link
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--splity-line)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]"
+            href={closeHref}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">
+              <T k="common.close" />
+            </span>
+          </Link>
+        </AlertDialogHeader>
+        <div className="mt-3">{children}</div>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

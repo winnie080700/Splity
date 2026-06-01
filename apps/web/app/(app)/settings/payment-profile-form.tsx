@@ -3,11 +3,12 @@
 import { ArrowRight, Pencil, Plus, QrCode } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PendingActionButton } from "@/components/ui/pending-action-button";
+import { Spinner } from "@/components/ui/spinner";
 import { useTranslation } from "@/lib/i18n";
 import { updatePaymentProfileAction, type SettingsActionState } from "./actions";
 
@@ -25,18 +26,17 @@ const MAX_QR_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_QR_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
   const { t } = useTranslation();
 
   return (
-    <Button
+    <PendingActionButton
       className="gap-2 rounded-full bg-[var(--splity-navy)] px-6 shadow-[0_10px_24px_rgba(27,42,107,0.24)] hover:bg-[#142258]"
-      disabled={pending}
+      pendingLabel={t("common.saving")}
       type="submit"
     >
-      {pending ? t("common.saving") : t("common.saveChanges")}
+      {t("common.saveChanges")}
       <ArrowRight className="h-4 w-4" />
-    </Button>
+    </PendingActionButton>
   );
 }
 
@@ -220,7 +220,7 @@ export function PaymentProfileForm({
               type="button"
               variant="secondary"
             >
-              <Plus className="h-4 w-4" />
+              {isReadingQr ? <Spinner /> : <Plus className="h-4 w-4" />}
               {isReadingQr ? t("settings.reading") : qrDataUrl ? t("settings.replaceQr") : t("settings.uploadQr")}
             </Button>
             {qrDataUrl ? (
