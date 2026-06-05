@@ -60,6 +60,30 @@ export const FIXTURES: Fixture[] = [
     },
   },
   {
+    id: "F02-fixed-discount",
+    label: "Equal split with fixed discount",
+    source: "csharp-runtime",
+    input: {
+      participantSplits: [split(p1), split(p2), split(p3)],
+      items: [{ description: "Groceries", amount: "100.00", responsibleParticipantIds: [p1, p2, p3] }],
+      fees: [{ name: "Discount", feeType: FEE_TYPE.fixed, value: "-7.00" }],
+      primaryPayerParticipantId: p1,
+      extraContributions: [],
+    },
+    expected: {
+      subtotalAmount: "100.00",
+      totalFeeAmount: "-7.00",
+      grandTotalAmount: "93.00",
+      appliedFees: [{ name: "Discount", feeType: FEE_TYPE.fixed, value: "-7.00", appliedAmount: "-7.00" }],
+      shares: [
+        share(p1, "1.0000", "33.34", "-2.34", "31.00"),
+        share(p2, "1.0000", "33.33", "-2.33", "31.00"),
+        share(p3, "1.0000", "33.33", "-2.33", "31.00"),
+      ],
+      contributions: [contribution(p1, "93.00"), contribution(p2, "0.00"), contribution(p3, "0.00")],
+    },
+  },
+  {
     id: "F02-weighted-fixed-contribution",
     label: "Weighted split with fixed fee and prepayment",
     source: "csharp-test",
@@ -288,9 +312,9 @@ export const FIXTURES: Fixture[] = [
 
 export const INVALID_FIXTURES = [
   {
-    id: "E01-negative-fee",
-    input: { ...FIXTURES[0].input, fees: [{ name: "Bad fee", feeType: FEE_TYPE.fixed, value: "-1.00" }] },
-    message: "Fee value must be zero or greater.",
+    id: "E01-negative-percentage-fee",
+    input: { ...FIXTURES[0].input, fees: [{ name: "Bad fee", feeType: FEE_TYPE.percentage, value: "-1.00" }] },
+    message: "Percentage fee value must be zero or greater.",
   },
   {
     id: "E02-contribution-exceeds-total",

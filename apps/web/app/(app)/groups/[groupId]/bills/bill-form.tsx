@@ -1,5 +1,6 @@
 "use client";
 
+import { MinusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -8,6 +9,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Select } from "@/components/ui/select";
 import { calculateBillShares } from "@/lib/calculations/bill-calculator";
 import { FEE_TYPE, SPLIT_MODE, type FeeType, type SplitMode } from "@/lib/calculations/types";
 import { useTranslation } from "@/lib/i18n";
@@ -84,6 +87,7 @@ export function BillForm({
   participants,
 }: BillFormProps) {
   const [state, formAction] = useActionState(action, initialState);
+  const { t } = useTranslation();
   const firstParticipantId = participants[0]?.id ?? "";
   const [storeName, setStoreName] = useState(initialBill?.storeName ?? "");
   const [date, setDate] = useState(toDateInput(initialBill?.transactionDateUtc));
@@ -121,6 +125,13 @@ export function BillForm({
     label: participant.name,
     value: participant.id,
   }));
+  const feeTypeOptions = [
+    { label: t("bills.percent"), value: String(FEE_TYPE.percentage) },
+    { label: t("bills.fixed"), value: String(FEE_TYPE.fixed) },
+  ];
+  const compactInputClassName =
+    "h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10";
+  const tableHeaderClassName = "px-1 text-xs font-bold text-[var(--splity-muted)]";
 
   const payload = useMemo(
     () =>
@@ -141,7 +152,6 @@ export function BillForm({
     [storeName, date, splitMode, primaryPayerParticipantId, participants, weights, items, fees, contributions]
   );
 
-  const { t } = useTranslation();
   const participantSplits = useMemo(
     () =>
       participants.map((participant) => ({
@@ -187,7 +197,7 @@ export function BillForm({
     } catch {
       const subtotal = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
       const appliedFees = fees
-        .filter((fee) => Number(fee.value || 0) > 0)
+        .filter((fee) => Number(fee.value || 0) !== 0)
         .map((fee, index) => {
           const value = Number(fee.value || 0);
           const appliedAmount =
@@ -250,14 +260,6 @@ export function BillForm({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid max-h-[72vh] gap-3 overflow-y-auto pr-1">
           <section className="grid gap-3 rounded-2xl border border-[var(--splity-line)] bg-white p-4">
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
-                {t("bills.input")}
-              </p>
-              <h2 className="splity-display mt-1 text-2xl font-bold text-[var(--splity-ink)]">
-                {initialBill ? t("bills.editBill") : t("groups.newBill")}
-              </h2>
-            </div>
             <div className="grid gap-3 md:grid-cols-2">
               <Input label={t("bills.storeName")} name="storeNameView" onChange={(e) => setStoreName(e.target.value)} required value={storeName} />
               <Input label={t("bills.date")} name="dateView" onChange={(e) => setDate(e.target.value)} required type="date" value={date} />
@@ -289,8 +291,8 @@ export function BillForm({
             </div>
           </section>
 
-          <section className="grid gap-3 rounded-2xl border border-[var(--splity-line)] bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
+          <section className="grid gap-3 rounded-xl border border-[var(--splity-line)] bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-extrabold text-[var(--splity-ink)]">{t("bills.items")}</h3>
               <Button
                 onClick={() =>
@@ -299,70 +301,73 @@ export function BillForm({
                     { description: "", amount: "0.00", responsibleParticipantIds: participants.map((p) => p.id) },
                   ])
                 }
+                className="h-10"
                 variant="secondary"
               >
                 {t("bills.addItem")}
               </Button>
             </div>
-            {items.map((item, index) => (
-              <div className="grid gap-3 rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/25 p-3" key={item.id ?? index}>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Input
-                    label={t("bills.description")}
-                    name={`itemDescription${index}`}
-                    onChange={(event) =>
-                      setItems((current) => current.map((x, i) => (i === index ? { ...x, description: event.target.value } : x)))
-                    }
-                    value={item.description}
-                  />
-                  <Input
-                    label={t("bills.amount")}
-                    min="0"
-                    name={`itemAmount${index}`}
-                    onChange={(event) =>
-                      setItems((current) => current.map((x, i) => (i === index ? { ...x, amount: event.target.value } : x)))
-                    }
-                    step="0.01"
-                    type="number"
-                    value={item.amount}
-                  />
-                  <div className="flex items-end sm:col-span-2">
+            <div className="overflow-x-auto">
+              <div className="grid min-w-[720px] gap-2">
+                <div className="grid grid-cols-[minmax(0,6fr)_minmax(96px,2fr)_minmax(150px,3fr)_44px] items-center gap-2">
+                  <span className={tableHeaderClassName}>{t("bills.description")}</span>
+                  <span className={tableHeaderClassName}>{t("bills.amount")}</span>
+                  <span className={tableHeaderClassName}>{t("bills.participant")}</span>
+                  <span className="sr-only">{t("common.remove")}</span>
+                </div>
+                {items.map((item, index) => (
+                  <div
+                    className="grid grid-cols-[minmax(0,6fr)_minmax(96px,2fr)_minmax(150px,3fr)_44px] items-center gap-2"
+                    key={item.id ?? index}
+                  >
+                    <input
+                      aria-label={t("bills.description")}
+                      className={compactInputClassName}
+                      name={`itemDescription${index}`}
+                      onChange={(event) =>
+                        setItems((current) => current.map((x, i) => (i === index ? { ...x, description: event.target.value } : x)))
+                      }
+                      value={item.description}
+                    />
+                    <input
+                      aria-label={t("bills.amount")}
+                      className={compactInputClassName}
+                      min="0"
+                      name={`itemAmount${index}`}
+                      onChange={(event) =>
+                        setItems((current) => current.map((x, i) => (i === index ? { ...x, amount: event.target.value } : x)))
+                      }
+                      step="0.01"
+                      type="number"
+                      value={item.amount}
+                    />
+                    <MultiSelect
+                      compact
+                      label={t("bills.participant")}
+                      name={`itemParticipant${index}`}
+                      onValueChange={(value) =>
+                        setItems((current) =>
+                          current.map((x, i) => (i === index ? { ...x, responsibleParticipantIds: value } : x))
+                        )
+                      }
+                      options={participantOptions}
+                      placeholder={t("bills.none")}
+                      value={item.responsibleParticipantIds}
+                    />
                     <Button
+                      aria-label={t("common.remove")}
+                      className="h-10 w-10 px-0"
                       disabled={items.length === 1}
                       onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+                      title={t("common.remove")}
                       variant="ghost"
                     >
-                      {t("common.remove")}
+                      <MinusIcon aria-hidden="true" className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {participants.map((participant) => (
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700" key={participant.id}>
-                      <input
-                        checked={item.responsibleParticipantIds.includes(participant.id)}
-                        onChange={(event) =>
-                          setItems((current) =>
-                            current.map((x, i) =>
-                              i === index
-                                ? {
-                                    ...x,
-                                    responsibleParticipantIds: event.target.checked
-                                      ? [...x.responsibleParticipantIds, participant.id]
-                                      : x.responsibleParticipantIds.filter((id) => id !== participant.id),
-                                  }
-                                : x
-                            )
-                          )
-                        }
-                        type="checkbox"
-                      />
-                      {participant.name}
-                    </label>
-                  ))}
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
           </section>
 
           {splitMode === SPLIT_MODE.weighted ? (
@@ -385,31 +390,88 @@ export function BillForm({
             </section>
           ) : null}
 
-          <section className="grid gap-3 rounded-2xl border border-[var(--splity-line)] bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
+          <section className="grid gap-3 rounded-xl border border-[var(--splity-line)] bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-extrabold text-[var(--splity-ink)]">{t("bills.fees")}</h3>
-              <Button onClick={() => setFees((current) => [...current, { name: "", feeType: FEE_TYPE.percentage, value: "0.00" }])} variant="secondary">
-                {t("bills.addFee")}
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  className="h-10"
+                  onClick={() => setFees((current) => [...current, { name: t("bills.discount"), feeType: FEE_TYPE.fixed, value: "-0.00" }])}
+                  variant="secondary"
+                >
+                  {t("bills.addDiscount")}
+                </Button>
+                <Button className="h-10" onClick={() => setFees((current) => [...current, { name: "", feeType: FEE_TYPE.percentage, value: "0.00" }])} variant="secondary">
+                  {t("bills.addFee")}
+                </Button>
+              </div>
             </div>
-            {fees.map((fee, index) => (
-              <div className="grid gap-3 sm:grid-cols-2" key={index}>
-                <Input label={t("groups.name")} name={`feeName${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, name: event.target.value } : x)))} value={fee.name} />
-                <label className="grid gap-2 text-sm font-medium text-zinc-800">
-                  <span>{t("bills.type")}</span>
-                  <select className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950" onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, feeType: Number(event.target.value) as FeeType } : x)))} value={fee.feeType}>
-                    <option value={FEE_TYPE.percentage}>{t("bills.percent")}</option>
-                    <option value={FEE_TYPE.fixed}>{t("bills.fixed")}</option>
-                  </select>
-                </label>
-                <Input label={t("bills.value")} min="0" name={`feeValue${index}`} onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, value: event.target.value } : x)))} step="0.01" type="number" value={fee.value} />
-                <div className="flex items-end sm:col-span-2">
-                  <Button onClick={() => setFees((current) => current.filter((_, i) => i !== index))} variant="ghost">
-                    {t("common.remove")}
-                  </Button>
+            {fees.length ? (
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[640px] gap-2">
+                  <div className="grid grid-cols-[minmax(0,5fr)_minmax(120px,2fr)_minmax(110px,2fr)_44px] items-center gap-2">
+                    <span className={tableHeaderClassName}>{t("groups.name")}</span>
+                    <span className={tableHeaderClassName}>{t("bills.type")}</span>
+                    <span className={tableHeaderClassName}>{t("bills.value")}</span>
+                    <span className="sr-only">{t("common.remove")}</span>
+                  </div>
+                  {fees.map((fee, index) => (
+                    <div
+                      className="grid grid-cols-[minmax(0,5fr)_minmax(120px,2fr)_minmax(110px,2fr)_44px] items-center gap-2"
+                      key={index}
+                    >
+                      <input
+                        aria-label={t("groups.name")}
+                        className={compactInputClassName}
+                        name={`feeName${index}`}
+                        onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, name: event.target.value } : x)))}
+                        value={fee.name}
+                      />
+                      <Select
+                        compact
+                        label={t("bills.type")}
+                        name={`feeType${index}`}
+                        onValueChange={(value) => {
+                          const nextFeeType = Number(value) as FeeType;
+                          setFees((current) =>
+                            current.map((x, i) =>
+                              i === index
+                                ? {
+                                    ...x,
+                                    feeType: nextFeeType,
+                                    value: nextFeeType === FEE_TYPE.percentage && Number(x.value) < 0 ? "0.00" : x.value,
+                                  }
+                                : x
+                            )
+                          );
+                        }}
+                        options={feeTypeOptions}
+                        value={String(fee.feeType)}
+                      />
+                      <input
+                        aria-label={t("bills.value")}
+                        className={compactInputClassName}
+                        min={fee.feeType === FEE_TYPE.percentage ? "0" : undefined}
+                        name={`feeValue${index}`}
+                        onChange={(event) => setFees((current) => current.map((x, i) => (i === index ? { ...x, value: event.target.value } : x)))}
+                        step="0.01"
+                        type="number"
+                        value={fee.value}
+                      />
+                      <Button
+                        aria-label={t("common.remove")}
+                        className="h-10 w-10 px-0"
+                        onClick={() => setFees((current) => current.filter((_, i) => i !== index))}
+                        title={t("common.remove")}
+                        variant="ghost"
+                      >
+                        <MinusIcon aria-hidden="true" className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            ) : null}
           </section>
 
           <section className="grid gap-3 rounded-2xl border border-[var(--splity-line)] bg-white p-4">

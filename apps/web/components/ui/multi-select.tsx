@@ -1,55 +1,48 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-type SelectOption = {
+type MultiSelectOption = {
   label: string;
   value: string;
 };
 
-type SelectProps = {
+type MultiSelectProps = {
   className?: string;
   compact?: boolean;
-  defaultValue?: string;
   label: React.ReactNode;
   name: string;
-  onValueChange?: (value: string) => void;
-  options: SelectOption[];
-  value?: string;
+  onValueChange: (value: string[]) => void;
+  options: MultiSelectOption[];
+  placeholder: React.ReactNode;
+  value: string[];
 };
 
-export function Select({
+export function MultiSelect({
   className,
   compact = false,
-  defaultValue,
   label,
   name,
   onValueChange,
   options,
-  value: controlledValue,
-}: SelectProps) {
-  const [value, setValue] = useState(defaultValue ?? options[0]?.value ?? "");
+  placeholder,
+  value,
+}: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const firstValue = options[0]?.value ?? "";
-  const currentValue = controlledValue ?? value;
-  const selected = options.find((option) => option.value === currentValue) ?? options[0];
-
+  const selectedLabels = useMemo(
+    () => options.filter((option) => value.includes(option.value)).map((option) => option.label),
+    [options, value]
+  );
   const buttonClassName = compact
     ? "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-sm text-zinc-950 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10"
     : "inline-flex h-11 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-base text-zinc-950 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10";
-
-  useEffect(() => {
-    if (controlledValue === undefined) {
-      setValue(defaultValue ?? firstValue);
-    }
-  }, [controlledValue, defaultValue, firstValue]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -111,10 +104,17 @@ export function Select({
     };
   }, [isOpen]);
 
+  function toggleValue(nextValue: string) {
+    const nextValues = value.includes(nextValue)
+      ? value.filter((currentValue) => currentValue !== nextValue)
+      : [...value, nextValue];
+    onValueChange(nextValues);
+  }
+
   return (
     <div className={compact ? "block" : "grid gap-2 text-sm font-medium text-zinc-800"} ref={rootRef}>
       {compact ? null : <span>{label}</span>}
-      <input name={name} type="hidden" value={currentValue} />
+      <input name={name} type="hidden" value={JSON.stringify(value)} />
       <div className="relative">
         <button
           aria-label={compact && typeof label === "string" ? label : undefined}
@@ -130,8 +130,10 @@ export function Select({
           ref={buttonRef}
           type="button"
         >
-          <span>{selected?.label}</span>
-          <ChevronDownIcon aria-hidden="true" className={`h-4 w-4 text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          <span className="min-w-0 flex-1 truncate">
+            {selectedLabels.length ? selectedLabels.join(", ") : placeholder}
+          </span>
+          <ChevronDownIcon aria-hidden="true" className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </button>
         {isOpen && menuStyle && portalTarget ? createPortal(
           <div
@@ -141,24 +143,22 @@ export function Select({
             style={menuStyle}
           >
             {options.map((option) => {
-              const isSelected = option.value === currentValue;
+              const isSelected = value.includes(option.value);
 
               return (
                 <button
                   aria-selected={isSelected}
-                  className="flex h-9 w-full items-center justify-between rounded-sm px-2.5 text-left outline-none transition hover:bg-zinc-100 focus:bg-zinc-100"
+                  className="flex h-9 w-full items-center justify-between gap-2 rounded-sm px-2.5 text-left outline-none transition hover:bg-zinc-100 focus:bg-zinc-100"
                   key={option.value}
                   onPointerDown={(event) => {
                     event.preventDefault();
-                    setValue(option.value);
-                    onValueChange?.(option.value);
-                    setIsOpen(false);
+                    toggleValue(option.value);
                   }}
                   role="option"
                   type="button"
                 >
-                  <span>{option.label}</span>
-                  {isSelected ? <CheckIcon aria-hidden="true" className="h-4 w-4 text-zinc-950" /> : null}
+                  <span className="min-w-0 truncate">{option.label}</span>
+                  {isSelected ? <CheckIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-zinc-950" /> : null}
                 </button>
               );
             })}

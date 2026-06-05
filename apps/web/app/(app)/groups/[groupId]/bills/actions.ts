@@ -62,6 +62,9 @@ const billPayloadSchema = z.object({
           message: "bills.error.unsupportedFeeType",
         }),
       value: amountSchema,
+    }).refine((fee) => fee.feeType !== FEE_TYPE.percentage || Number(fee.value) >= 0, {
+      message: "bills.error.percentageFeeNonNegative",
+      path: ["value"],
     })
   ),
   extraContributions: z.array(

@@ -82,8 +82,8 @@ export function calculateBillShares(input: BillCalculationInput): BillComputatio
       throw new BillValidationError("Fee name is required.");
     }
 
-    if (money(fee.value).lt(0)) {
-      throw new BillValidationError("Fee value must be zero or greater.");
+    if (fee.feeType === FEE_TYPE.percentage && money(fee.value).lt(0)) {
+      throw new BillValidationError("Percentage fee value must be zero or greater.");
     }
   }
 
@@ -227,9 +227,15 @@ function buildContributionMap(input: BillCalculationInput, grandTotal: Decimal) 
   return contributionMap;
 }
 
-function allocateByWeight(totalAmount: Decimal.Value, weights: DecimalByParticipant) {
+function allocateByWeight(totalAmount: Decimal.Value, weights: DecimalByParticipant): DecimalByParticipant {
   // BillCalculator.cs:202
   const roundedTotal = roundToCurrency(totalAmount);
+  if (roundedTotal.lt(0)) {
+    const positiveAllocations: DecimalByParticipant = allocateByWeight(roundedTotal.abs(), weights);
+    return new Map(
+      [...positiveAllocations.entries()].map(([participantId, amount]) => [participantId, amount.neg()])
+    );
+  }
   // BillCalculator.cs:203
   const totalCents = toCents(roundedTotal);
   const totalWeight = [...weights.values()].reduce((sum, weight) => sum.plus(weight), money(0));
