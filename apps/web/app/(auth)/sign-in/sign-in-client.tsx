@@ -269,7 +269,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
 
     if (!success || !next) return;
 
-    toast.success(success, { duration: 3000 });
+    toast.success(success, { duration: 1000 });
     const timeout = window.setTimeout(() => {
       router.replace(next);
     }, 3000);
