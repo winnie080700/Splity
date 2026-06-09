@@ -187,30 +187,6 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
-        <AttentionCard
-          count={unresolvedCount}
-          href="/dashboard"
-          icon={<AlertCircle className="h-5 w-5" />}
-          label={<T k="dashboard.unresolvedGroupsShort" />}
-          tone="rose"
-        />
-        <AttentionCard
-          count={invitations.length}
-          href="/invitations"
-          icon={<Clock3 className="h-5 w-5" />}
-          label={<T k="dashboard.pendingInvitesShort" />}
-          tone="gold"
-        />
-        <AttentionCard
-          count={emptyBillGroups}
-          href="/dashboard"
-          icon={<Inbox className="h-5 w-5" />}
-          label={<T k="dashboard.emptyBillGroupsShort" />}
-          tone="navy"
-        />
-      </section>
-
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
         <Panel
           action={
