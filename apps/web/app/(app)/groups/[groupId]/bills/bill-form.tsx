@@ -7,6 +7,12 @@ import { toast } from "sonner";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  clearRouteSuccess,
+  dismissRouteLoading,
+  queueRouteSuccess,
+  showRouteLoading,
+} from "@/components/ui/route-toast";
 import { calculateBillShares } from "@/lib/calculations/bill-calculator";
 import { FEE_TYPE, SPLIT_MODE, type FeeType, type SplitMode } from "@/lib/calculations/types";
 import { useTranslation } from "@/lib/i18n";
@@ -218,11 +224,22 @@ export function BillForm({
   const disabled = !canEdit || participants.length === 0;
 
   useEffect(() => {
-    if (state.error) toast.error(state.error);
+    if (state.error) {
+      dismissRouteLoading();
+      clearRouteSuccess();
+      toast.error(state.error);
+    }
   }, [state.error]);
 
   return (
-    <form action={formAction} className="grid gap-5" onSubmit={() => toast.loading(t("common.saving"))}>
+    <form
+      action={formAction}
+      className="grid gap-5"
+      onSubmit={() => {
+        queueRouteSuccess("bills.saved");
+        showRouteLoading(t("common.saving"));
+      }}
+    >
       <input name="payload" type="hidden" value={payload} />
       <Alert tone="error">{state.error}</Alert>
       {!canEdit ? <Alert tone="info">{t("bills.groupLocked")}</Alert> : null}

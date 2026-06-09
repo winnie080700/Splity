@@ -26,6 +26,7 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
+import { LoadingLink } from "@/components/ui/route-toast";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import {
   createGroupFromGroupsAction,
@@ -57,6 +58,11 @@ type CardActionsProps = {
 const PAGE_SIZE = 6;
 const initialActionState: GroupsPageActionState = { error: null, success: null };
 const GroupsSearchContext = createContext<GroupsSearchContextValue | null>(null);
+const actionIconProps = {
+  className: "h-4 w-4 shrink-0",
+  size: 16,
+  strokeWidth: 1.8,
+} as const;
 
 function useGroupsSearch() {
   const context = useContext(GroupsSearchContext);
@@ -592,32 +598,34 @@ export function StartGroupCard() {
 export function CardActions({ groupId, groupName }: CardActionsProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <>
       <div className="absolute bottom-5 right-5 z-20 flex translate-y-2 gap-2 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
-        <Link
-          aria-label={`View ${groupName}`}
+        <LoadingLink
+          aria-label={t("groups.viewGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
           href={`/groups/${groupId}`}
+          loadingKey="groups.loadingDetail"
         >
-          <Eye className="h-4 w-4" />
-        </Link>
+          <Eye {...actionIconProps} />
+        </LoadingLink>
         <button
-          aria-label={`Edit ${groupName}`}
+          aria-label={t("groups.editGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
           onClick={() => setEditOpen(true)}
           type="button"
         >
-          <Pencil className="h-4 w-4" />
+          <Pencil {...actionIconProps} />
         </button>
         <button
-          aria-label={`Delete ${groupName}`}
+          aria-label={t("groups.deleteGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-red-200 hover:text-[var(--splity-rose)]"
           onClick={() => setDeleteOpen(true)}
           type="button"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 {...actionIconProps} />
         </button>
       </div>
       <EditGroupModal

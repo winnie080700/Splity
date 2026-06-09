@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { LoadingLink } from "@/components/ui/route-toast";
 import { GROUP_STATUS } from "@/lib/domain/status";
 import { getGroup } from "@/lib/services/groups";
 import { getSettlement } from "@/lib/services/settlements";
@@ -33,9 +33,13 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
   return (
     <div className="grid gap-6">
       <div>
-        <Link className="text-sm font-semibold text-zinc-600 underline" href={`/groups/${groupId}`}>
+        <LoadingLink
+          className="text-sm font-semibold text-zinc-600 underline"
+          href={`/groups/${groupId}`}
+          loadingKey="groups.returning"
+        >
           <T k="groups.backToGroup" />
-        </Link>
+        </LoadingLink>
       </div>
 
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">

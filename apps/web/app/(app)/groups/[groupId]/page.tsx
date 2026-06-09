@@ -18,7 +18,7 @@ import {
   type Participant,
 } from "@/lib/services/participants";
 import { getActiveShare } from "@/lib/services/settlement-shares";
-import { listUserPaymentProfiles } from "@/lib/services/users";
+import { listGroupUserPaymentProfiles } from "@/lib/services/users";
 import { createBillAction, deleteBillAction, updateBillAction } from "./bills/actions";
 import { BillDeleteForm } from "./bills/bill-delete-form";
 import { BillPreview } from "./bills/bill-preview";
@@ -35,11 +35,11 @@ import { SectionTitle } from "@/components/ui/section-title";
 import { BillModalFrame } from "@/components/ui/bill-modal-frame";
 import { BillModalSkeleton } from "@/components/ui/bill-modal-skeleton";
 import { BillsTable } from "@/components/ui/bill-table";
+import { LoadingLink } from "@/components/ui/route-toast";
 import { TransfersList } from "@/components/ui/transfer-list";
 import { groupTotal, groupFees, pendingTransferCount, formatDate, money, formatTableDate } from "@/lib/services/utils";
 import { GroupPageProps, statusMeta } from "./type";
-import { getSettlement } from "@/lib/services/settlements";
-import { type SettlementResultDto } from "@splity/api-client";
+import { getSettlement, type SettlementResultDto } from "@/lib/services/settlements";
 
 export default async function GroupPage({ params, searchParams }: GroupPageProps) {
   const { groupId } = await params;
@@ -76,17 +76,19 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const fees = groupFees(bills);
   const transfersPending = pendingTransferCount(settlement);
   const groupHref = `/groups/${group.id}`;
-  const receiverInfos = await buildSettlementReceiverInfos(participants, settlement);
+  const receiverInfos = await buildSettlementReceiverInfos(groupId, participants, settlement);
 
   return (
     <div className="mx-auto grid w-full max-w-[1640px] gap-7">
       <nav className="flex items-center gap-2 text-sm font-semibold text-[var(--splity-muted)]">
-        <Link
+        <LoadingLink
           className="inline-flex items-center gap-2 transition hover:text-[var(--splity-ink)]"
-          href="/groups">
+          href="/groups"
+          loadingKey="groups.returning"
+        >
           <ArrowLeft className="h-4 w-4" />
           <T k="dashboard.groupsTitle" />
-        </Link>
+        </LoadingLink>
         <span>/</span>
         <span className="text-[var(--splity-ink)]">{group.name}</span>
       </nav>
@@ -279,6 +281,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
 }
 
 async function buildSettlementReceiverInfos(
+  groupId: string,
   participants: Participant[],
   settlement: SettlementResultDto | null
 ): Promise<SettlementReceiverInfo[]> {
@@ -293,7 +296,7 @@ async function buildSettlementReceiverInfos(
   const invitedUserIds = receiverIds
     .map((participantId) => participantById.get(participantId)?.invited_user_id)
     .filter((id): id is string => Boolean(id));
-  const profiles = await listUserPaymentProfiles(invitedUserIds);
+  const profiles = await listGroupUserPaymentProfiles(groupId, invitedUserIds);
 
   return receiverIds.map((participantId) => {
     const participant = participantById.get(participantId);
@@ -469,8 +472,5 @@ async function BillModalBillContent({
 
   return <BillPreview bill={bill} hideHeader participants={participants} />;
 }
-
-
-
 
 

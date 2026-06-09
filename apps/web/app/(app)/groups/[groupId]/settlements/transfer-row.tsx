@@ -87,11 +87,12 @@ export function TransferRow({
   const [proofError, setProofError] = useState<string | null>(null);
   const [paidState, paidFormAction] = useActionState(markPaidAction.bind(null, groupId), initialState);
   const [receivedState, receivedFormAction] = useActionState(markReceivedAction.bind(null, groupId), initialState);
-  const fromName = participantLookup[transfer.fromParticipantId] ?? "Unknown";
-  const toName = participantLookup[transfer.toParticipantId] ?? "Unknown";
+  const statusToastId = `settlement-transfer-${transfer.transferKey}`;
   const canMarkPaid = canManage && statusIsSettling && transfer.status === SETTLEMENT_TRANSFER_STATUS.pending;
   const canMarkReceived = canManage && statusIsSettling && transfer.status === SETTLEMENT_TRANSFER_STATUS.markedPaid;
   const { t } = useTranslation();
+  const fromName = participantLookup[transfer.fromParticipantId] ?? t("groupDetail.unknown");
+  const toName = participantLookup[transfer.toParticipantId] ?? t("groupDetail.unknown");
   const statusLabel =
     transfer.status === SETTLEMENT_TRANSFER_STATUS.received
       ? t("settlements.status.received")
@@ -103,9 +104,15 @@ export function TransferRow({
     const success = paidState.success ?? receivedState.success;
     const error = proofError ?? paidState.error ?? receivedState.error;
 
-    if (success) toast.success(success);
-    if (error) toast.error(error);
-  }, [paidState.error, paidState.success, proofError, receivedState.error, receivedState.success]);
+    if (success) {
+      toast.dismiss(statusToastId);
+      toast.success(success);
+    }
+    if (error) {
+      toast.dismiss(statusToastId);
+      toast.error(error);
+    }
+  }, [paidState.error, paidState.success, proofError, receivedState.error, receivedState.success, statusToastId]);
 
   async function handleProofSelected(event: ChangeEvent<HTMLInputElement>) {
     setProofError(null);
@@ -145,9 +152,11 @@ export function TransferRow({
         </div>
         <div className="text-sm text-zinc-600">
           MYR {transfer.amount}
-          {transfer.markedPaidAtUtc ? ` · paid ${new Date(transfer.markedPaidAtUtc).toLocaleString()}` : ""}
+          {transfer.markedPaidAtUtc
+            ? ` · ${t("settlements.paidAt").replace("{date}", new Date(transfer.markedPaidAtUtc).toLocaleString())}`
+            : ""}
           {transfer.markedReceivedAtUtc
-            ? ` · received ${new Date(transfer.markedReceivedAtUtc).toLocaleString()}`
+            ? ` · ${t("settlements.receivedAt").replace("{date}", new Date(transfer.markedReceivedAtUtc).toLocaleString())}`
             : ""}
         </div>
         <Alert tone="error">{proofError}</Alert>
@@ -157,7 +166,11 @@ export function TransferRow({
 
       <div className="grid gap-3 sm:min-w-72">
         {canMarkPaid ? (
-          <form action={paidFormAction} className="grid gap-3">
+          <form
+            action={paidFormAction}
+            className="grid gap-3"
+            onSubmit={() => toast.loading(t("common.saving"), { id: statusToastId })}
+          >
             <HiddenTransferFields
               fromDateUtc={fromDateUtc}
               proofScreenshotDataUrl={proofScreenshotDataUrl}
@@ -179,7 +192,11 @@ export function TransferRow({
         ) : null}
 
         {canMarkReceived ? (
-          <form action={receivedFormAction} className="grid gap-3">
+          <form
+            action={receivedFormAction}
+            className="grid gap-3"
+            onSubmit={() => toast.loading(t("common.saving"), { id: statusToastId })}
+          >
             <HiddenTransferFields
               fromDateUtc={fromDateUtc}
               proofScreenshotDataUrl=""

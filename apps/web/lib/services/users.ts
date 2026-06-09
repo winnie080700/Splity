@@ -16,6 +16,16 @@ export type UserPaymentProfile = {
   userId: string;
 };
 
+type GroupPaymentProfileRow = {
+  account_name: string | null;
+  account_number: string | null;
+  notes: string | null;
+  payee_name: string | null;
+  payment_method: string | null;
+  payment_qr_data_url: string | null;
+  user_id: string;
+};
+
 export function normalizeUsername(username: string | null | undefined) {
   const normalized = String(username ?? "")
     .trim()
@@ -66,6 +76,34 @@ export async function listUserPaymentProfiles(userIds: string[]) {
         paymentMethod: row.default_payment_method,
         paymentQrDataUrl: row.default_payment_qr_data_url,
         userId: row.id,
+      },
+    ])
+  );
+}
+
+export async function listGroupUserPaymentProfiles(groupId: string, userIds: string[]) {
+  const ids = Array.from(new Set(userIds.filter(Boolean)));
+  if (!ids.length) return new Map<string, UserPaymentProfile>();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_group_payment_profiles", {
+    p_group_id: groupId,
+    p_user_ids: ids,
+  });
+
+  if (error) return new Map<string, UserPaymentProfile>();
+
+  return new Map(
+    ((data ?? []) as GroupPaymentProfileRow[]).map((row) => [
+      row.user_id,
+      {
+        accountName: row.account_name,
+        accountNumber: row.account_number,
+        notes: row.notes,
+        payeeName: row.payee_name,
+        paymentMethod: row.payment_method,
+        paymentQrDataUrl: row.payment_qr_data_url,
+        userId: row.user_id,
       },
     ])
   );

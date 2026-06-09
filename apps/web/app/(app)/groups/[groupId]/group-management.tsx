@@ -48,6 +48,7 @@ export function GroupManagement({
     initialState
   );
   const { t } = useTranslation();
+  const statusToastId = "group-management-status";
   const statusOptions = [
     { label: t("groups.status.unresolved"), value: "0" },
     { label: t("groups.status.settling"), value: "1" },
@@ -63,8 +64,14 @@ export function GroupManagement({
   }, [renameState.error, renameState.success]);
 
   useEffect(() => {
-    if (statusState.success) toast.success(statusState.success);
-    if (statusState.error) toast.error(statusState.error);
+    if (statusState.success) {
+      toast.dismiss(statusToastId);
+      toast.success(statusState.success);
+    }
+    if (statusState.error) {
+      toast.dismiss(statusToastId);
+      toast.error(statusState.error);
+    }
   }, [statusState.error, statusState.success]);
 
   return (
@@ -87,7 +94,11 @@ export function GroupManagement({
         </div>
       </form>
 
-      <form action={statusAction} className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <form
+        action={statusAction}
+        className="grid gap-3 sm:grid-cols-[1fr_auto]"
+        onSubmit={() => toast.loading(t("settings.updating"), { id: statusToastId })}
+      >
         <div className="grid gap-3">
           <Alert tone="error">{statusState.error}</Alert>
           <Alert tone="success">{statusState.success}</Alert>

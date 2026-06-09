@@ -101,6 +101,7 @@ export function GroupHeaderActions({
   const { t } = useTranslation();
   const isUnresolved = status === GROUP_STATUS.unresolved;
   const isSettling = status === GROUP_STATUS.settling;
+  const statusToastId = "group-status-action";
 
   useEffect(() => {
     if (renameState.success) {
@@ -112,10 +113,14 @@ export function GroupHeaderActions({
 
   useEffect(() => {
     if (statusState.success) {
+      toast.dismiss(statusToastId);
       toast.success(statusState.success);
       setOpenModal(null);
     }
-    if (statusState.error) toast.error(statusState.error);
+    if (statusState.error) {
+      toast.dismiss(statusToastId);
+      toast.error(statusState.error);
+    }
   }, [statusState.error, statusState.success]);
 
   return (
@@ -186,7 +191,11 @@ export function GroupHeaderActions({
 
       {openModal === "settling" ? (
         <Modal onClose={() => setOpenModal(null)} title={t("groupDetail.markAsSettling")}>
-          <form action={statusAction} className="grid gap-4">
+          <form
+            action={statusAction}
+            className="grid gap-4"
+            onSubmit={() => toast.loading(t("settings.updating"), { id: statusToastId })}
+          >
             <input name="status" type="hidden" value={GROUP_STATUS.settling} />
             <p className="text-sm leading-6 text-[var(--splity-muted)]">
               {t("groupDetail.statusProgressConfirm")}
@@ -205,7 +214,11 @@ export function GroupHeaderActions({
 
       {openModal === "settled" ? (
         <Modal onClose={() => setOpenModal(null)} title={t("groupDetail.markAsSettled")}>
-          <form action={statusAction} className="grid gap-4">
+          <form
+            action={statusAction}
+            className="grid gap-4"
+            onSubmit={() => toast.loading(t("settings.updating"), { id: statusToastId })}
+          >
             <input name="status" type="hidden" value={GROUP_STATUS.settled} />
             <p className="text-sm leading-6 text-[var(--splity-muted)]">
               {t("groupDetail.statusProgressConfirm")}

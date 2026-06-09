@@ -563,6 +563,18 @@ export type Database = {
           participant_id: string
         }[]
       }
+      list_group_payment_profiles: {
+        Args: { p_group_id: string; p_user_ids: string[] }
+        Returns: {
+          account_name: string | null
+          account_number: string | null
+          notes: string | null
+          payee_name: string | null
+          payment_method: string | null
+          payment_qr_data_url: string | null
+          user_id: string
+        }[]
+      }
       record_settlement_action: {
         Args: {
           p_action: string

@@ -6,9 +6,11 @@ import { T } from "../i18n/t";
 export function TransferPerson({
   label,
   participant,
+  status,
 }: {
   label: ReactNode;
   participant?: Participant;
+  status?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -29,6 +31,7 @@ export function TransferPerson({
             <T k="groups.manual" />
           )}
         </p>
+        {status ? <div className="mt-2">{status}</div> : null}
       </div>
     </div>
   );

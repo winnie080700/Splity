@@ -35,7 +35,9 @@ export type ActiveSettlementShare = {
 };
 
 export type PublicShareTransfer = {
+  from_participant_id?: string;
   from_name: string;
+  to_participant_id?: string;
   to_name: string;
   amount: string;
   status: number;

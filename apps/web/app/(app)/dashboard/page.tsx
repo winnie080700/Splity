@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingLink } from "@/components/ui/route-toast";
 import { getAppUser, requireUser } from "@/lib/auth/server";
 import type { BillSummary } from "@/lib/calculations/bill-read-projection";
 import { listBills } from "@/lib/services/bills";
@@ -103,7 +104,7 @@ export default async function DashboardPage() {
   const [billEntries, settlementEntries] = await Promise.all([
     Promise.all(groups.map(async (group) => [group.id, await listBills(group.id).catch(() => [])] as const)),
     Promise.all(
-      groups.slice(0, 8).map(async (group) => ({
+      groups.map(async (group) => ({
         group,
         settlement: await getSettlement(group.id).catch(() => null),
       }))
@@ -122,12 +123,15 @@ export default async function DashboardPage() {
   const allBills = billEntries.flatMap(([, bills]) => bills);
   const activeGroups = groups.slice(0, 4);
   const settlementRows = settlementEntries
+    .filter((entry) => (isGroupStatus(entry.group.status) ? entry.group.status : GROUP_STATUS.unresolved) !== GROUP_STATUS.settled)
     .flatMap((entry) =>
-      (entry.settlement?.transfers ?? []).map((transfer) => ({
-        group: entry.group,
-        settlement: entry.settlement,
-        transfer,
-      }))
+      (entry.settlement?.transfers ?? [])
+        .filter((transfer) => transfer.status !== 2)
+        .map((transfer) => ({
+          group: entry.group,
+          settlement: entry.settlement,
+          transfer,
+        }))
     )
     .slice(0, 4);
   const currentParticipantByGroup = new Map(
@@ -254,30 +258,6 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="grid gap-3 lg:grid-cols-3">
-        <AttentionCard
-          count={unresolvedCount}
-          href="/dashboard"
-          icon={<AlertCircle className="h-5 w-5" />}
-          label={<T k="dashboard.unresolvedGroupsShort" />}
-          tone="rose"
-        />
-        <AttentionCard
-          count={invitations.length}
-          href="/invitations"
-          icon={<Clock3 className="h-5 w-5" />}
-          label={<T k="dashboard.pendingInvitesShort" />}
-          tone="gold"
-        />
-        <AttentionCard
-          count={emptyBillGroups}
-          href="/dashboard"
-          icon={<Inbox className="h-5 w-5" />}
-          label={<T k="dashboard.emptyBillGroupsShort" />}
-          tone="navy"
-        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
@@ -534,9 +514,10 @@ function ActiveGroupRow({
   const participantLabels = (settlement?.participants ?? []).slice(0, 4);
 
   return (
-    <Link
+    <LoadingLink
       className="grid gap-4 rounded-[14px] border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/45 p-4 transition hover:border-[var(--splity-line-strong)] sm:grid-cols-[minmax(0,1.4fr)_minmax(150px,0.6fr)_120px] sm:items-center"
       href={`/groups/${group.id}`}
+      loadingKey="groups.loadingDetail"
     >
       <div className="min-w-0">
         <h3 className="truncate  text-lg font-bold tracking-tight">{group.name}</h3>
@@ -597,7 +578,7 @@ function ActiveGroupRow({
           {bills.length ? signedMoney(currentBalance ?? 0) : <T k="groups.noBills" />}
         </div>
       </div>
-    </Link>
+    </LoadingLink>
   );
 }
 
@@ -613,24 +594,24 @@ function SettlementQueueRow({
   transfer: SettlementTransferDto;
 }) {
   const participants = new Map((settlement?.participants ?? []).map((participant) => [participant.id, participant.name]));
-  const from = participants.get(transfer.fromParticipantId) ?? "Unknown";
-  const to = participants.get(transfer.toParticipantId) ?? "Unknown";
+  const from = participants.get(transfer.fromParticipantId);
+  const to = participants.get(transfer.toParticipantId);
   const isCurrentPayer = currentParticipantId === transfer.fromParticipantId;
   const isCurrentReceiver = currentParticipantId === transfer.toParticipantId;
   const signedAmount = isCurrentReceiver ? Number(transfer.amount) : isCurrentPayer ? -Number(transfer.amount) : Number(transfer.amount);
 
   return (
-    <Link
+    <LoadingLink
       className="grid gap-3 rounded-[14px] border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/45 p-4 transition hover:border-[var(--splity-line-strong)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
       href={`/groups/${group.id}/settlements`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--splity-navy)]  text-xs font-bold text-white">
-          {initials(isCurrentPayer ? "You" : from)}
+          {isCurrentPayer ? "Y" : initials(from ?? "")}
         </span>
         <div className="min-w-0">
           <div className="truncate text-sm font-bold">
-            {isCurrentPayer ? "You" : from} → {isCurrentReceiver ? "You" : to}
+            {isCurrentPayer ? <T k="dashboard.you" /> : (from ?? <T k="groupDetail.unknown" />)} → {isCurrentReceiver ? <T k="dashboard.you" /> : (to ?? <T k="groupDetail.unknown" />)}
           </div>
           <div className="mt-1 truncate  text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
             {group.name}
@@ -650,7 +631,7 @@ function SettlementQueueRow({
           {isCurrentPayer ? <T k="dashboard.payNow" /> : <T k="dashboard.remind" />}
         </span>
       </div>
-    </Link>
+    </LoadingLink>
   );
 }
 
