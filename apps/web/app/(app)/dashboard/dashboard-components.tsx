@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { T } from "@/components/i18n/t";
 import { Badge } from "@/components/ui/badge";
+import { LoadingLink } from "@/components/ui/route-toast";
 import type { BillSummary } from "@/lib/calculations/bill-read-projection";
 import { GROUP_STATUS, isGroupStatus, type GroupSummary } from "@/lib/services/groups";
 import type { SettlementResultDto, SettlementTransferDto } from "@/lib/services/settlements";
@@ -151,9 +152,10 @@ export function ActiveGroupRow({
   const participantLabels = (settlement?.participants ?? []).slice(0, 4);
 
   return (
-    <Link
+    <LoadingLink
       className="grid gap-4 rounded-[14px] border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/45 p-4 transition hover:border-[var(--splity-line-strong)] sm:grid-cols-[minmax(0,1.4fr)_minmax(150px,0.6fr)_120px] sm:items-center"
       href={`/groups/${group.id}`}
+      loadingKey="groups.loadingDetail"
     >
       <div className="min-w-0">
         <h3 className="truncate  text-lg font-bold tracking-tight">{group.name}</h3>
@@ -217,7 +219,7 @@ export function ActiveGroupRow({
           {bills.length ? signedMoney(currentBalance ?? 0) : <T k="groups.noBills" />}
         </div>
       </div>
-    </Link>
+    </LoadingLink>
   );
 }
 

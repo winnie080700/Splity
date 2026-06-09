@@ -28,10 +28,11 @@ export default async function DashboardPage() {
     listAccessibleGroupSummaries(),
     listMyInvitations().catch(() => []),
   ]);
+  const groupsWithOpenSettlements = groups.filter((group) => group.status !== GROUP_STATUS.settled);
   const [billEntries, settlementEntries] = await Promise.all([
     Promise.all(groups.map(async (group) => [group.id, await listBills(group.id).catch(() => [])] as const)),
     Promise.all(
-      groups.slice(0, 8).map(async (group) => ({
+      groupsWithOpenSettlements.map(async (group) => ({
         group,
         settlement: await getSettlement(group.id).catch(() => null),
       }))
@@ -51,11 +52,13 @@ export default async function DashboardPage() {
   const activeGroups = groups.slice(0, 4);
   const settlementRows = settlementEntries
     .flatMap((entry) =>
-      (entry.settlement?.transfers ?? []).map((transfer) => ({
-        group: entry.group,
-        settlement: entry.settlement,
-        transfer,
-      }))
+      (entry.settlement?.transfers ?? [])
+        .filter((transfer) => transfer.status !== 2)
+        .map((transfer) => ({
+          group: entry.group,
+          settlement: entry.settlement,
+          transfer,
+        }))
     )
     .slice(0, 4);
   const currentParticipantByGroup = new Map(

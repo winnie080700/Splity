@@ -1,9 +1,10 @@
 import type { Participant } from "@/lib/services/participants";
 import type { SettlementResultDto } from "@/lib/services/settlements";
-import { listUserPaymentProfiles } from "@/lib/services/users";
+import { listGroupUserPaymentProfiles } from "@/lib/services/users";
 import type { SettlementReceiverInfo } from "./share-settlement-modal";
 
 export async function buildSettlementReceiverInfos(
+  groupId: string,
   participants: Participant[],
   settlement: SettlementResultDto | null
 ): Promise<SettlementReceiverInfo[]> {
@@ -18,7 +19,7 @@ export async function buildSettlementReceiverInfos(
   const invitedUserIds = receiverIds
     .map((participantId) => participantById.get(participantId)?.invited_user_id)
     .filter((id): id is string => Boolean(id));
-  const profiles = await listUserPaymentProfiles(invitedUserIds);
+  const profiles = await listGroupUserPaymentProfiles(groupId, invitedUserIds);
 
   return receiverIds.map((participantId) => {
     const participant = participantById.get(participantId);

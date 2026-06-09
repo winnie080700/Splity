@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Pencil, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -78,8 +78,20 @@ export function GroupHeaderActions({
     initialState
   );
   const { t } = useTranslation();
+  const statusToastId = useRef<string | number | null>(null);
   const isUnresolved = status === GROUP_STATUS.unresolved;
   const isSettling = status === GROUP_STATUS.settling;
+
+  function startStatusToast() {
+    if (statusToastId.current !== null) toast.dismiss(statusToastId.current);
+    statusToastId.current = toast.loading(t("settings.updating"));
+  }
+
+  function dismissStatusToast() {
+    if (statusToastId.current === null) return;
+    toast.dismiss(statusToastId.current);
+    statusToastId.current = null;
+  }
 
   useEffect(() => {
     if (renameState.success) {
@@ -91,10 +103,14 @@ export function GroupHeaderActions({
 
   useEffect(() => {
     if (statusState.success) {
+      dismissStatusToast();
       toast.success(statusState.success);
       setOpenModal(null);
     }
-    if (statusState.error) toast.error(statusState.error);
+    if (statusState.error) {
+      dismissStatusToast();
+      toast.error(statusState.error);
+    }
   }, [statusState.error, statusState.success]);
 
   return (
@@ -168,7 +184,7 @@ export function GroupHeaderActions({
               <AlertDialogTitle>{t("groupDetail.markAsSettling")}</AlertDialogTitle>
               <AlertDialogDescription>{t("groupDetail.statusProgressConfirm")}</AlertDialogDescription>
             </AlertDialogHeader>
-          <form action={statusAction} className="grid gap-4">
+          <form action={statusAction} className="grid gap-4" onSubmit={startStatusToast}>
             <input name="status" type="hidden" value={GROUP_STATUS.settling} />
             <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
@@ -190,7 +206,7 @@ export function GroupHeaderActions({
               <AlertDialogTitle>{t("groupDetail.markAsSettled")}</AlertDialogTitle>
               <AlertDialogDescription>{t("groupDetail.statusProgressConfirm")}</AlertDialogDescription>
             </AlertDialogHeader>
-          <form action={statusAction} className="grid gap-4">
+          <form action={statusAction} className="grid gap-4" onSubmit={startStatusToast}>
             <input name="status" type="hidden" value={GROUP_STATUS.settled} />
             <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">

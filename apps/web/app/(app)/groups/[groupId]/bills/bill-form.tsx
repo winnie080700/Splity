@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { clearRouteSuccess, queueRouteSuccess } from "@/components/ui/route-toast";
 import { Select } from "@/components/ui/select";
 import { calculateBillShares } from "@/lib/calculations/bill-calculator";
 import { FEE_TYPE, SPLIT_MODE, type FeeType, type SplitMode } from "@/lib/calculations/types";
@@ -247,11 +248,18 @@ export function BillForm({
   const disabled = !canEdit || participants.length === 0;
 
   useEffect(() => {
-    if (state.error) toast.error(state.error);
+    if (state.error) {
+      clearRouteSuccess();
+      toast.error(state.error);
+    }
   }, [state.error]);
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form
+      action={formAction}
+      className="grid gap-5"
+      onSubmit={() => queueRouteSuccess("bills.saved")}
+    >
       <input name="payload" type="hidden" value={payload} />
       <Alert tone="error">{state.error}</Alert>
       {!canEdit ? <Alert tone="info">{t("bills.groupLocked")}</Alert> : null}

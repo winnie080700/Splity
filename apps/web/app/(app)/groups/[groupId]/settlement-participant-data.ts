@@ -4,7 +4,7 @@ import type { SettlementResultDto, SettlementTransferDto } from "@/lib/services/
 import { formatTableDate, money } from "@/lib/services/utils";
 
 export type ParticipantSettlementRole = "balanced" | "payer" | "receiver";
-export type ParticipantPaymentStatus = "balanced" | "markedPaid" | "pending" | "received";
+export type ParticipantPaymentStatus = "balanced" | "markedPaid" | "paid" | "pending" | "received";
 
 export type ParticipantSettlementBill = {
   date: string;
@@ -52,8 +52,21 @@ function roleFromNetAmount(netAmount: string): ParticipantSettlementRole {
   return "balanced";
 }
 
-function paymentStatusFromTransfers(transfers: ParticipantSettlementTransfer[]): ParticipantPaymentStatus {
+function paymentStatusFromTransfers(
+  role: ParticipantSettlementRole,
+  transfers: ParticipantSettlementTransfer[]
+): ParticipantPaymentStatus {
   if (!transfers.length) return "balanced";
+  if (role === "payer") {
+    const outgoingTransfers = transfers.filter((transfer) => transfer.direction === "pay");
+    return outgoingTransfers.every((transfer) => transfer.status >= 1) ? "paid" : "pending";
+  }
+  if (role === "receiver") {
+    const incomingTransfers = transfers.filter((transfer) => transfer.direction === "receive");
+    if (incomingTransfers.every((transfer) => transfer.status === 2)) return "received";
+    if (incomingTransfers.some((transfer) => transfer.status === 1)) return "markedPaid";
+    return "pending";
+  }
   if (transfers.every((transfer) => transfer.status === 2)) return "received";
   if (transfers.some((transfer) => transfer.status === 1)) return "markedPaid";
   return "pending";
@@ -138,6 +151,7 @@ export function buildParticipantSettlementCards({
 
   return participants.map((participant) => {
     const netAmount = balanceByParticipantId.get(participant.id) ?? "0.00";
+    const role = roleFromNetAmount(netAmount);
     const transfers = (settlement?.transfers ?? [])
       .map((transfer) => transferForParticipant(transfer, participant.id, participantsById))
       .filter((transfer): transfer is ParticipantSettlementTransfer => Boolean(transfer));
@@ -150,9 +164,9 @@ export function buildParticipantSettlementCards({
       bills: participantBills,
       name: participant.name,
       netAmount: money(netAmount),
-      paymentStatus: paymentStatusFromTransfers(transfers),
+      paymentStatus: paymentStatusFromTransfers(role, transfers),
       participantId: participant.id,
-      role: roleFromNetAmount(netAmount),
+      role,
       transferCount: transfers.length,
       transfers,
     };

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { T } from "@/components/i18n/t";
+import { LoadingLink } from "@/components/ui/route-toast";
 import { GROUP_STATUS, getGroup, isGroupStatus } from "@/lib/services/groups";
 import { listBillDetails } from "@/lib/services/bills";
 import { listParticipants } from "@/lib/services/participants";
@@ -64,7 +65,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const fees = groupFees(bills);
   const transfersPending = pendingTransferCount(settlement);
   const groupHref = `/groups/${group.id}`;
-  const receiverInfos = await buildSettlementReceiverInfos(participants, settlement);
+  const receiverInfos = await buildSettlementReceiverInfos(groupId, participants, settlement);
   const settlementCards = buildParticipantSettlementCards({
     bills,
     participants,
@@ -74,12 +75,13 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   return (
     <div className="mx-auto grid w-full max-w-[1640px] gap-5 sm:gap-7">
       <nav className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--splity-muted)]">
-        <Link
+        <LoadingLink
           className="inline-flex shrink-0 items-center gap-2 transition hover:text-[var(--splity-ink)]"
-          href="/groups">
+          href="/groups"
+          loadingKey="groups.returning">
           <ArrowLeft className="h-4 w-4" />
           <T k="dashboard.groupsTitle" />
-        </Link>
+        </LoadingLink>
         <span className="shrink-0">/</span>
         <span className="min-w-0 truncate text-[var(--splity-ink)]">{group.name}</span>
       </nav>

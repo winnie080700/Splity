@@ -26,6 +26,7 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
+import { LoadingLink } from "@/components/ui/route-toast";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -589,13 +590,14 @@ export function CardActions({ groupId, groupName }: CardActionsProps) {
   return (
     <>
       <div className="absolute bottom-4 right-4 z-20 flex gap-2 opacity-100 transition duration-200 sm:bottom-5 sm:right-5 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100">
-        <Link
+        <LoadingLink
           aria-label={t("groupsView.viewGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
           href={`/groups/${groupId}`}
+          loadingKey="groups.loadingDetail"
         >
           <Eye className="h-4 w-4" />
-        </Link>
+        </LoadingLink>
         <button
           aria-label={t("groupsView.editGroup")}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"

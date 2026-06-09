@@ -17,7 +17,9 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { BrandMark } from "@/components/brand/brand-mark";
+import { LanguageSelect } from "@/components/i18n/language-select";
 import { T } from "@/components/i18n/t";
+import { consumeRouteToasts } from "@/components/ui/route-toast";
 import { Spinner } from "@/components/ui/spinner";
 import { signOut } from "@/lib/auth/actions";
 import { useTranslation } from "@/lib/i18n";
@@ -44,7 +46,7 @@ function initial(value: string) {
   return value.trim().charAt(0).toUpperCase() || "S";
 }
 
-function SidebarSignOutButton() {
+function SidebarSignOutButton({ collapsed = false }: { collapsed?: boolean }) {
   const { pending } = useFormStatus();
   const toastId = useRef<string | number | null>(null);
   const { t } = useTranslation();
@@ -67,7 +69,10 @@ function SidebarSignOutButton() {
   return (
     <button
       aria-label={t("dashboard.signOut")}
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--splity-bg)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-line)] hover:text-[var(--splity-ink)] disabled:cursor-not-allowed disabled:opacity-60"
+      className={[
+        "inline-flex shrink-0 items-center justify-center rounded-lg text-[var(--splity-muted)] transition hover:bg-[var(--splity-line)] hover:text-[var(--splity-ink)] disabled:cursor-not-allowed disabled:opacity-60",
+        collapsed ? "h-9 w-9 bg-white shadow-sm" : "h-8 w-8 bg-[var(--splity-bg)]",
+      ].join(" ")}
       disabled={pending}
       type="submit"
     >
@@ -187,6 +192,10 @@ export function AppShell({
     setCollapsed(window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true");
   }, []);
 
+  useEffect(() => {
+    consumeRouteToasts(t);
+  }, [pathname, t]);
+
   function toggleCollapsed() {
     setCollapsed((current) => {
       const next = !current;
@@ -271,7 +280,7 @@ export function AppShell({
           </button>
         </div>
 
-        <div className={["grid gap-5", collapsed ? "w-full" : ""].join(" ")}>
+        <div className={["grid min-h-0 flex-1 content-start gap-5 overflow-y-auto", collapsed ? "w-full" : ""].join(" ")}>
           <nav className={["grid gap-1", collapsed ? "justify-items-center" : ""].join(" ")}>
             {collapsed ? null : (
               <div className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--splity-muted)] transition-opacity duration-200">
@@ -295,18 +304,22 @@ export function AppShell({
           </nav>
         </div>
 
-        <div className="flex-1" />
-
         <div
           className={[
-            "flex items-center gap-3 overflow-hidden rounded-[14px] border border-[var(--splity-line)] bg-white shadow-sm transition-all duration-300 ease-out",
-            collapsed ? "h-11 w-11 justify-center p-0" : "p-3",
+            "shrink-0 overflow-hidden rounded-[14px] border border-[var(--splity-line)] bg-white shadow-sm transition-all duration-300 ease-out",
+            collapsed
+              ? "mx-auto grid w-11 justify-items-center gap-2 border-0 bg-transparent p-0 shadow-none"
+              : "flex items-center gap-3 p-3",
           ].join(" ")}
         >
           <span className="inline-flex h-8 w-8 shrink-0 rotate-[-3deg] items-center justify-center rounded-[10px] bg-[var(--splity-navy)] splity-display text-sm font-extrabold text-white">
             {initial(userName || userEmail)}
           </span>
-          {collapsed ? null : (
+          {collapsed ? (
+            <form action={signOut}>
+              <SidebarSignOutButton collapsed />
+            </form>
+          ) : (
             <>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{userName}</div>
@@ -339,8 +352,13 @@ export function AppShell({
         </div>
       </div>
 
-      <section className="w-full min-w-0 overflow-x-clip px-3 py-4 pb-24 sm:px-6 lg:px-10 lg:py-6 lg:pb-6">
-        {children}
+      <section className="flex w-full min-w-0 flex-col overflow-x-clip px-3 pb-24 pt-4 sm:px-6 lg:px-10 lg:pb-2 lg:pt-6">
+        <div className="min-w-0 flex-1">{children}</div>
+        <footer className="mt-6 hidden items-center justify-between gap-3 border-t border-[var(--splity-line)] px-1 py-2 text-[10px] uppercase tracking-[0.06em] text-[var(--splity-muted)] lg:flex">
+          <span><T k="app.footerLeft" /></span>
+          <span><T k="app.footerRight" /></span>
+          <LanguageSelect />
+        </footer>
       </section>
 
       <nav

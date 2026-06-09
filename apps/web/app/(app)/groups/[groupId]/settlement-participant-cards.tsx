@@ -33,6 +33,7 @@ const roleStripe: Record<ParticipantSettlementRole, string> = {
 const paymentStatusTone = {
   balanced: "neutral",
   markedPaid: "amber",
+  paid: "green",
   pending: "red",
   received: "green",
 } satisfies Record<ParticipantPaymentStatus, "amber" | "green" | "neutral" | "red">;
@@ -313,6 +314,7 @@ function roleLabelKey(role: ParticipantSettlementRole): MessageKey {
 function paymentStatusLabelKey(status: ParticipantPaymentStatus): MessageKey {
   if (status === "pending") return "settlements.paymentStatus.pending";
   if (status === "markedPaid") return "settlements.paymentStatus.markedPaid";
+  if (status === "paid") return "settlements.paymentStatus.paid";
   if (status === "received") return "settlements.paymentStatus.received";
   return "settlements.paymentStatus.balanced";
 }
