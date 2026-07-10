@@ -1,4 +1,5 @@
 import { ArrowDownAZ } from "lucide-react";
+import Link from "next/link";
 
 import { T } from "@/components/i18n/t";
 
@@ -14,6 +15,12 @@ export function EmptyGroups() {
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--splity-muted)]">
         <T k="dashboard.noGroupsBody" />
       </p>
+      <Link
+        className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#087f6f] px-5 text-sm font-bold text-white shadow-[0_10px_22px_rgba(8,127,111,0.18)] transition hover:bg-[#066c60]"
+        href="/groups/create"
+      >
+        <T k="groupsView.createGroup" />
+      </Link>
     </div>
   );
 }

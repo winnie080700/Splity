@@ -1,10 +1,11 @@
-import Link from "next/link";
+"use client";
+
 import { ArrowUpDown, Check } from "lucide-react";
 
 import { T } from "@/components/i18n/t";
 import type { MessageKey } from "@/lib/i18n";
 import type { SortMode } from "./types";
-import { buildHref } from "./utils";
+import { useGroupsSearch } from "./groups-search";
 
 const sortLabelKeys: Record<SortMode, MessageKey> = {
   name: "groupsView.sortName",
@@ -12,7 +13,9 @@ const sortLabelKeys: Record<SortMode, MessageKey> = {
   oldest: "groupsView.sortOldest",
 };
 
-export function SortMenu({ params, sort }: { params: URLSearchParams; sort: SortMode }) {
+export function SortMenu() {
+  const { setSort, sort } = useGroupsSearch();
+
   return (
     <details className="group relative">
       <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-3 text-sm font-bold text-[var(--splity-ink)] transition hover:border-[var(--splity-line-strong)]">
@@ -24,14 +27,15 @@ export function SortMenu({ params, sort }: { params: URLSearchParams; sort: Sort
       </summary>
       <div className="absolute right-0 z-10 mt-2 grid w-36 overflow-hidden rounded-xl border border-[var(--splity-line)] bg-white p-1 text-sm font-semibold shadow-lg">
         {(["newest", "oldest", "name"] as SortMode[]).map((mode) => (
-          <Link
-            className="flex h-9 items-center justify-between rounded-lg px-3 text-[var(--splity-ink)] hover:bg-[var(--splity-bg)]"
-            href={buildHref(params, { sort: mode === "newest" ? null : mode })}
+          <button
+            className="flex h-9 items-center justify-between rounded-lg px-3 text-left text-[var(--splity-ink)] hover:bg-[var(--splity-bg)]"
             key={mode}
+            onClick={() => setSort(mode)}
+            type="button"
           >
             <T k={sortLabelKeys[mode]} />
             {sort === mode ? <Check className="h-3.5 w-3.5" /> : null}
-          </Link>
+          </button>
         ))}
       </div>
     </details>

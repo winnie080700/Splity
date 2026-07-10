@@ -19,10 +19,12 @@ const initialState: InvitationActionState = { error: null, success: null };
 
 function InvitationActionButton({
   children,
+  compact = false,
   icon,
   variant = "primary",
 }: {
   children: ReactNode;
+  compact?: boolean;
   icon: ReactNode;
   variant?: "primary" | "secondary";
 }) {
@@ -46,9 +48,12 @@ function InvitationActionButton({
   return (
     <button
       className={[
-        "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60",
+        compact ? "h-7 whitespace-nowrap rounded-lg px-2.5 text-[11px]" : "h-11 w-full px-4",
         variant === "primary"
-          ? "bg-[var(--splity-navy)] text-white shadow-[0_12px_26px_rgba(27,42,107,0.20)] hover:bg-[#25377f]"
+          ? compact
+            ? "bg-[#087f6f] text-white shadow-[0_8px_18px_rgba(8,127,111,0.20)] hover:bg-[#066c60]"
+            : "bg-[var(--splity-navy)] text-white shadow-[0_12px_26px_rgba(27,42,107,0.20)] hover:bg-[#25377f]"
           : "border border-[var(--splity-line)] bg-white text-[var(--splity-ink)] hover:border-[var(--splity-line-strong)] hover:bg-[var(--splity-bg)]",
       ].join(" ")}
       disabled={pending}
@@ -58,7 +63,7 @@ function InvitationActionButton({
         <><Spinner /><T k="common.saving" /></>
       ) : (
         <>
-          {icon}
+          {compact ? null : icon}
           {children}
         </>
       )}
@@ -66,7 +71,13 @@ function InvitationActionButton({
   );
 }
 
-export function InvitationActionForms({ participantId }: { participantId: string }) {
+export function InvitationActionForms({
+  compact = false,
+  participantId,
+}: {
+  compact?: boolean;
+  participantId: string;
+}) {
   const [acceptState, acceptAction] = useActionState(acceptInvitationAction, initialState);
   const [declineState, declineAction] = useActionState(declineInvitationAction, initialState);
 
@@ -79,17 +90,17 @@ export function InvitationActionForms({ participantId }: { participantId: string
   }, [acceptState.error, acceptState.success, declineState.error, declineState.success]);
 
   return (
-    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-      <form action={declineAction}>
-        <input name="participantId" type="hidden" value={participantId} />
-        <InvitationActionButton icon={<X className="h-4 w-4" />} variant="secondary">
-          <T k="invitations.decline" />
-        </InvitationActionButton>
-      </form>
+    <div className={compact ? "flex shrink-0 justify-end gap-1.5" : "mt-4 grid gap-2 sm:grid-cols-2"}>
       <form action={acceptAction}>
         <input name="participantId" type="hidden" value={participantId} />
-        <InvitationActionButton icon={<Check className="h-4 w-4" />}>
+        <InvitationActionButton compact={compact} icon={<Check className="h-4 w-4" />}>
           <T k="invitations.accept" />
+        </InvitationActionButton>
+      </form>
+      <form action={declineAction}>
+        <input name="participantId" type="hidden" value={participantId} />
+        <InvitationActionButton compact={compact} icon={<X className="h-4 w-4" />} variant="secondary">
+          <T k="invitations.decline" />
         </InvitationActionButton>
       </form>
     </div>

@@ -1,8 +1,9 @@
-import { Clock3, Inbox, Mail, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Mail } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { T } from "@/components/i18n/t";
+import type { MessageKey } from "@/lib/i18n";
 import {
   listMyInvitations,
   listSentInvitations,
@@ -11,338 +12,350 @@ import {
 } from "@/lib/services/invitations";
 import { InvitationActionForms } from "./invitations-client-controls";
 
-const avatarColors = ["#c46920", "#2e8a5e", "#6b3ce7", "#1b2a6b", "#c24a4a"];
+const PAGE_SIZE = 5;
+
+type InvitationTab = "all" | "pending" | "sent" | "received";
+type InvitationSort = "newest" | "oldest";
+type FeedItem = {
+  createdAtUtc: string;
+  direction: "sent" | "received";
+  groupId: string;
+  groupName: string;
+  id: string;
+  participantId: string;
+  person: string;
+  status: "pending" | "accepted" | "declined";
+};
+
+type InvitationsPageProps = {
+  searchParams?: Promise<{ page?: string; sort?: string; tab?: string }>;
+};
+
+const tabs: { key: InvitationTab; label: MessageKey }[] = [
+  { key: "all", label: "invitations.all" },
+  { key: "pending", label: "invitations.pending" },
+  { key: "sent", label: "invitations.sent" },
+  { key: "received", label: "invitations.received" },
+];
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
-  })
-    .format(new Date(value))
-    .toUpperCase();
+  }).format(new Date(value));
 }
 
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "S"
-  );
+function hrefFor(input: { page?: number; sort: InvitationSort; tab: InvitationTab }) {
+  const params = new URLSearchParams();
+  if (input.tab !== "all") params.set("tab", input.tab);
+  if (input.sort !== "newest") params.set("sort", input.sort);
+  if (input.page && input.page > 1) params.set("page", String(input.page));
+  const query = params.toString();
+  return query ? `/invitations?${query}` : "/invitations";
 }
 
-type InvitationsPageProps = {
-  searchParams?: Promise<{ tab?: string }>;
-};
+function readPage(value: string | undefined) {
+  const page = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(page) && page > 0 ? page : 1;
+}
+
+function readSort(value: string | undefined): InvitationSort {
+  return value === "oldest" ? "oldest" : "newest";
+}
+
+function readTab(value: string | undefined): InvitationTab {
+  return value === "pending" || value === "sent" || value === "received" ? value : "all";
+}
+
+function statusKey(status: FeedItem["status"]): MessageKey {
+  if (status === "accepted") return "groups.invitation.accepted";
+  if (status === "declined") return "groups.invitation.declined";
+  return "groups.invitation.pending";
+}
+
+function statusClasses(status: FeedItem["status"]) {
+  if (status === "accepted") return "bg-emerald-50 text-[#087f6f]";
+  if (status === "declined") return "bg-red-50 text-[var(--splity-rose)]";
+  return "bg-amber-50 text-[#bf7200]";
+}
+
+function toStatus(status: number): FeedItem["status"] {
+  if (status === 2) return "accepted";
+  if (status === 3) return "declined";
+  return "pending";
+}
+
+function toFeedItems(invitations: Invitation[], sentInvitations: SentInvitation[]) {
+  return [
+    ...invitations.map((invitation) => ({
+      createdAtUtc: invitation.createdAtUtc,
+      direction: "received" as const,
+      groupId: invitation.groupId,
+      groupName: invitation.groupName,
+      id: `received-${invitation.participantId}`,
+      participantId: invitation.participantId,
+      person: invitation.invitedByName,
+      status: "pending" as const,
+    })),
+    ...sentInvitations.map((invitation) => ({
+      createdAtUtc: invitation.createdAtUtc,
+      direction: "sent" as const,
+      groupId: invitation.groupId,
+      groupName: invitation.groupName,
+      id: `sent-${invitation.participantId}`,
+      participantId: invitation.participantId,
+      person: invitation.inviteeUsername ? `@${invitation.inviteeUsername}` : invitation.inviteeName,
+      status: toStatus(invitation.status),
+    })),
+  ];
+}
 
 export default async function InvitationsPage({ searchParams }: InvitationsPageProps) {
-  let invitations: Invitation[] = [];
-  let sentInvitations: SentInvitation[] = [];
-
-  try {
-    [invitations, sentInvitations] = await Promise.all([
-      listMyInvitations(),
-      listSentInvitations(),
-    ]);
-  } catch {
-    invitations = [];
-    sentInvitations = [];
-  }
-
-  const tab = (await searchParams)?.tab === "sent" ? "sent" : "received";
-  const latestInvite = invitations[0];
+  const params = await searchParams;
+  const tab = readTab(params?.tab);
+  const sort = readSort(params?.sort);
+  const requestedPage = readPage(params?.page);
+  const [invitationsResult, sentInvitationsResult] = await Promise.allSettled([
+    listMyInvitations(),
+    listSentInvitations(),
+  ]);
+  const invitations: Invitation[] =
+    invitationsResult.status === "fulfilled" ? invitationsResult.value : [];
+  const sentInvitations: SentInvitation[] =
+    sentInvitationsResult.status === "fulfilled" ? sentInvitationsResult.value : [];
+  const items = toFeedItems(invitations, sentInvitations).sort((left, right) => {
+    const diff = Date.parse(right.createdAtUtc) - Date.parse(left.createdAtUtc);
+    return sort === "newest" ? diff : -diff;
+  });
+  const filteredItems = items.filter((item) => {
+    if (tab === "pending") return item.status === "pending";
+    if (tab === "sent") return item.direction === "sent";
+    if (tab === "received") return item.direction === "received";
+    return true;
+  });
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const page = Math.min(requestedPage, pageCount);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageItems = filteredItems.slice(start, start + PAGE_SIZE);
+  const showingFrom = filteredItems.length === 0 ? 0 : start + 1;
+  const showingTo = start + pageItems.length;
+  const tabCounts: Record<InvitationTab, number> = {
+    all: items.length,
+    pending: items.filter((item) => item.status === "pending").length,
+    received: items.filter((item) => item.direction === "received").length,
+    sent: items.filter((item) => item.direction === "sent").length,
+  };
 
   return (
-    <div className="mx-auto grid w-full max-w-[1640px] gap-5 sm:gap-7">
-      <header>
-        <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--splity-gold-strong)]" />
-          <T k="invitations.eyebrow" />
-        </p>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-[var(--splity-ink)] sm:mt-5 sm:text-6xl">
-          <T k="invitations.heading" />{" "}
-          <span className="font-normal italic text-[var(--splity-navy)]">
-            <T k="invitations.headingAccent" />
-          </span>{" "}
-          <span className="font-normal italic text-[var(--splity-navy)]">· {invitations.length}</span>
-        </h1>
-        <p className="mt-4 max-w-xl text-base leading-7 text-[var(--splity-muted)]">
-          <T k="invitations.body" />
-        </p>
+    <div className="grid gap-5">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="splity-display text-3xl font-bold tracking-tight text-[var(--splity-ink)]">
+            <T k="nav.invitations" />
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">
+            <T k="invitations.pageBody" />
+          </p>
+        </div>
+
+        <SortMenu sort={sort} tab={tab} />
       </header>
 
-      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-3 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            <StatusPill active={tab === "received"} count={invitations.length} href="/invitations" icon={<Inbox className="h-3.5 w-3.5" />}>
-              <T k="invitations.received" />
-            </StatusPill>
-            <StatusPill active={tab === "sent"} count={sentInvitations.length} href="/invitations?tab=sent" icon={<Mail className="h-3.5 w-3.5" />}>
-              <T k="invitations.sent" />
-            </StatusPill>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--splity-muted)]">
-            <span>
-              <T k="invitations.pendingCount" values={{ count: invitations.length }} />
+      <nav
+        className="splity-scrollbar-none flex gap-7 overflow-x-auto border-b border-[var(--splity-line)]"
+      >
+        {tabs.map((item) => (
+          <Link
+            aria-current={tab === item.key ? "page" : undefined}
+            className={[
+              "flex h-11 shrink-0 items-center gap-2 border-b-2 px-1 text-sm font-bold transition",
+              tab === item.key
+                ? "border-[#087f6f] text-[#087f6f]"
+                : "border-transparent text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
+            ].join(" ")}
+            href={hrefFor({ sort, tab: item.key })}
+            key={item.key}
+          >
+            <T k={item.label} />
+            <span className="rounded-full bg-[var(--splity-bg)] px-2 py-0.5 text-[11px] leading-none text-[var(--splity-muted)]">
+              {tabCounts[item.key]}
             </span>
-            <span className="hidden h-1 w-1 rounded-full bg-[var(--splity-line-strong)] sm:block" />
-            <span>
-              {latestInvite ? (
-                <T k="invitations.latest" values={{ date: formatDate(latestInvite.createdAtUtc) }} />
-              ) : (
-                <T k="invitations.latestEmpty" />
-              )}
-            </span>
-          </div>
-        </div>
-      </section>
+          </Link>
+        ))}
+      </nav>
 
-      {tab === "sent" ? (
-        sentInvitations.length === 0 ? (
-          <EmptySentInvitations />
+      <section className="overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white shadow-[0_12px_34px_rgba(12,21,56,0.06)]">
+        <div className="hidden grid-cols-[minmax(0,1.8fr)_160px_120px_180px] gap-5 border-b border-[var(--splity-line)] px-6 py-4 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--splity-muted)] md:grid">
+          <span><T k="invitations.tableInvitation" /></span>
+          <span><T k="invitations.status" /></span>
+          <span><T k="invitations.tableDate" /></span>
+          <span><T k="invitations.tableActions" /></span>
+        </div>
+
+        {pageItems.length === 0 ? (
+          <EmptyInvitations />
         ) : (
-          <section className="grid gap-4 xl:grid-cols-2">
-            {sentInvitations.map((invitation, index) => (
-              <SentInvitationCard
-                invitation={invitation}
-                key={invitation.participantId}
-                tone={avatarColors[index % avatarColors.length]}
-              />
-            ))}
-          </section>
-        )
-      ) : invitations.length === 0 ? (
-        <EmptyInvitations />
-      ) : (
-        <section className="grid gap-4 xl:grid-cols-2">
-          {invitations.map((invitation, index) => (
-            <InvitationCard
-              invitation={invitation}
-              key={invitation.participantId}
-              tone={avatarColors[index % avatarColors.length]}
+          pageItems.map((item) => <InvitationRow item={item} key={item.id} />)
+        )}
+
+        <footer className="flex flex-col gap-3 border-t border-[var(--splity-line)] px-5 py-3 text-sm text-[var(--splity-muted)] sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            <T
+              k="invitations.showing"
+              values={{ count: filteredItems.length, from: showingFrom, to: showingTo }}
             />
-          ))}
-        </section>
-      )}
+          </span>
+          <div className="flex items-center gap-2">
+            <PageLink
+              disabled={page <= 1}
+              href={hrefFor({ page: page - 1, sort, tab })}
+              label="groupsView.previousPage"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </PageLink>
+            <span className="grid h-8 min-w-8 place-items-center rounded-lg bg-[#087f6f] px-2 text-sm font-bold text-white">
+              {page}
+            </span>
+            <PageLink
+              disabled={page >= pageCount}
+              href={hrefFor({ page: page + 1, sort, tab })}
+              label="groupsView.nextPage"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </PageLink>
+          </div>
+        </footer>
+      </section>
     </div>
   );
 }
 
-function StatusPill({
-  active,
+function SortMenu({ sort, tab }: { sort: InvitationSort; tab: InvitationTab }) {
+  return (
+    <details className="group relative w-fit">
+      <summary className="flex h-10 cursor-pointer list-none items-center gap-3 rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[#087f6f] shadow-sm transition hover:border-[var(--splity-line-strong)] [&::-webkit-details-marker]:hidden">
+        <T k={sort === "newest" ? "invitations.newestFirst" : "invitations.oldestFirst"} />
+        <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 grid w-40 overflow-hidden rounded-xl border border-[var(--splity-line)] bg-white p-1 shadow-[0_18px_45px_rgba(12,21,56,0.14)]">
+        <Link className="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[var(--splity-bg)]" href={hrefFor({ sort: "newest", tab })}>
+          <T k="invitations.newestFirst" />
+        </Link>
+        <Link className="rounded-lg px-3 py-2 text-sm font-bold hover:bg-[var(--splity-bg)]" href={hrefFor({ sort: "oldest", tab })}>
+          <T k="invitations.oldestFirst" />
+        </Link>
+      </div>
+    </details>
+  );
+}
+
+function InvitationRow({ item }: { item: FeedItem }) {
+  return (
+    <article className="grid gap-3 border-b border-[var(--splity-line)] px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1.8fr)_160px_120px_180px] md:items-center md:gap-5 md:px-6">
+      <div className="min-w-0">
+        <h2 className="truncate text-base font-extrabold leading-6 text-[var(--splity-ink)]">
+          {item.groupName}
+        </h2>
+        <p className="mt-0.5 truncate text-sm leading-5 text-[var(--splity-muted)]">
+          <T k={item.direction === "sent" ? "invitations.sentTo" : "invitations.invitedByLabel"} />{" "}
+          {item.person}
+        </p>
+      </div>
+
+      <div>
+        <StatusBadge status={item.status} />
+      </div>
+
+      <time className="text-sm font-medium text-[var(--splity-muted)]" dateTime={item.createdAtUtc}>
+        {formatDate(item.createdAtUtc)}
+      </time>
+
+      <div className="flex justify-start md:justify-end">
+        <RowAction item={item} />
+      </div>
+    </article>
+  );
+}
+
+function StatusBadge({ status }: { status: FeedItem["status"] }) {
+  return (
+    <span className={["inline-flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-bold capitalize", statusClasses(status)].join(" ")}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <T k={statusKey(status)} />
+    </span>
+  );
+}
+
+function RowAction({ item }: { item: FeedItem }) {
+  if (item.direction === "received" && item.status === "pending") {
+    return <InvitationActionForms compact participantId={item.participantId} />;
+  }
+
+  if (item.status === "accepted") {
+    return (
+      <Link
+        className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--splity-line)] px-4 text-sm font-bold text-[#087f6f] transition hover:border-[#087f6f] hover:bg-emerald-50"
+        href={`/groups/${item.groupId}`}
+      >
+        <T k="invitations.viewGroup" />
+      </Link>
+    );
+  }
+
+  if (item.direction === "sent" && item.status === "pending") {
+    return (
+      <span className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--splity-line)] px-4 text-sm font-bold text-[#087f6f] opacity-60">
+        <T k="invitations.resend" />
+      </span>
+    );
+  }
+
+  return <span className="text-sm font-bold text-[var(--splity-muted)]">—</span>;
+}
+
+function PageLink({
   children,
-  count,
+  disabled,
   href,
-  icon,
-}: {
-  active?: boolean;
-  children: ReactNode;
-  count: number;
-  href: string;
-  icon: ReactNode;
-}) {
-  return (
-    <Link
-      className={[
-        "inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-bold sm:rounded-xl sm:px-4",
-        active
-          ? "border-[var(--splity-navy)] bg-[var(--splity-navy)] text-white shadow-[0_10px_22px_rgba(27,42,107,0.18)]"
-          : "border-[var(--splity-line)] bg-white text-[var(--splity-ink)]",
-      ].join(" ")}
-      href={href}
-    >
-      <span className={active ? "text-[var(--splity-gold)]" : "text-[var(--splity-muted)]"}>{icon}</span>
-      <span>{children}</span>
-      <span className={active ? "text-white/80" : "text-[var(--splity-muted)]"}>{count}</span>
-    </Link>
-  );
-}
-
-function InvitationCard({ invitation, tone }: { invitation: Invitation; tone: string }) {
-  return (
-    <article className="relative overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm transition sm:rounded-3xl sm:p-6 sm:hover:-translate-y-0.5 sm:hover:shadow-[0_18px_40px_rgba(12,21,56,0.08)]">
-      <span className="absolute inset-y-5 right-0 w-1 rounded-l-full bg-[var(--splity-gold-strong)]" />
-      <div className="flex min-w-0 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className="inline-flex h-11 w-11 shrink-0 rotate-[-3deg] items-center justify-center rounded-[14px] splity-display text-base font-extrabold text-white shadow-sm"
-            style={{ backgroundColor: tone }}
-          >
-            {initials(invitation.invitedByName)}
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
-              <T k="invitations.invitedByLabel" />
-            </p>
-            <p className="mt-1 truncate text-sm font-bold text-[var(--splity-ink)]">
-              {invitation.invitedByName}
-            </p>
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
-            <T k="invitations.sentOn" />
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--splity-gold-strong)]">
-            {formatDate(invitation.createdAtUtc)}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/35 p-5">
-        <h2 className="truncate text-xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-2xl">
-          {invitation.groupName}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">
-          <T k="invitations.cardBody" />
-        </p>
-
-        <div className="mt-5 grid gap-4 border-t border-dashed border-[var(--splity-line-strong)] pt-4 sm:grid-cols-3">
-          <InviteStat
-            icon={<Clock3 className="h-4 w-4" />}
-            label={<T k="invitations.status" />}
-            value={<T k="groups.invitation.pending" />}
-          />
-          <InviteStat
-            icon={<ShieldCheck className="h-4 w-4" />}
-            label={<T k="invitations.access" />}
-            value={<T k="invitations.memberAccess" />}
-          />
-          <InviteStat
-            icon={<Mail className="h-4 w-4" />}
-            label={<T k="invitations.receivedAt" />}
-            value={formatDate(invitation.createdAtUtc)}
-          />
-        </div>
-      </div>
-
-      <InvitationActionForms participantId={invitation.participantId} />
-    </article>
-  );
-}
-
-function SentInvitationCard({ invitation, tone }: { invitation: SentInvitation; tone: string }) {
-  const statusKey =
-    invitation.status === 2
-      ? "groups.invitation.accepted"
-      : invitation.status === 3
-        ? "groups.invitation.declined"
-        : "groups.invitation.pending";
-
-  return (
-    <article className="relative overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm transition sm:rounded-3xl sm:p-6 sm:hover:-translate-y-0.5 sm:hover:shadow-[0_18px_40px_rgba(12,21,56,0.08)]">
-      <span className="absolute inset-y-5 right-0 w-1 rounded-l-full bg-[var(--splity-navy)]" />
-      <div className="flex min-w-0 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className="inline-flex h-11 w-11 shrink-0 rotate-[-3deg] items-center justify-center rounded-[14px] splity-display text-base font-extrabold text-white shadow-sm"
-            style={{ backgroundColor: tone }}
-          >
-            {initials(invitation.inviteeName)}
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
-              <T k="invitations.sentTo" />
-            </p>
-            <p className="mt-1 truncate text-sm font-bold text-[var(--splity-ink)]">
-              {invitation.inviteeUsername ? `@${invitation.inviteeUsername}` : invitation.inviteeName}
-            </p>
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
-            <T k="invitations.sentOn" />
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--splity-gold-strong)]">
-            {formatDate(invitation.createdAtUtc)}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-[var(--splity-line)] bg-[color:var(--splity-bg)]/35 p-5">
-        <h2 className="truncate text-xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-2xl">
-          {invitation.groupName}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">
-          <T k="invitations.sentCardBody" />
-        </p>
-
-        <div className="mt-5 grid gap-4 border-t border-dashed border-[var(--splity-line-strong)] pt-4 sm:grid-cols-3">
-          <InviteStat
-            icon={<Clock3 className="h-4 w-4" />}
-            label={<T k="invitations.status" />}
-            value={<T k={statusKey} />}
-          />
-          <InviteStat
-            icon={<ShieldCheck className="h-4 w-4" />}
-            label={<T k="invitations.access" />}
-            value={<T k="invitations.memberAccess" />}
-          />
-          <InviteStat
-            icon={<Mail className="h-4 w-4" />}
-            label={<T k="invitations.sentOn" />}
-            value={formatDate(invitation.createdAtUtc)}
-          />
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function InviteStat({
-  icon,
   label,
-  value,
 }: {
-  icon: ReactNode;
-  label: ReactNode;
-  value: ReactNode;
+  children: ReactNode;
+  disabled: boolean;
+  href: string;
+  label: MessageKey;
 }) {
+  const className = "grid h-8 w-8 place-items-center rounded-lg border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-ink)]";
+
+  if (disabled) {
+    return (
+      <span aria-disabled="true" className={`${className} opacity-45`}>
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--splity-muted)]">
-        <span className="text-[var(--splity-navy)]/60">{icon}</span>
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="mt-2 truncate text-sm font-bold text-[var(--splity-ink)]">{value}</div>
-    </div>
+    <Link className={className} href={href}>
+      <span className="sr-only"><T k={label} /></span>
+      {children}
+    </Link>
   );
 }
 
 function EmptyInvitations() {
   return (
-    <section className="grid min-h-72 place-items-center rounded-3xl border border-dashed border-[var(--splity-line-strong)] bg-white/45 p-10 text-center">
+    <div className="grid min-h-64 place-items-center px-6 py-12 text-center">
       <div>
-        <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(27,42,107,0.10)] text-[var(--splity-navy)]">
-          <Mail className="h-6 w-6" />
+        <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(8,127,111,0.10)] text-[#087f6f]">
+          <Mail className="h-5 w-5" />
         </span>
-        <h2 className="mt-5 text-2xl font-bold text-[var(--splity-ink)]">
+        <h2 className="mt-4 text-lg font-bold text-[var(--splity-ink)]">
           <T k="invitations.emptyTitle" />
         </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--splity-muted)]">
+        <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-[var(--splity-muted)]">
           <T k="invitations.emptyBody" />
         </p>
       </div>
-    </section>
-  );
-}
-
-function EmptySentInvitations() {
-  return (
-    <section className="grid min-h-72 place-items-center rounded-3xl border border-dashed border-[var(--splity-line-strong)] bg-white/45 p-10 text-center">
-      <div>
-        <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(27,42,107,0.10)] text-[var(--splity-navy)]">
-          <Mail className="h-6 w-6" />
-        </span>
-        <h2 className="mt-5 text-2xl font-bold text-[var(--splity-ink)]">
-          <T k="invitations.emptySentTitle" />
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--splity-muted)]">
-          <T k="invitations.emptySentBody" />
-        </p>
-      </div>
-    </section>
+    </div>
   );
 }

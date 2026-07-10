@@ -4,371 +4,89 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Pencil,
+  LayoutGrid,
+  List,
   Plus,
   Search,
-  Trash2,
-  X,
 } from "lucide-react";
 import {
   Children,
-  createContext,
-  useActionState,
-  useContext,
   useEffect,
-  useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { useFormStatus } from "react-dom";
-import { toast } from "sonner";
 
 import { T } from "@/components/i18n/t";
-import { LoadingLink } from "@/components/ui/route-toast";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 import type { StatusFilter } from "./types";
-import {
-  createGroupFromGroupsAction,
-  deleteGroupFromGroupsAction,
-  renameGroupFromGroupsAction,
-  type GroupsPageActionState,
-} from "./actions";
+import { useGroupsSearch } from "./groups-search";
 
 type SearchableGroup = {
+  balance: number;
+  billCount: number;
+  createdAt: string;
+  createdAtMs: number;
   id: string;
+  memberCount: number;
   name: string;
+  statusLabelKey: MessageKey;
   status: StatusFilter;
-};
-
-type GroupsSearchContextValue = {
-  query: string;
-  setQuery: (query: string) => void;
-  status: StatusFilter;
-  setStatus: (status: StatusFilter) => void;
-};
-
-type CardActionsProps = {
-  groupId: string;
-  groupName: string;
 };
 
 const PAGE_SIZE = 6;
-const initialActionState: GroupsPageActionState = { error: null, success: null };
-const GroupsSearchContext = createContext<GroupsSearchContextValue | null>(null);
 
-function useGroupsSearch() {
-  const context = useContext(GroupsSearchContext);
-
-  if (!context) {
-    throw new Error("useGroupsSearch must be used within GroupsSearchProvider.");
-  }
-
-  return context;
-}
-
-export function GroupsSearchProvider({ children }: { children: ReactNode }) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const value = useMemo(() => ({ query, setQuery, status, setStatus }), [query, status]);
-
-  return <GroupsSearchContext.Provider value={value}>{children}</GroupsSearchContext.Provider>;
-}
-
-function SubmitButton({
-  children,
-  className,
-  pendingToastKey = "common.saving",
-}: {
-  children: ReactNode;
-  className?: string;
-  pendingToastKey?: MessageKey;
-}) {
-  const { pending } = useFormStatus();
-  const toastId = useRef<string | number | null>(null);
-  const { t } = useTranslation();
-
-  useEffect(() => {
-    if (pending && toastId.current === null) {
-      toastId.current = toast.loading(t(pendingToastKey));
-    }
-    if (!pending && toastId.current !== null) {
-      toast.dismiss(toastId.current);
-      toastId.current = null;
-    }
-
-    return () => {
-      if (toastId.current !== null) {
-        toast.dismiss(toastId.current);
-        toastId.current = null;
-      }
-    };
-  }, [pending, pendingToastKey, t]);
-
-  return (
-    <button
-      className={[
-        "inline-flex h-11 items-center justify-center rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white transition hover:bg-[#25377f] disabled:cursor-not-allowed disabled:opacity-60",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      disabled={pending}
-      type="submit"
-    >
-      {pending ? <><Spinner /><T k="common.saving" /></> : children}
-    </button>
-  );
-}
-
-function LiveGroupSearch() {
-  const { query, setQuery } = useGroupsSearch();
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[var(--splity-line)] bg-white px-3 shadow-[0_2px_8px_rgba(27,42,107,0.08)] transition sm:h-12 sm:px-4">
-      <Search className="h-4 w-4 shrink-0 text-[var(--splity-muted)]" />
-      <input
-        aria-label={t("groupsView.search")}
-        className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[var(--splity-ink)] outline-none placeholder:text-[var(--splity-muted)] sm:w-64"
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder={t("groupsView.search")}
-        value={query}
-      />
-      {query ? (
-        <button
-          aria-label={t("groupsView.clearSearch")}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--splity-muted)] transition hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]"
-          onClick={() => setQuery("")}
-          type="button"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function NewGroupModal({
-  onClose,
-  open,
-}: {
-  onClose: () => void;
-  open: boolean;
-}) {
-  const { t } = useTranslation();
-
-  if (!open) return null;
-
-  return (
-    <ModalFrame onClose={onClose}>
-      <div className="relative overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(27,42,107,0.10),rgba(233,177,66,0.18))] p-5">
-        <span className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/45" />
-        <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--splity-navy)] text-[var(--splity-gold)] shadow-lg">
-          <Plus className="h-5 w-5" />
-        </span>
-        <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
-          <T k="groupsView.eyebrow" />
-        </p>
-        <DialogTitle className="mt-2 text-3xl font-bold tracking-tight text-[var(--splity-ink)]">
-          <T k="groupsView.startTitle" />
-        </DialogTitle>
-        <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--splity-muted)]">
-          <T k="groupsView.startBody" />
-        </p>
-      </div>
-
-      <form action={createGroupFromGroupsAction} className="mt-5 grid gap-4">
-        <label className="grid gap-2 text-sm font-bold text-[var(--splity-ink)]">
-          <T k="dashboard.groupName" />
-          <input
-            autoFocus
-            className="h-12 rounded-xl border border-[var(--splity-line-strong)] bg-white px-3 text-base font-medium outline-none transition placeholder:text-[var(--splity-muted)] focus:border-[var(--splity-navy)] focus:ring-4 focus:ring-[rgba(27,42,107,0.08)]"
-            maxLength={200}
-            name="name"
-            placeholder={t("dashboard.groupNamePlaceholder")}
-            required
-          />
-        </label>
-        <SubmitButton pendingToastKey="dashboard.creatingGroup">
-          <T k="dashboard.newGroup" />
-        </SubmitButton>
-      </form>
-    </ModalFrame>
-  );
-}
-
-function EditGroupModal({
-  groupId,
-  groupName,
-  onClose,
-  open,
-}: CardActionsProps & {
-  onClose: () => void;
-  open: boolean;
-}) {
-  const [state, formAction] = useActionState(renameGroupFromGroupsAction, initialActionState);
-
-  useEffect(() => {
-    if (state.success) {
-      toast.success(state.success);
-      onClose();
-    }
-    if (state.error) toast.error(state.error);
-  }, [onClose, state.error, state.success]);
-
-  if (!open) return null;
-
-  return (
-    <ModalFrame onClose={onClose}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
-            <T k="groups.settings" />
-          </p>
-          <DialogTitle className="mt-2 text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
-            <T k="groups.rename" />
-          </DialogTitle>
-        </div>
-        <CloseButton onClose={onClose} />
-      </div>
-      <form action={formAction} className="mt-5 grid gap-4">
-        <input name="groupId" type="hidden" value={groupId} />
-        <label className="grid gap-2 text-sm font-bold text-[var(--splity-ink)]">
-          <T k="groups.name" />
-          <input
-            autoFocus
-            className="h-12 rounded-xl border border-[var(--splity-line-strong)] bg-white px-3 text-base font-medium outline-none transition placeholder:text-[var(--splity-muted)] focus:border-[var(--splity-navy)] focus:ring-4 focus:ring-[rgba(27,42,107,0.08)]"
-            defaultValue={groupName}
-            maxLength={200}
-            name="name"
-            required
-          />
-        </label>
-        {state.error ? <p className="text-sm font-semibold text-[var(--splity-rose)]">{state.error}</p> : null}
-        {state.success ? <p className="text-sm font-semibold text-[var(--splity-mint)]">{state.success}</p> : null}
-        <SubmitButton>
-          <T k="groups.rename" />
-        </SubmitButton>
-      </form>
-    </ModalFrame>
-  );
-}
-
-function DeleteGroupModal({
-  groupId,
-  groupName,
-  onClose,
-  open,
-}: CardActionsProps & {
-  onClose: () => void;
-  open: boolean;
-}) {
-  if (!open) return null;
-
-  return (
-    <AlertDialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open={open}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle><T k="groups.deleteTitle" /></AlertDialogTitle>
-          <AlertDialogDescription>{groupName}</AlertDialogDescription>
-        </AlertDialogHeader>
-      <form action={deleteGroupFromGroupsAction} className="mt-5 grid gap-3">
-        <input name="groupId" type="hidden" value={groupId} />
-        <AlertDialogFooter className="grid gap-2 sm:grid-cols-2">
-        <SubmitButton
-          className="bg-[var(--splity-rose)] hover:bg-[#a83e3e]"
-          pendingToastKey="groups.deleting"
-        >
-          <T k="groups.deleteGroup" />
-        </SubmitButton>
-        <button
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[var(--splity-ink)] transition hover:bg-[var(--splity-bg)]"
-          onClick={onClose}
-          type="button"
-        >
-          <T k="common.cancel" />
-        </button>
-        </AlertDialogFooter>
-      </form>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-function ModalFrame({
-  children,
-  onClose,
-}: {
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <Dialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open>
-      <DialogContent className="max-w-md">
-        {children}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function CloseButton({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-
-  return (
-    <button
-      aria-label={t("common.close")}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--splity-line)] text-[var(--splity-muted)] transition hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]"
-      onClick={onClose}
-      type="button"
-    >
-      <X className="h-4 w-4" />
-    </button>
-  );
-}
-
-function NewGroupDialogTrigger({
-  children,
-}: {
-  children: (open: () => void) => ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      {children(() => setOpen(true))}
-      <NewGroupModal onClose={() => setOpen(false)} open={open} />
-    </>
-  );
+function money(value: number, currency = "RM") {
+  if (!Number.isFinite(value) || value === 0) return `${currency} 0.00`;
+  return `${value > 0 ? "+" : "-"}${currency} ${Math.abs(value).toFixed(2)}`;
 }
 
 export function GroupsHeaderActions() {
   return (
-    <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center xl:justify-end">
-      <LiveGroupSearch />
-      <NewGroupDialogTrigger>
-        {(open) => (
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#25377f] sm:h-12 sm:px-5"
-            onClick={open}
-            type="button"
-          >
-            <Plus className="h-4 w-4" />
-            <T k="dashboard.newGroup" />
-          </button>
-        )}
-      </NewGroupDialogTrigger>
+    <div className="shrink-0">
+      <Link
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#087f6f] px-4 text-sm font-bold text-white shadow-[0_10px_22px_rgba(8,127,111,0.18)] transition hover:bg-[#066c60] sm:h-12 sm:px-5"
+        href="/groups/create"
+      >
+        <Plus className="h-4 w-4" />
+        <T k="groupsView.createGroup" />
+      </Link>
+    </div>
+  );
+}
+
+export function GroupsViewToggle() {
+  const { setView, view } = useGroupsSearch();
+
+  return (
+    <div className="inline-flex h-12 overflow-hidden rounded-xl border border-[var(--splity-line)] bg-white p-1">
+      <button
+        aria-pressed={view === "grid"}
+        className={[
+          "inline-flex items-center gap-2 rounded-lg px-4 text-sm font-bold transition",
+          view === "grid"
+            ? "bg-emerald-50 text-[#087f6f] shadow-sm"
+            : "text-[var(--splity-muted)] hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]",
+        ].join(" ")}
+        onClick={() => setView("grid")}
+        type="button"
+      >
+        <LayoutGrid className="h-4 w-4" />
+        <T k="groupsView.grid" />
+      </button>
+      <button
+        aria-pressed={view === "list"}
+        className={[
+          "inline-flex items-center gap-2 rounded-lg px-4 text-sm font-bold transition",
+          view === "list"
+            ? "bg-emerald-50 text-[#087f6f] shadow-sm"
+            : "text-[var(--splity-muted)] hover:bg-[var(--splity-bg)] hover:text-[var(--splity-ink)]",
+        ].join(" ")}
+        onClick={() => setView("list")}
+        type="button"
+      >
+        <List className="h-4 w-4" />
+        <T k="groupsView.list" />
+      </button>
     </div>
   );
 }
@@ -431,7 +149,7 @@ function StatusButton({
       className={[
         "inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-bold transition sm:rounded-xl sm:px-4",
         active
-          ? "border-[var(--splity-navy)] bg-[var(--splity-navy)] text-white shadow-[0_10px_22px_rgba(27,42,107,0.18)]"
+          ? "border-[#087f6f] bg-[#087f6f] text-white shadow-[0_10px_22px_rgba(8,127,111,0.18)]"
           : "border-[var(--splity-line)] bg-white text-[var(--splity-ink)] hover:border-[var(--splity-line-strong)]",
       ].join(" ")}
       onClick={onClick}
@@ -451,7 +169,7 @@ export function SearchableGroupsSection({
   children: ReactNode;
   groups: SearchableGroup[];
 }) {
-  const { query, status } = useGroupsSearch();
+  const { query, sort, status, view } = useGroupsSearch();
   const [page, setPage] = useState(1);
   const normalized = query.trim().toLowerCase();
   const cards = Children.toArray(children);
@@ -462,32 +180,123 @@ export function SearchableGroupsSection({
       const matchesStatus = status === "all" || group.status === status;
       return matchesQuery && matchesStatus;
     })
+    .sort((left, right) => {
+      if (sort === "oldest") return left.group.createdAtMs - right.group.createdAtMs;
+      if (sort === "name") return left.group.name.localeCompare(right.group.name);
+      return right.group.createdAtMs - left.group.createdAtMs;
+    })
     .map(({ index }) => index);
   const totalPages = Math.max(Math.ceil(visibleIndexes.length / PAGE_SIZE), 1);
   const currentPage = Math.min(page, totalPages);
   const pageIndexes = visibleIndexes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const showStartCard = pageIndexes.length < PAGE_SIZE && visibleIndexes.length > 0;
 
   useEffect(() => {
     setPage(1);
-  }, [query, status]);
+  }, [query, sort, status, view]);
 
   return (
     <div className="grid gap-5">
-      <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-        {pageIndexes.map((index) => (
-          <div className="h-full" key={groups[index]?.id ?? index}>
-            {cards[index]}
-          </div>
-        ))}
-        {visibleIndexes.length === 0 ? <NoSearchResults /> : null}
-        {showStartCard ? <StartGroupCard /> : null}
-      </section>
+      {view === "grid" ? (
+        <section className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+          {pageIndexes.map((index) => (
+            <div className="h-full" key={groups[index]?.id ?? index}>
+              {cards[index]}
+            </div>
+          ))}
+          {visibleIndexes.length === 0 ? <NoSearchResults /> : null}
+        </section>
+      ) : (
+        <GroupsTable groups={pageIndexes.map((index) => groups[index]).filter(Boolean)} />
+      )}
       {visibleIndexes.length > PAGE_SIZE ? (
         <Pagination currentPage={currentPage} onPageChange={setPage} totalPages={totalPages} />
       ) : null}
     </div>
   );
+}
+
+function GroupsTable({ groups }: { groups: SearchableGroup[] }) {
+  if (!groups.length) return <NoSearchResults />;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white shadow-[0_10px_30px_rgba(12,21,56,0.05)]">
+      <div className="splity-scrollbar-none overflow-x-auto">
+        <table className="min-w-[980px] w-full border-separate border-spacing-0 text-left">
+          <thead className="bg-[#087f6f] text-white">
+            <tr className="text-xs font-extrabold uppercase tracking-[0.12em] text-white">
+              <TableHead><T k="groupsView.groupName" /></TableHead>
+              <TableHead><T k="groups.status" /></TableHead>
+              <TableHead><T k="groupsView.members" /></TableHead>
+              <TableHead><T k="groups.bills" /></TableHead>
+              <TableHead><T k="groupsView.balance" /></TableHead>
+              <TableHead><T k="groupsView.createdAt" /></TableHead>
+              <TableHead><T k="groupsView.action" /></TableHead>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <tr className="border-t border-[var(--splity-line)]" key={group.id}>
+                <TableCell>
+                  <div className="text-base font-extrabold text-[var(--splity-ink)]">{group.name}</div>
+                </TableCell>
+                <TableCell>
+                  <span className={`inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-extrabold ${statusBadgeClass(group.status)}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(group.status)}`} />
+                    <T k={group.statusLabelKey} />
+                  </span>
+                </TableCell>
+                <TableCell>{group.memberCount}</TableCell>
+                <TableCell>{group.billCount}</TableCell>
+                <TableCell>
+                  <span
+                    className={[
+                      "font-extrabold",
+                      group.balance > 0
+                        ? "text-[var(--splity-mint)]"
+                        : group.balance < 0
+                          ? "text-[var(--splity-rose)]"
+                          : "text-[var(--splity-mint)]",
+                    ].join(" ")}
+                  >
+                    {money(group.balance)}
+                  </span>
+                </TableCell>
+                <TableCell>{group.createdAt}</TableCell>
+                <TableCell>
+                  <Link
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--splity-line)] bg-white px-4 text-sm font-bold text-[#087f6f] transition hover:border-[#087f6f] hover:bg-emerald-50"
+                    href={`/groups/${group.id}`}
+                  >
+                    <T k="groupsView.view" />
+                  </Link>
+                </TableCell>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function TableHead({ children }: { children: ReactNode }) {
+  return <th className="border-b border-[var(--splity-line)] px-5 py-4">{children}</th>;
+}
+
+function TableCell({ children }: { children: ReactNode }) {
+  return <td className="border-b border-[var(--splity-line)] px-5 py-4 text-sm font-semibold text-[var(--splity-ink)]">{children}</td>;
+}
+
+function statusDotClass(status: StatusFilter) {
+  if (status === "settled") return "bg-[var(--splity-mint)]";
+  if (status === "settling") return "bg-[var(--splity-gold-strong)]";
+  return "bg-[var(--splity-rose)]";
+}
+
+function statusBadgeClass(status: StatusFilter) {
+  if (status === "settled") return "bg-emerald-50 text-[var(--splity-mint)]";
+  if (status === "settling") return "bg-amber-50 text-[var(--splity-gold-strong)]";
+  return "bg-red-50 text-[var(--splity-rose)]";
 }
 
 function Pagination({
@@ -553,80 +362,5 @@ function NoSearchResults() {
         <T k="groupsView.noResultsBody" />
       </p>
     </div>
-  );
-}
-
-function StartGroupCard() {
-  return (
-    <NewGroupDialogTrigger>
-      {(open) => (
-        <button
-          className="grid min-h-56 w-full place-items-center rounded-3xl border border-dashed border-[var(--splity-line-strong)] bg-white/35 p-8 text-center transition hover:-translate-y-0.5 hover:border-[var(--splity-navy)] hover:bg-white/70 hover:shadow-[0_18px_40px_rgba(12,21,56,0.08)]"
-          onClick={open}
-          type="button"
-        >
-          <span>
-            <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--splity-navy)] text-[var(--splity-gold)]">
-              <Plus className="h-5 w-5" />
-            </span>
-            <span className="mt-5 block text-xl font-bold text-[var(--splity-ink)]">
-              <T k="groupsView.startTitle" />
-            </span>
-            <span className="mx-auto mt-2 block max-w-xs text-sm leading-6 text-[var(--splity-muted)]">
-              <T k="groupsView.startBody" />
-            </span>
-          </span>
-        </button>
-      )}
-    </NewGroupDialogTrigger>
-  );
-}
-
-export function CardActions({ groupId, groupName }: CardActionsProps) {
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <div className="absolute bottom-4 right-4 z-20 flex gap-2 opacity-100 transition duration-200 sm:bottom-5 sm:right-5 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100">
-        <LoadingLink
-          aria-label={t("groupsView.viewGroup")}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
-          href={`/groups/${groupId}`}
-          loadingKey="groups.loadingDetail"
-        >
-          <Eye className="h-4 w-4" />
-        </LoadingLink>
-        <button
-          aria-label={t("groupsView.editGroup")}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-[var(--splity-line-strong)] hover:text-[var(--splity-navy)]"
-          onClick={() => setEditOpen(true)}
-          type="button"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          aria-label={t("groupsView.deleteGroup")}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] shadow-sm transition hover:border-red-200 hover:text-[var(--splity-rose)]"
-          onClick={() => setDeleteOpen(true)}
-          type="button"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
-      <EditGroupModal
-        groupId={groupId}
-        groupName={groupName}
-        onClose={() => setEditOpen(false)}
-        open={editOpen}
-      />
-      <DeleteGroupModal
-        groupId={groupId}
-        groupName={groupName}
-        onClose={() => setDeleteOpen(false)}
-        open={deleteOpen}
-      />
-    </>
   );
 }

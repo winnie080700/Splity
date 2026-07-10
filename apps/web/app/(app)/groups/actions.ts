@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { serverErrorMessage, serverT } from "@/lib/i18n/server";
-import { createGroup, deleteGroup, updateGroup } from "@/lib/services/groups";
+import { deleteGroup, updateGroup } from "@/lib/services/groups";
 import { formDataObject } from "@/lib/validation/form-data";
 
 const groupFormSchema = z.object({
@@ -15,17 +15,6 @@ const groupFormSchema = z.object({
 const groupIdFormSchema = z.object({
   groupId: z.string().min(1),
 });
-
-export async function createGroupFromGroupsAction(formData: FormData) {
-  const result = groupFormSchema.safeParse(formDataObject(formData, ["name"]));
-
-  if (!result.success) return;
-
-  const group = await createGroup({ name: result.data.name });
-  revalidatePath("/groups");
-  revalidatePath("/dashboard");
-  redirect(`/groups/${group.id}`);
-}
 
 export type GroupsPageActionState = {
   error: string | null;
@@ -52,7 +41,6 @@ export async function renameGroupFromGroupsAction(
     const { groupId, name } = result.data;
     await updateGroup(groupId, { name });
     revalidatePath("/groups");
-    revalidatePath("/dashboard");
     revalidatePath(`/groups/${groupId}`);
     return ok(await serverT("groupDetail.action.groupRenamed"));
   } catch (error) {
@@ -66,6 +54,5 @@ export async function deleteGroupFromGroupsAction(formData: FormData) {
 
   await deleteGroup(result.data.groupId);
   revalidatePath("/groups");
-  revalidatePath("/dashboard");
   redirect("/groups");
 }

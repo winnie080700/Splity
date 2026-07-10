@@ -34,7 +34,7 @@ export async function acceptInvitationAction(
   try {
     await acceptInvitation(result.data.participantId);
     revalidatePath("/invitations");
-    revalidatePath("/dashboard");
+    revalidatePath("/groups");
     return { ...emptyState, success: await serverT("invitations.accepted") };
   } catch (error) {
     return {
@@ -54,7 +54,6 @@ export async function declineInvitationAction(
   try {
     await declineInvitation(result.data.participantId);
     revalidatePath("/invitations");
-    revalidatePath("/dashboard");
     return { ...emptyState, success: await serverT("invitations.declined") };
   } catch (error) {
     return {
