@@ -8,6 +8,7 @@ import {
 } from "@/lib/calculations/settlement-snapshot";
 import { projectBillToDetail, type BillProjectionRow } from "@/lib/calculations/bill-read-projection";
 import { GROUP_STATUS } from "@/lib/domain/status";
+import { areAllStatusesReceived } from "@/lib/domain/settlement-notifications";
 import { billSelect } from "@/lib/services/bills";
 import { createAnonServerClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
@@ -86,6 +87,7 @@ type PublicShareBill = {
 
 export type PublicSettlementShare = {
   share_token: string;
+  group_name: string | null;
   from_date_utc: string | null;
   to_date_utc: string | null;
   creator_name: string | null;
@@ -318,6 +320,7 @@ export async function resolvePublicShare(token: string) {
 
   return {
     ...payload,
+    group_name: detailedPayload?.group_name ?? payload.group_name ?? null,
     bills: detailedPayload?.bills ?? [],
     participants: detailedPayload?.participants ?? [],
     transfers: detailedPayload?.transfers ?? (Array.isArray(payload.transfers) ? payload.transfers : []),
@@ -344,10 +347,12 @@ async function getPublicShareDetails(token: string) {
     toDateUtc: row.to_date_utc,
   } satisfies SettlementDateWindow;
 
-  const [participants, billRows] = await Promise.all([
+  const [groupResult, participants, billRows] = await Promise.all([
+    supabase.from("groups").select("name").eq("id", row.group_id).single(),
     listPublicShareParticipants(row.group_id),
     listPublicShareBillRows(row.group_id, window),
   ]);
+  if (groupResult.error) throw groupResult.error;
   const bills = (billRows as unknown as BillProjectionRow[]).map(projectBillToDetail);
   const participantById = new Map(participants.map((participant) => [participant.id, participant.name]));
   const snapshot = buildSnapshotFromRows(
@@ -360,6 +365,7 @@ async function getPublicShareDetails(token: string) {
   const confirmationByKey = new Map(confirmations.map((confirmation) => [confirmation.transfer_key, confirmation]));
 
   return {
+    group_name: groupResult.data.name,
     bills: bills.map((bill) => ({
       currency_code: bill.currencyCode,
       grand_total_amount: bill.grandTotalAmount,
@@ -469,10 +475,16 @@ export async function recordPublicShareTransferAction(input: {
     fromDateUtc: link.from_date_utc,
     toDateUtc: link.to_date_utc,
   } satisfies SettlementDateWindow;
-  const [participants, billRows] = await Promise.all([
+  const [groupResult, participants, billRows] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("name, created_by_user_id")
+      .eq("id", link.group_id)
+      .single(),
     listPublicShareParticipants(link.group_id),
     listPublicShareBillRows(link.group_id, window),
   ]);
+  if (groupResult.error) throw groupResult.error;
   const snapshot = buildSnapshotFromRows(
     participants as SettlementParticipantRow[],
     billRows as unknown as SettlementBillRow[],
@@ -525,9 +537,37 @@ export async function recordPublicShareTransferAction(input: {
 
   if (error) throw error;
 
+  const transferKeys = snapshot.transfers.map((candidate) =>
+    buildTransferKey(link.group_id, link.from_date_utc, link.to_date_utc, candidate)
+  );
+  const confirmations = await listPublicShareConfirmations(link.group_id, transferKeys);
+  const statusByKey = new Map(confirmations.map((confirmation) => [confirmation.transfer_key, confirmation.status]));
+  const participantById = new Map(participants.map((participant) => [participant.id, participant]));
+  const changed = input.action === "mark_paid" ? !current || current.status < 1 : Boolean(current && current.status < 2);
+
   return {
     ...input,
+    actorName:
+      participantById.get(
+        input.action === "mark_paid" ? input.fromParticipantId : input.toParticipantId
+      )?.name ?? groupResult.data.name,
+    allReceived:
+      changed &&
+      input.action === "mark_received" &&
+      areAllStatusesReceived(
+        snapshot.transfers.map((candidate) =>
+          statusByKey.get(
+            buildTransferKey(link.group_id, link.from_date_utc, link.to_date_utc, candidate)
+          )
+        )
+      ),
+    changed,
+    fromUserId: participantById.get(input.fromParticipantId)?.invited_user_id ?? null,
+    groupId: link.group_id,
+    groupName: groupResult.data.name,
+    organizerUserId: groupResult.data.created_by_user_id,
     status: payload.status,
+    toUserId: participantById.get(input.toParticipantId)?.invited_user_id ?? null,
     markedPaidAtUtc: payload.marked_paid_at_utc ?? now,
     markedReceivedAtUtc: payload.marked_received_at_utc ?? null,
   };

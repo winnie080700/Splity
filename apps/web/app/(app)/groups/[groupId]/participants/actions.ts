@@ -10,10 +10,15 @@ import {
   createParticipant,
   deleteParticipant,
   InvitedParticipantEditError,
+  listParticipants,
   updateParticipant,
 } from "@/lib/services/participants";
 import { searchUserByUsername } from "@/lib/services/users";
 import { formDataObject } from "@/lib/validation/form-data";
+import { getAppUser } from "@/lib/auth/server";
+import { sendGroupInvitationEmail, sendParticipantRemovedEmail } from "@/lib/services/email";
+import { getGroup } from "@/lib/services/groups";
+import { recordGroupActivity } from "@/lib/services/activity";
 
 export type ParticipantActionState = {
   added: { mode: "manual" | "invite"; name: string; username: string | null } | null;
@@ -86,7 +91,21 @@ export async function addParticipantAction(
         return { ...emptyState, error: await serverT("groupDetail.error.lookupBeforeInvite") };
       }
 
-      await createParticipant({ groupId, name: lookup.name, username: lookup.username });
+      const participant = await createParticipant({ groupId, name: lookup.name, username: lookup.username });
+      await recordGroupActivity({
+        eventType: "participant_invited",
+        groupId,
+        summary: { participantName: participant.name },
+      });
+      const [group, actor] = await Promise.all([getGroup(groupId), getAppUser()]);
+      if (group && actor && participant.invited_user_id) {
+        await sendGroupInvitationEmail({
+          actorName: actor.name,
+          groupId,
+          groupName: group.name,
+          userId: participant.invited_user_id,
+        });
+      }
       revalidatePath(`/groups/${groupId}`);
       return {
         ...emptyState,
@@ -99,7 +118,12 @@ export async function addParticipantAction(
       return { ...emptyState, error: await serverT("groupDetail.error.participantNameLength") };
     }
 
-    await createParticipant({ groupId, name, username: null });
+    const participant = await createParticipant({ groupId, name, username: null });
+    await recordGroupActivity({
+      eventType: "participant_added",
+      groupId,
+      summary: { participantName: participant.name },
+    });
     revalidatePath(`/groups/${groupId}`);
     return {
       ...emptyState,
@@ -144,10 +168,25 @@ export async function renameParticipantAction(
 export async function removeParticipantAction(
   groupId: string,
   participantId: string,
-  _prevState: ParticipantActionState
+  _prevState: ParticipantActionState,
+  formData: FormData
 ): Promise<ParticipantActionState> {
   try {
+    const removedName = String(formData.get("name") ?? "");
+    const [group, participants] = await Promise.all([getGroup(groupId), listParticipants(groupId)]);
+    const removedParticipant = participants.find((participant) => participant.id === participantId);
     await deleteParticipant(groupId, participantId);
+    await recordGroupActivity({
+      eventType: "participant_removed",
+      groupId,
+      summary: { participantName: removedName },
+    });
+    if (group && removedParticipant?.invited_user_id) {
+      await sendParticipantRemovedEmail({
+        groupName: group.name,
+        userId: removedParticipant.invited_user_id,
+      });
+    }
     revalidatePath(`/groups/${groupId}`);
     return { ...emptyState, success: await serverT("groupDetail.action.participantRemoved") };
   } catch (error) {

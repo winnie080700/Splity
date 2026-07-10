@@ -16,6 +16,7 @@ import {
 } from "@/lib/domain/status";
 import { getGroup } from "@/lib/services/groups";
 import { listParticipants, type Participant } from "@/lib/services/participants";
+import type { BillDetail } from "@/lib/calculations/bill-read-projection";
 
 export type SettlementTransferDto = {
   transferKey: string;
@@ -65,14 +66,11 @@ type ConfirmationRow = {
 
 const billSelect = `
   id,
+  primary_payer_participant_id,
   transaction_date_utc,
   bill_shares (
     participant_id,
     total_share_amount
-  ),
-  payment_contributions (
-    participant_id,
-    amount
   )
 `;
 
@@ -175,9 +173,55 @@ export async function getSettlement(
 
   if (!group) throw new Error("Group not found.");
 
+  return buildSettlementResult({
+    bills,
+    createdByUserId: group.created_by_user_id,
+    currentUserId,
+    groupId,
+    groupStatus: group.status,
+    participants,
+    window,
+  });
+}
+
+export async function getSettlementFromBillDetails(input: {
+  bills: BillDetail[];
+  createdByUserId: string;
+  currentUserId: string;
+  groupId: string;
+  groupStatus: number;
+  participants: Participant[];
+}) {
+  return buildSettlementResult({
+    ...input,
+    bills: input.bills.map((bill) => ({
+      bill_shares: bill.shares.map((share) => ({
+        participant_id: share.participantId,
+        total_share_amount: share.totalShareAmount,
+      })),
+      id: bill.id,
+      primary_payer_participant_id: bill.primaryPayerParticipantId,
+      transaction_date_utc: bill.transactionDateUtc,
+    })),
+    window: { fromDateUtc: null, toDateUtc: null },
+  });
+}
+
+async function buildSettlementResult(input: {
+  bills: SettlementBillRow[];
+  createdByUserId: string;
+  currentUserId: string;
+  groupId: string;
+  groupStatus: number;
+  participants: Participant[];
+  window: { fromDateUtc: string | null; toDateUtc: string | null };
+}): Promise<SettlementResultDto> {
+  const { bills, createdByUserId, currentUserId, groupId, groupStatus, participants, window } = input;
   const snapshot = buildSnapshotFromRows(participants as SettlementParticipantRow[], bills, window);
   const participantLookup = new Map(participants.map((participant) => [participant.id, participant.name]));
-  const transferKeys = snapshot.transfers.map((transfer) => buildTransferKey(groupId, window.fromDateUtc, window.toDateUtc, transfer));
+  const transferKeys = snapshot.transfers.map((transfer) =>
+    buildTransferKey(groupId, window.fromDateUtc, window.toDateUtc, transfer)
+  );
   const confirmations = await listConfirmations(groupId, transferKeys);
   const confirmationByKey = new Map(confirmations.map((confirmation) => [confirmation.transfer_key, confirmation]));
 
@@ -200,8 +244,8 @@ export async function getSettlement(
       return toTransferDto(transferKey, transfer, confirmationByKey.get(transferKey));
     }),
     participants,
-    canManage: group.created_by_user_id === currentUserId,
-    groupStatus: group.status,
+    canManage: createdByUserId === currentUserId,
+    groupStatus,
   };
 }
 
@@ -240,6 +284,7 @@ async function recordSettlementAction(
   const transfer = getTransferFromSnapshot(snapshot, input);
   const transferKey = buildTransferKey(groupId, window.fromDateUtc, window.toDateUtc, transfer);
   const proofScreenshotDataUrl = normalizeProofScreenshot(input.proofScreenshotDataUrl);
+  const [previousConfirmation] = await listConfirmations(groupId, [transferKey]);
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_settlement_action", {
@@ -256,7 +301,10 @@ async function recordSettlementAction(
   });
 
   if (error) throw error;
-  return data as Json;
+  return {
+    data: data as Json,
+    previousStatus: previousConfirmation ? statusFromDb(previousConfirmation.status) : null,
+  };
 }
 
 export async function markSettlementPaid(groupId: string, input: SettlementActionInput) {

@@ -6,6 +6,11 @@ import { z } from "zod";
 
 import { en, type MessageKey } from "@/lib/i18n/messages/en";
 import { zh } from "@/lib/i18n/messages/zh";
+import {
+  sendAllPaymentsReceivedEmail,
+  sendPaymentMarkedEmail,
+  sendPaymentReceivedEmail,
+} from "@/lib/services/email";
 import { recordPublicShareTransferAction } from "@/lib/services/settlement-shares";
 import { formDataObject } from "@/lib/validation/form-data";
 
@@ -73,10 +78,39 @@ export async function confirmPublicShareTransferAction(
   }
 
   try {
-    await recordPublicShareTransferAction({
+    const notification = await recordPublicShareTransferAction({
       ...result.data,
       proofScreenshotDataUrl: normalizeProof(result.data.proofScreenshotDataUrl),
     });
+    if (notification.changed) {
+      await Promise.all([
+        result.data.action === "mark_paid" && notification.toUserId
+          ? sendPaymentMarkedEmail({
+              actorName: notification.actorName,
+              amount: result.data.amount,
+              groupName: notification.groupName,
+              receiverUserId: notification.toUserId,
+              shareToken: result.data.token,
+            })
+          : Promise.resolve(),
+        result.data.action === "mark_received" && notification.fromUserId
+          ? sendPaymentReceivedEmail({
+              actorName: notification.actorName,
+              amount: result.data.amount,
+              groupName: notification.groupName,
+              payerUserId: notification.fromUserId,
+              shareToken: result.data.token,
+            })
+          : Promise.resolve(),
+        notification.allReceived && notification.organizerUserId
+          ? sendAllPaymentsReceivedEmail({
+              groupId: notification.groupId,
+              groupName: notification.groupName,
+              organizerUserId: notification.organizerUserId,
+            })
+          : Promise.resolve(),
+      ]);
+    }
     revalidatePath(`/share/${result.data.token}`);
     return ok(
       await serverT(

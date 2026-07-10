@@ -5,12 +5,23 @@ import { ZodError, z } from "zod";
 
 import { serverErrorMessage, serverT } from "@/lib/i18n/server";
 import {
+  getSettlement,
   markSettlementPaid,
   markSettlementReceived,
   type SettlementActionInput,
 } from "@/lib/services/settlements";
 import { formDataObject } from "@/lib/validation/form-data";
 import { zodErrorMessage } from "@/lib/validation/zod";
+import { getGroup } from "@/lib/services/groups";
+import { listParticipants } from "@/lib/services/participants";
+import {
+  sendAllPaymentsReceivedEmail,
+  sendPaymentMarkedEmail,
+  sendPaymentReceivedEmail,
+} from "@/lib/services/email";
+import { getActiveShare } from "@/lib/services/settlement-shares";
+import { SETTLEMENT_TRANSFER_STATUS } from "@/lib/domain/status";
+import { areAllStatusesReceived } from "@/lib/domain/settlement-notifications";
 
 export type SettlementActionState = {
   error: string | null;
@@ -58,7 +69,28 @@ export async function markPaidAction(
 ): Promise<SettlementActionState> {
   try {
     const input = inputFromForm(formData);
-    await markSettlementPaid(groupId, input);
+    const result = await markSettlementPaid(groupId, input);
+    const [group, participants, activeShare] = await Promise.all([
+      getGroup(groupId),
+      listParticipants(groupId),
+      getActiveShare(groupId),
+    ]);
+    const receiver = participants.find((participant) => participant.id === input.toParticipantId);
+    const actor = participants.find((participant) => participant.id === input.actorParticipantId);
+    if (
+      result.previousStatus !== SETTLEMENT_TRANSFER_STATUS.markedPaid &&
+      group &&
+      activeShare &&
+      receiver?.invited_user_id
+    ) {
+      await sendPaymentMarkedEmail({
+        actorName: actor?.name ?? group.name,
+        amount: input.amount,
+        groupName: group.name,
+        receiverUserId: receiver.invited_user_id,
+        shareToken: activeShare.shareToken,
+      });
+    }
     revalidatePath(`/groups/${groupId}/settlements`);
     revalidatePath(`/groups/${groupId}`);
     return ok(await serverT("settlements.action.markedPaid"));
@@ -74,7 +106,36 @@ export async function markReceivedAction(
 ): Promise<SettlementActionState> {
   try {
     const input = inputFromForm(formData);
-    await markSettlementReceived(groupId, input);
+    const result = await markSettlementReceived(groupId, input);
+    if (result.previousStatus !== SETTLEMENT_TRANSFER_STATUS.received) {
+      const [group, participants, activeShare, settlement] = await Promise.all([
+        getGroup(groupId),
+        listParticipants(groupId),
+        getActiveShare(groupId),
+        getSettlement(groupId, input.fromDateUtc, input.toDateUtc),
+      ]);
+      const payer = participants.find((participant) => participant.id === input.fromParticipantId);
+      const actor = participants.find((participant) => participant.id === input.actorParticipantId);
+      await Promise.all([
+        group && activeShare && payer?.invited_user_id
+          ? sendPaymentReceivedEmail({
+              actorName: actor?.name ?? group.name,
+              amount: input.amount,
+              groupName: group.name,
+              payerUserId: payer.invited_user_id,
+              shareToken: activeShare.shareToken,
+            })
+          : Promise.resolve(),
+        group?.created_by_user_id &&
+        areAllStatusesReceived(settlement.transfers.map((transfer) => transfer.status))
+          ? sendAllPaymentsReceivedEmail({
+              groupId,
+              groupName: group.name,
+              organizerUserId: group.created_by_user_id,
+            })
+          : Promise.resolve(),
+      ]);
+    }
     revalidatePath(`/groups/${groupId}/settlements`);
     revalidatePath(`/groups/${groupId}`);
     return ok(await serverT("settlements.action.markedReceived"));
