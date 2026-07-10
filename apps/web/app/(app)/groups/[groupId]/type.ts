@@ -5,7 +5,14 @@ export type GroupPageProps = {
   searchParams?: Promise<{
     billId?: string;
     billMode?: string;
+    date?: string;
+    payer?: string;
+    q?: string;
     shareSettlement?: string;
+    split?: string;
+    tab?: string;
+    activity?: string;
+    activityFilter?: string;
   }>;
 };
 

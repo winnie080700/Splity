@@ -25,6 +25,10 @@ const amountSchema = z
     message: "bills.error.invalidPayload",
   });
 
+const positiveAmountSchema = amountSchema.refine((value) => Number(value) > 0, {
+  message: "bills.error.itemAmountPositive",
+});
+
 const billPayloadSchema = z.object({
   storeName: z.string().trim().min(1, "bills.error.storeNameRequired"),
   referenceImageDataUrl: z.string().nullable().optional(),
@@ -47,12 +51,12 @@ const billPayloadSchema = z.object({
     z.object({
       id: z.string().optional(),
       description: z.string().trim().min(1, "bills.error.itemDescriptionRequired"),
-      amount: amountSchema,
+      amount: positiveAmountSchema,
       responsibleParticipantIds: z
         .array(z.string().min(1, "bills.error.participantRequired"))
-        .min(1, "bills.error.participantRequired"),
+        .min(1, "bills.error.itemParticipantRequired"),
     })
-  ),
+  ).min(1, "bills.error.itemRequired"),
   fees: z.array(
     z.object({
       name: z.string().trim().min(1, "bills.error.invalidPayload"),
@@ -65,12 +69,6 @@ const billPayloadSchema = z.object({
     }).refine((fee) => fee.feeType !== FEE_TYPE.percentage || Number(fee.value) >= 0, {
       message: "bills.error.percentageFeeNonNegative",
       path: ["value"],
-    })
-  ),
-  extraContributions: z.array(
-    z.object({
-      participantId: z.string().min(1, "bills.error.participantRequired"),
-      amount: amountSchema,
     })
   ),
 });
@@ -102,7 +100,6 @@ function parsePayload(formData: FormData): BillWriteInput {
       feeType: fee.feeType === FEE_TYPE.percentage ? FEE_TYPE.percentage : FEE_TYPE.fixed,
       value: fee.value,
     })),
-    extraContributions: payload.extraContributions,
   };
 }
 

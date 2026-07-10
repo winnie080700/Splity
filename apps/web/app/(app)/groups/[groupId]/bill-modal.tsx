@@ -47,11 +47,12 @@ export function BillModal({
     return (
       <BillModalFrame
         closeHref={closeHref}
-        kicker={<T k="bills.input" />}
+        description={<T k="bills.editorBody" />}
         title={<T k="groups.newBill" />}
       >
         <BillForm
           action={createBillAction.bind(null, groupId)}
+          cancelHref={closeHref}
           canEdit={canEdit}
           participants={participants}
         />
@@ -63,7 +64,7 @@ export function BillModal({
     return (
       <BillModalFrame
         closeHref={closeHref}
-        kicker={<T k="bills.input" />}
+        description={<T k="bills.editorBody" />}
         title={<T k="bills.editBill" />}
       >
         <Suspense fallback={<BillModalSkeleton />}>
@@ -103,9 +104,8 @@ export function BillModal({
   return billId ? (
     <BillModalFrame
       closeHref={closeHref}
-      kicker={<T k="bills.billDetails" />}
+      description={<T k="bills.reviewBody" />}
       title={<T k="bills.billDetails" />}
-      width="narrow"
     >
       <Suspense fallback={<BillModalSkeleton />}>
         <BillModalBillContent
@@ -143,6 +143,7 @@ async function BillModalBillContent({
     return (
       <BillForm
         action={updateBillAction.bind(null, groupId, bill.id)}
+        cancelHref={closeHref}
         canEdit={canEdit}
         initialBill={bill}
         participants={participants}
@@ -161,5 +162,5 @@ async function BillModalBillContent({
     );
   }
 
-  return <BillPreview bill={bill} hideHeader participants={participants} />;
+  return <BillPreview bill={bill} editHref={`/groups/${groupId}?tab=bills&billMode=edit&billId=${bill.id}`} hideHeader participants={participants} />;
 }

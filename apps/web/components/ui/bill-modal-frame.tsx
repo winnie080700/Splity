@@ -18,13 +18,13 @@ import {
 export function BillModalFrame({
   children,
   closeHref,
-  kicker,
+  description,
   title,
   width = "wide",
 }: {
   children: ReactNode;
   closeHref: string;
-  kicker: ReactNode;
+  description?: ReactNode;
   title: ReactNode;
   width?: "wide" | "narrow";
 }) {
@@ -33,21 +33,23 @@ export function BillModalFrame({
       <DialogContent
         className={[
           "p-4 sm:p-6",
-          width === "narrow" ? "max-w-3xl" : "max-w-7xl",
+          width === "narrow" ? "max-w-3xl" : "max-w-7xl lg:!overflow-y-hidden",
         ].join(" ")}
         showClose={false}
       >
         <DialogHeader className="mb-5 items-start justify-between gap-4 border-b border-[var(--splity-line)] pb-4 pr-0" layout="row">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
-              {kicker}
-            </p>
             <DialogTitle className="mt-1 text-2xl font-extrabold sm:text-3xl">
               {title}
             </DialogTitle>
+            {description ? (
+              <p className="mt-1 text-sm font-semibold text-[var(--splity-muted)]">
+                {description}
+              </p>
+            ) : null}
           </div>
           <Link
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:bg-white hover:text-[var(--splity-ink)]"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 text-[var(--splity-muted)] transition hover:border-[#087f6f] hover:bg-emerald-50 hover:text-[#087f6f]"
             href={closeHref}
           >
             <X className="h-4 w-4" />

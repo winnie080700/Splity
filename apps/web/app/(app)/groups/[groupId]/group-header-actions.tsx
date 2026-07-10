@@ -77,6 +77,7 @@ export function GroupHeaderActions({
     changeStatusAction.bind(null, groupId),
     initialState
   );
+  const [deleteState, deleteAction] = useActionState(deleteGroupAction, initialState);
   const { t } = useTranslation();
   const statusToastId = useRef<string | number | null>(null);
   const isUnresolved = status === GROUP_STATUS.unresolved;
@@ -113,6 +114,10 @@ export function GroupHeaderActions({
     }
   }, [statusState.error, statusState.success]);
 
+  useEffect(() => {
+    if (deleteState.error) toast.error(deleteState.error);
+  }, [deleteState.error]);
+
   return (
     <>
       <div className="grid w-full gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
@@ -127,7 +132,7 @@ export function GroupHeaderActions({
               {t("common.rename")}
             </button>
             <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
               onClick={() => setOpenModal("settling")}
               type="button"
             >
@@ -228,13 +233,13 @@ export function GroupHeaderActions({
               <AlertDialogTitle>{t("groups.deleteTitle")}</AlertDialogTitle>
               <AlertDialogDescription>{t("groupDetail.deleteGroupBody")}</AlertDialogDescription>
             </AlertDialogHeader>
-          <form action={deleteGroupAction} className="grid gap-4">
+          <form action={deleteAction} className="grid gap-4">
             <input name="groupId" type="hidden" value={groupId} />
             <AlertDialogFooter>
               <Button onClick={() => setOpenModal(null)} type="button" variant="secondary">
                 {t("common.cancel")}
               </Button>
-              <SubmitButton danger pendingLabel={t("common.sending")}>
+              <SubmitButton danger pendingLabel={t("groups.deleting")}>
                 {t("groups.deleteGroup")}
               </SubmitButton>
             </AlertDialogFooter>

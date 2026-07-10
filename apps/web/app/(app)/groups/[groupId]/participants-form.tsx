@@ -1,10 +1,9 @@
 "use client";
 
-import { Pencil, Plus, Search, Trash2, UserPlus } from "lucide-react";
+import { CheckCircle2, Info, MoreVertical, Pencil, Plus, Search, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { T } from "@/components/i18n/t";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -13,7 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,10 +26,9 @@ import {
   renameParticipantAction,
   type ParticipantActionState,
 } from "./participants/actions";
-import { SectionTitle } from "@/components/ui/section-title";
+import { InviteLinkButton } from "./invite-link-button";
 
 type Participant = Database["public"]["Tables"]["participants"]["Row"];
-type AddMode = "manual" | "invite";
 type AddedParticipant = NonNullable<ParticipantActionState["added"]>;
 
 const initialState: ParticipantActionState = {
@@ -57,10 +54,6 @@ function initials(name: string) {
       .map((part) => part[0]?.toUpperCase())
       .join("") || "S"
   );
-}
-
-function normalizeUsernameInput(username: string) {
-  return username.trim().replace(/^@+/, "").trim().toLowerCase();
 }
 
 const participantStatusMeta: Partial<
@@ -160,11 +153,9 @@ export function ParticipantsForm({
   participants: Participant[];
 }) {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addMode, setAddMode] = useState<AddMode>("manual");
+  const [addMode, setAddMode] = useState<"invite" | "manual">("manual");
   const [manualName, setManualName] = useState("");
-  const [inviteUsername, setInviteUsername] = useState("");
-  const [inviteLookup, setInviteLookup] =
-    useState<ParticipantActionState["lookup"]>(null);
+  const [username, setUsername] = useState("");
   const [addedParticipants, setAddedParticipants] = useState<
     AddedParticipant[]
   >([]);
@@ -174,16 +165,8 @@ export function ParticipantsForm({
   );
   const router = useRouter();
   const { t } = useTranslation();
-  const currentLookup =
-    addMode === "invite" &&
-    inviteLookup?.username === normalizeUsernameInput(inviteUsername)
-      ? inviteLookup
-      : null;
 
   useEffect(() => {
-    if (addState.lookup) {
-      setInviteLookup(addState.lookup);
-    }
     if (addState.success) {
       toast.success(addState.success);
       router.refresh();
@@ -198,39 +181,44 @@ export function ParticipantsForm({
       [addState.added!, ...current].slice(0, 6),
     );
     setManualName("");
-    setInviteUsername("");
-    setInviteLookup(null);
+    setUsername("");
   }, [addState.added]);
+
+  const lookup =
+    addState.lookup?.username.toLowerCase() === username.trim().replace(/^@+/, "").toLowerCase()
+      ? addState.lookup
+      : null;
 
   return (
     <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_2px_8px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
       <div className="grid gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-        <SectionTitle
-          badge={
-            <T
-              k="groupDetail.participantCount"
-              values={{ count: participants.length }}
-            />
-          }
-          kicker={<T k="groupDetail.participantsKicker" />}
-          title={<T k="groupDetail.peopleInSplit" />}
-        />
-
+        <div className="flex items-center gap-3">
+          <h2 className="splity-display text-2xl font-bold tracking-tight text-[var(--splity-ink)]">
+            {t("groupDetail.peopleInSplit")}
+          </h2>
+          <span className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-bold text-[var(--splity-muted)]">
+            {t("groupDetail.participantCount").replace("{count}", String(participants.length))}
+          </span>
+        </div>
         <div className="grid gap-2 sm:flex sm:items-center">
-          {!canEdit ? <Badge tone="amber">{t("groups.locked")}</Badge> : null}
           {canEdit ? (
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[var(--splity-navy)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#15225a]"
-              onClick={() => setIsAddOpen(true)}
-              type="button">
-              <Plus className="h-4 w-4" />
-              {t("groups.addParticipant")}
-            </button>
+            <>
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
+                onClick={() => {
+                  setIsAddOpen(true);
+                }}
+                type="button">
+                <Plus className="h-4 w-4" />
+                {t("groupDetail.addParticipant")}
+              </button>
+              <InviteLinkButton groupId={groupId} />
+            </>
           ) : null}
         </div>
       </div>
 
-      <div className="mt-8 grid gap-3 lg:grid-cols-4">
+      <div className="mt-6 grid gap-3 lg:grid-cols-3">
         {participants.length === 0 ? (
           <div className="lg:col-span-2">
             <EmptyState
@@ -252,45 +240,48 @@ export function ParticipantsForm({
         )}
       </div>
 
+      <aside className="mt-6 flex items-start gap-4 rounded-xl border border-teal-200 bg-teal-50/45 px-5 py-4">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-teal-700">
+          <Info className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="font-bold text-[var(--splity-ink)]">{t("groupDetail.permissionsTitle")}</p>
+          <p className="mt-1 text-sm text-[var(--splity-muted)]">{t("groupDetail.permissionsBody")}</p>
+        </div>
+      </aside>
+
       {isAddOpen ? (
         <Modal
           onClose={() => setIsAddOpen(false)}
           title={t("groups.addParticipant")}>
-          <form action={addAction} className="grid gap-4">
+          <form action={addAction} className="grid gap-5">
             <input name="mode" type="hidden" value={addMode} />
-            {currentLookup ? (
-              <input name="lookupId" type="hidden" value={currentLookup.id} />
-            ) : null}
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--splity-navy)] text-[var(--splity-gold)]">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#087f6f] text-white shadow-[0_10px_22px_rgba(8,127,111,0.18)]">
                 <UserPlus className="h-4 w-4" />
               </span>
-              <p className="text-sm leading-6 text-[var(--splity-muted)]">
-                {t(
-                  addMode === "manual"
-                    ? "groupDetail.manualAddBody"
-                    : "groupDetail.inviteAddBody",
-                )}
-              </p>
+              <div>
+                <h3 className="text-xl font-extrabold text-[var(--splity-ink)]">{t("createGroupSetup.participantsTitle")}</h3>
+                <p className="mt-1 text-sm leading-6 text-[var(--splity-muted)]">
+                  {t(addMode === "manual" ? "groupDetail.manualAddBody" : "groupDetail.manualInviteBody")}
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)] p-1 sm:rounded-full">
-              {(["manual", "invite"] satisfies AddMode[]).map((mode) => (
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--splity-bg)] p-1">
+              {(["manual", "invite"] as const).map((mode) => (
                 <button
                   className={[
-                    "h-9 rounded-full text-sm font-bold transition",
+                    "h-10 rounded-lg text-sm font-bold transition-colors",
                     addMode === mode
-                      ? "bg-white text-[var(--splity-ink)] shadow-sm"
+                      ? "bg-white text-teal-700 shadow-sm"
                       : "text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
                   ].join(" ")}
                   key={mode}
                   onClick={() => setAddMode(mode)}
-                  type="button">
-                  {t(
-                    mode === "manual"
-                      ? "groupDetail.addModeManual"
-                      : "groupDetail.addModeInvite",
-                  )}
+                  type="button"
+                >
+                  {t(mode === "manual" ? "groups.manual" : "groupDetail.inviteUser")}
                 </button>
               ))}
             </div>
@@ -301,34 +292,43 @@ export function ParticipantsForm({
                 label={t("groups.name")}
                 name="name"
                 onChange={(event) => setManualName(event.target.value)}
+                placeholder={t("createGroupSetup.participantPlaceholder")}
                 required
                 value={manualName}
               />
             ) : (
-              <Input
-                autoCapitalize="none"
-                disabled={!canEdit}
-                label={t("settings.username")}
-                name="username"
-                onChange={(event) => setInviteUsername(event.target.value)}
-                required
-                value={inviteUsername}
-              />
+              <>
+                <Input
+                  autoCapitalize="none"
+                  disabled={!canEdit}
+                  label={t("settings.username")}
+                  name="username"
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder={t("createGroupSetup.usernamePlaceholder")}
+                  required
+                  value={username}
+                />
+                <input name="lookupId" type="hidden" value={lookup?.id ?? ""} />
+                {lookup ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/65 p-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700">
+                        {t("createGroupSetup.userFound")}
+                      </p>
+                      <p className="mt-1 truncate font-bold text-[var(--splity-ink)]">{lookup.name}</p>
+                      <p className="truncate text-xs font-semibold text-[var(--splity-muted)]">@{lookup.username}</p>
+                    </div>
+                    <SubmitButton
+                      disabled={!canEdit}
+                      pendingLabel={t("groups.adding")}
+                      value="add"
+                    >
+                      {t("createGroupSetup.inviteUser")}
+                    </SubmitButton>
+                  </div>
+                ) : null}
+              </>
             )}
-
-            {currentLookup ? (
-              <div className="rounded-xl border border-[var(--splity-line)] bg-[var(--splity-bg)]/45 p-3 text-sm">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-gold-strong)]">
-                  {t("groupDetail.inviteLookupReady")}
-                </p>
-                <p className="mt-2 font-bold text-[var(--splity-ink)]">
-                  {currentLookup.name}
-                </p>
-                <p className="mt-1 text-[var(--splity-muted)]">
-                  @{currentLookup.username}
-                </p>
-              </div>
-            ) : null}
 
             {addState.error ? (
               <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
@@ -365,26 +365,23 @@ export function ParticipantsForm({
                 variant="secondary">
                 {t("common.cancel")}
               </Button>
-              {addMode === "invite" ? (
+              {addMode === "manual" ? (
                 <SubmitButton
-                  disabled={!canEdit || !inviteUsername.trim()}
+                  disabled={!canEdit || !manualName.trim()}
+                  icon={<UserPlus className="h-4 w-4" />}
+                  pendingLabel={t("groups.adding")}
+                  value="add">
+                  {t("groups.addParticipant")}
+                </SubmitButton>
+              ) : (
+                <SubmitButton
+                  disabled={!canEdit || !username.trim()}
                   icon={<Search className="h-4 w-4" />}
                   pendingLabel={t("groups.checking")}
-                  value="lookup"
-                  variant="secondary">
-                  {t("groups.lookup")}
+                  value="lookup">
+                  {t("createGroupSetup.searchAndInvite")}
                 </SubmitButton>
-              ) : null}
-              <SubmitButton
-                disabled={!canEdit || (addMode === "invite" && !currentLookup)}
-                icon={<UserPlus className="h-4 w-4" />}
-                pendingLabel={t("groups.adding")}>
-                {t(
-                  addMode === "manual"
-                    ? "groups.addParticipant"
-                    : "groupDetail.inviteParticipant",
-                )}
-              </SubmitButton>
+              )}
             </div>
           </form>
         </Modal>
@@ -407,6 +404,7 @@ function ParticipantCard({
   participant: Participant;
 }) {
   const [openModal, setOpenModal] = useState<"edit" | "delete" | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [renameState, renameAction] = useActionState(
     renameParticipantAction.bind(null, groupId, participant.id),
     initialState,
@@ -422,6 +420,7 @@ function ParticipantCard({
     participant.invited_user_id === creatorUserId || index === 0;
   const isInvitedParticipant = participant.invited_user_id !== null;
   const statusMeta = participantStatusMeta[status];
+  const isManual = !participant.invited_user_id;
 
   useEffect(() => {
     if (renameState.success) {
@@ -442,14 +441,10 @@ function ParticipantCard({
   }, [removeState.error, removeState.success, router]);
 
   return (
-    <article className="group relative min-h-[70px] rounded-[14px] border border-[var(--splity-line)] bg-[#fffefa] px-4 py-3 shadow-[0_1px_0_rgba(12,21,56,0.03)] transition hover:border-[var(--splity-line-strong)] hover:shadow-[0_10px_24px_rgba(12,21,56,0.07)]">
-      <div className="grid h-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+    <article className="relative min-h-[88px] rounded-xl border border-[var(--splity-line)] bg-white px-5 py-4 transition hover:border-teal-200 hover:shadow-[0_8px_24px_rgba(12,21,56,0.05)]">
+      <div className="grid h-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={[
-              "splity-display inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-sm font-extrabold text-white",
-              isOrganizer ? "bg-[var(--splity-navy)]" : "bg-[#c46920]",
-            ].join(" ")}>
+          <span className="splity-display inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-700 text-base font-bold text-white">
             {initials(participant.name)}
           </span>
           <div className="min-w-0">
@@ -458,57 +453,73 @@ function ParticipantCard({
                 {participant.name}
               </p>
               {isOrganizer ? (
-                <span className="rounded-full bg-[#fff4d8] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--splity-gold-strong)]">
+                <span className="rounded-full border border-teal-100 bg-teal-50 px-2.5 py-0.5 text-[10px] font-bold text-teal-700">
                   {t("groupDetail.organizer")}
+                </span>
+              ) : isManual ? (
+                <span className="rounded-full border border-violet-100 bg-violet-50 px-2.5 py-0.5 text-[10px] font-bold text-violet-700">
+                  {t("groups.manual")}
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 truncate text-xs font-medium text-[var(--splity-muted)]">
-              {participant.username
-                ? `@${participant.username}`
-                : t("groups.manual").toUpperCase()}
-            </p>
+            {participant.username ? (
+              <p className="mt-1 truncate text-xs font-medium text-[var(--splity-muted)]">
+                @{participant.username}
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center justify-end">
+        <div className="flex shrink-0 items-center justify-end gap-3">
           {statusMeta ? (
             <span
               className={[
-                "inline-flex h-6 items-center gap-1.5 rounded-full px-3 text-[10px] font-extrabold uppercase tracking-[0.12em]",
+                "inline-flex h-7 items-center gap-1.5 rounded-full border border-teal-100 px-3 text-[11px] font-bold",
                 statusMeta.pill,
               ].join(" ")}>
-              <span
-                className={["h-1.5 w-1.5 rounded-full", statusMeta.dot].join(
-                  " ",
-                )}
-              />
+              {status === 2 ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className={["h-1.5 w-1.5 rounded-full", statusMeta.dot].join(" ")} />}
               {t(statusMeta.labelKey)}
             </span>
+          ) : null}
+          {canEdit ? (
+            <button
+              aria-label={t("groupDetail.actions")}
+              className="grid h-9 w-9 place-items-center rounded-full border border-[var(--splity-line)] bg-white text-[var(--splity-muted)] transition hover:bg-teal-50 hover:text-teal-700"
+              onClick={() => setMenuOpen((open) => !open)}
+              type="button">
+              <MoreVertical className="h-4 w-4" />
+            </button>
           ) : null}
         </div>
       </div>
 
-      {canEdit ? (
-        <div className="pointer-events-none absolute right-3 top-1/2 z-10 flex -translate-y-1/2 gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+      {canEdit && menuOpen ? (
+        <div className="absolute right-4 top-[60px] z-20 grid min-w-36 gap-1 rounded-xl border border-[var(--splity-line)] bg-white p-1.5 shadow-xl">
           {!isInvitedParticipant ? (
             <button
               aria-label={format(t("groupDetail.editParticipantLabel"), {
                 name: participant.name,
               })}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--splity-line)] bg-white text-[var(--splity-ink)] shadow-sm transition hover:bg-[var(--splity-bg)]"
-              onClick={() => setOpenModal("edit")}
+              className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-[var(--splity-ink)] hover:bg-teal-50"
+              onClick={() => {
+                setMenuOpen(false);
+                setOpenModal("edit");
+              }}
               type="button">
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" />{t("common.edit")}
             </button>
           ) : null}
           <button
             aria-label={format(t("groupDetail.deleteParticipantTitle"), {
               name: participant.name,
             })}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-white text-red-700 shadow-sm transition hover:bg-red-50"
-            onClick={() => setOpenModal("delete")}
+            className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-[var(--splity-muted)] disabled:opacity-50 disabled:hover:bg-transparent"
+            disabled={isOrganizer}
+            onClick={() => {
+              setMenuOpen(false);
+              setOpenModal("delete");
+            }}
             type="button">
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3.5 w-3.5" />{t("common.remove")}
           </button>
         </div>
       ) : null}
@@ -558,6 +569,7 @@ function ParticipantCard({
               </AlertDialogDescription>
             </AlertDialogHeader>
           <form action={removeAction} className="grid gap-4">
+            <input name="name" type="hidden" value={participant.name} />
             <AlertDialogFooter>
               <Button
                 onClick={() => setOpenModal(null)}

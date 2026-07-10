@@ -16,7 +16,6 @@ export type ParticipantSettlementBill = {
     participants: string[];
   }[];
   payer: string;
-  participantContribution: string;
   participantShare: string;
   storeName: string;
   total: string;
@@ -104,13 +103,12 @@ function billForParticipant(
   participantsById: Map<string, Participant>
 ): ParticipantSettlementBill | null {
   const share = bill.shares.find((item) => item.participantId === participantId);
-  const contribution = bill.contributions.find((item) => item.participantId === participantId);
   const isPrimaryPayer = bill.primaryPayerParticipantId === participantId;
   const participantItems = bill.items.filter((item) =>
     item.responsibleParticipantIds.includes(participantId)
   );
 
-  if (!share && !contribution && !isPrimaryPayer && !participantItems.length) {
+  if (!share && !isPrimaryPayer && !participantItems.length) {
     return null;
   }
 
@@ -128,7 +126,6 @@ function billForParticipant(
         .filter(Boolean),
     })),
     payer: participantName(participantsById, bill.primaryPayerParticipantId),
-    participantContribution: money(contribution?.amount ?? "0", bill.currencyCode),
     participantShare: money(share?.totalShareAmount ?? "0", bill.currencyCode),
     storeName: bill.storeName,
     total: money(bill.grandTotalAmount, bill.currencyCode),
