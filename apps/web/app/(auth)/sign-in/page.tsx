@@ -4,6 +4,7 @@ type SignInPageProps = {
   searchParams: Promise<{
     error?: string;
     mode?: string;
+    redirectTo?: string;
   }>;
 };
 
@@ -14,6 +15,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <SignInClient
       callbackError={params.error ?? null}
       initialMode={params.mode === "register" ? "register" : "login"}
+      redirectTo={params.redirectTo ?? "/groups"}
     />
   );
 }

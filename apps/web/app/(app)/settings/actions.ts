@@ -126,7 +126,7 @@ export async function updateProfileAction(
     }
 
     revalidatePath("/settings");
-    revalidatePath("/dashboard");
+    revalidatePath("/groups");
     return { error: null, success: await serverT("settings.profileSaved") };
   } catch (error) {
     return { error: await getErrorMessage(error, "settings.profileSaveFailed"), success: null };

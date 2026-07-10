@@ -14,7 +14,7 @@ export function Input({ className, hint, id, label, ...props }: InputProps) {
       <input
         id={inputId}
         className={[
-          "h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10",
+          "h-11 rounded-md border border-zinc-300 bg-white px-3 text-base text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-[#087f6f] focus:ring-2 focus:ring-[rgba(8,127,111,0.12)]",
           className,
         ]
           .filter(Boolean)

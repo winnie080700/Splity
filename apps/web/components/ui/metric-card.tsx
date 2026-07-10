@@ -16,27 +16,23 @@ export function MetricCard({
   return (
     <div
       className={[
-        "min-h-[86px] rounded-[14px] border px-4 py-3",
+        "flex min-h-[104px] items-center gap-4 rounded-[14px] border px-5 py-4",
         accent
-          ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/70"
-          : "border-[var(--splity-line)] bg-[var(--splity-bg)]/35",
+          ? "border-teal-200 bg-gradient-to-br from-teal-50 to-emerald-50"
+          : "border-[var(--splity-line)] bg-white",
       ].join(" ")}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
+      <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[var(--splity-muted)]">
           {label}
         </p>
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-[9px] border border-[var(--splity-line)] bg-white text-[var(--splity-muted)]">
-          {icon}
-        </span>
+        <div className="splity-display mt-1 truncate text-2xl font-extrabold tracking-tight text-[var(--splity-ink)]">
+          {value}
+        </div>
+        {sub ? <p className="mt-1 text-xs font-semibold text-[var(--splity-rose)]">{sub}</p> : null}
       </div>
-      <div className="splity-display mt-2 text-3xl font-extrabold tracking-tight text-[var(--splity-ink)]">
-        {value}
-      </div>
-      {sub ? (
-        <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--splity-rose)]">
-          {sub}
-        </p>
-      ) : null}
     </div>
   );
 }

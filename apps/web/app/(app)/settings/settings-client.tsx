@@ -1,11 +1,19 @@
 "use client";
 
-import { CreditCard, LogOut, Settings, Trash2, UserRound } from "lucide-react";
+import {
+  CreditCard,
+  Globe2,
+  LockKeyhole,
+  LogOut,
+  Settings,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { signOut } from "@/lib/auth/actions";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, type MessageKey } from "@/lib/i18n";
 import { ChangePasswordForm } from "./change-password-form";
 import { EmailSection } from "./email-section";
 import { PaymentProfileForm } from "./payment-profile-form";
@@ -29,38 +37,14 @@ type TabId = "account" | "payment" | "general";
 const tabs: {
   icon: typeof UserRound;
   id: TabId;
-  bodyKey: "settings.accountBody" | "settings.paymentBodyNew" | "settings.generalBody";
-  kickerKey: "settings.accountKicker" | "settings.paymentKicker" | "settings.generalKicker";
-  labelKey: "settings.accountTab" | "settings.paymentTab" | "settings.generalTab";
-  titleKey: "settings.accountPanelTitle" | "settings.paymentPanelTitle" | "settings.generalPanelTitle";
+  labelKey: MessageKey;
 }[] = [
-  {
-    bodyKey: "settings.accountBody",
-    icon: UserRound,
-    id: "account",
-    kickerKey: "settings.accountKicker",
-    labelKey: "settings.accountTab",
-    titleKey: "settings.accountPanelTitle",
-  },
-  {
-    bodyKey: "settings.paymentBodyNew",
-    icon: CreditCard,
-    id: "payment",
-    kickerKey: "settings.paymentKicker",
-    labelKey: "settings.paymentTab",
-    titleKey: "settings.paymentPanelTitle",
-  },
-  {
-    bodyKey: "settings.generalBody",
-    icon: Settings,
-    id: "general",
-    kickerKey: "settings.generalKicker",
-    labelKey: "settings.generalTab",
-    titleKey: "settings.generalPanelTitle",
-  },
+  { icon: UserRound, id: "account", labelKey: "settings.accountTab" },
+  { icon: CreditCard, id: "payment", labelKey: "settings.paymentTab" },
+  { icon: Settings, id: "general", labelKey: "settings.generalTab" },
 ];
 
-function SettingsNav({
+function SettingsTabs({
   activeTab,
   setActiveTab,
 }: {
@@ -72,7 +56,7 @@ function SettingsNav({
   return (
     <nav
       aria-label={t("settings.sectionsLabel")}
-      className="grid h-fit gap-2 rounded-[14px] border border-[var(--splity-line)] bg-white p-2 shadow-sm lg:sticky lg:top-6"
+      className="splity-scrollbar-none flex gap-8 overflow-x-auto border-b border-[var(--splity-line)]"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -80,24 +64,19 @@ function SettingsNav({
 
         return (
           <button
-            aria-current={active ? "page" : undefined}
+            aria-selected={active}
             className={[
-              "inline-flex h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm font-bold transition",
+              "flex h-14 shrink-0 items-center gap-3 border-b-2 px-3 text-sm font-bold transition",
               active
-                ? "border-[var(--splity-ink)] bg-[var(--splity-navy)] text-white shadow-[0_8px_18px_rgba(27,42,107,0.18)]"
-                : "border-[var(--splity-ink)] bg-[#fbfaf5] text-[var(--splity-ink)] hover:bg-white",
+                ? "border-[#087f6f] text-[#087f6f]"
+                : "border-transparent text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
             ].join(" ")}
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            role="tab"
             type="button"
           >
-            <Icon
-              aria-hidden="true"
-              className={[
-                "h-4 w-4 shrink-0",
-                active ? "text-[var(--splity-gold)]" : "text-[var(--splity-muted)]",
-              ].join(" ")}
-            />
+            <Icon className="h-4 w-4" />
             {t(tab.labelKey)}
           </button>
         );
@@ -106,13 +85,66 @@ function SettingsNav({
   );
 }
 
+function SectionCard({
+  body,
+  children,
+  icon,
+  tone = "mint",
+  title,
+}: {
+  body: ReactNode;
+  children: ReactNode;
+  icon: ReactNode;
+  tone?: "mint" | "danger";
+  title: ReactNode;
+}) {
+  const danger = tone === "danger";
+
+  return (
+    <section
+      className={[
+        "overflow-hidden rounded-2xl border bg-white shadow-[0_10px_30px_rgba(12,21,56,0.05)]",
+        danger ? "border-red-200 bg-red-50/30" : "border-[var(--splity-line)]",
+      ].join(" ")}
+    >
+      <header
+        className={[
+          "flex items-center gap-4 px-5 py-5 sm:px-7",
+          danger ? "" : "border-b border-[var(--splity-line)]",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+            danger ? "bg-red-100 text-red-500" : "bg-emerald-50 text-[#087f6f]",
+          ].join(" ")}
+        >
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <h2
+            className={[
+              "splity-display text-xl font-extrabold tracking-tight",
+              danger ? "text-red-500" : "text-[var(--splity-ink)]",
+            ].join(" ")}
+          >
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-[var(--splity-muted)]">{body}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
 function LanguageSegment() {
   const { locale, setLocale, t } = useTranslation();
 
   return (
-    <div className="inline-flex rounded-full border border-[var(--splity-line)] bg-white p-1">
+    <div className="inline-flex rounded-xl border border-[var(--splity-line)] bg-white p-1">
       {[
-        ["en", t("common.englishShort")],
+        ["en", t("common.english")],
         ["zh", t("common.chinese")],
       ].map(([value, label]) => {
         const active = locale === value;
@@ -120,10 +152,10 @@ function LanguageSegment() {
         return (
           <button
             className={[
-              "h-8 rounded-full px-4 text-xs font-bold transition",
+              "h-10 min-w-24 rounded-lg px-4 text-sm font-bold transition",
               active
-                ? "bg-[var(--splity-navy)] text-white shadow-sm"
-                : "text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
+                ? "bg-[#087f6f] text-white shadow-[0_8px_18px_rgba(8,127,111,0.20)]"
+                : "text-[var(--splity-ink)] hover:bg-[var(--splity-bg)]",
             ].join(" ")}
             key={value}
             onClick={() => setLocale(value as "en" | "zh")}
@@ -139,93 +171,95 @@ function LanguageSegment() {
 
 function PreferenceRow({
   action,
-  children,
+  icon,
   label,
+  value,
+  hint,
 }: {
   action?: ReactNode;
-  children: ReactNode;
-  label: string;
+  hint: ReactNode;
+  icon: ReactNode;
+  label: ReactNode;
+  value?: ReactNode;
 }) {
   return (
-    <div className="grid min-h-[70px] gap-3 rounded-xl border border-[var(--splity-line)] bg-[#fffefa] px-4 py-4 sm:grid-cols-[minmax(150px,0.22fr)_1fr_auto] sm:items-center">
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-[var(--splity-gold-strong)]">
-          {label}
-        </p>
+    <div className="grid gap-4 border-b border-[var(--splity-line)] px-5 py-5 last:border-b-0 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:px-7">
+      <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-[#087f6f]">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-base font-extrabold text-[var(--splity-ink)]">{label}</h3>
+        <p className="mt-1 text-sm leading-5 text-[var(--splity-muted)]">{hint}</p>
       </div>
-      <div className="text-sm font-bold text-[var(--splity-ink)]">{children}</div>
-      {action ? <div className="justify-self-start sm:justify-self-end">{action}</div> : null}
+      <div className="flex items-center justify-start gap-3 sm:justify-end">
+        {value ? <div className="text-sm font-extrabold text-[var(--splity-ink)]">{value}</div> : null}
+        {action}
+      </div>
     </div>
   );
 }
 
 function GeneralPanel() {
-  const { locale, t } = useTranslation();
+  const { t } = useTranslation();
 
   return (
-    <div className="grid gap-4">
-      <PreferenceRow action={<LanguageSegment />} label={t("settings.currentLanguage")}>
-        {locale === "zh" ? t("common.chinese") : t("common.english")}
-      </PreferenceRow>
-
-      <PreferenceRow
-        action={
-          <button
-            className="rounded-md border border-[var(--splity-line-strong)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--splity-ink)] transition hover:bg-[#f7f5ee]"
-            type="button"
-          >
-            {t("common.change")}
-          </button>
-        }
-        label={t("settings.currency")}
+    <div className="grid gap-6">
+      <SectionCard
+        body={t("settings.generalPanelBody")}
+        icon={<Settings className="h-5 w-5" />}
+        title={t("settings.generalPanelTitle")}
       >
-        {t("settings.currencyValue")}
-      </PreferenceRow>
-
-      <PreferenceRow
-        action={
-          <button
-            className="rounded-md border border-[var(--splity-line-strong)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--splity-ink)] transition hover:bg-[#f7f5ee]"
-            type="button"
-          >
-            {t("settings.configure")}
-          </button>
-        }
-        label={t("settings.emailReminders")}
-      >
-        {t("settings.emailRemindersValue")}
-      </PreferenceRow>
-
-      <div className="mt-2 grid gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-5 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div>
-          <h3 className="text-sm font-extrabold text-red-600">{t("settings.dangerTitle")}</h3>
-          <p className="mt-2 max-w-lg text-xs leading-5 text-[var(--splity-muted)]">
-            {t("settings.dangerBody")}
-          </p>
+        <div className="m-5 overflow-hidden rounded-2xl border border-[var(--splity-line)] bg-white sm:m-7">
+          <PreferenceRow
+            action={<LanguageSegment />}
+            hint={t("settings.languageHint")}
+            icon={<Globe2 className="h-5 w-5" />}
+            label={t("common.language")}
+          />
+          <PreferenceRow
+            hint={t("settings.currencyHint")}
+            icon={<CreditCard className="h-5 w-5" />}
+            label={t("settings.currency")}
+            value={t("settings.currencyValue")}
+          />
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <button
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-red-200 bg-white px-5 text-sm font-bold text-red-600 opacity-60"
-            disabled
-            title={t("settings.deleteUnavailable")}
-            type="button"
-          >
-            <Trash2 className="h-4 w-4" />
-            {t("settings.deleteAccount")}
-          </button>
-          <form action={signOut}>
-            <PendingActionButton
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-red-500 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-red-600"
-              pendingLabel={t("settings.signingOut")}
-              pendingToastKey="settings.signingOut"
-              type="submit"
-            >
-              <LogOut className="h-4 w-4" />
-              {t("settings.logOut")}
-            </PendingActionButton>
-          </form>
+
+        <div className="px-5 pb-5 sm:px-7 sm:pb-7">
+          <section className="flex flex-col gap-5 rounded-2xl border border-red-200 bg-red-50/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500">
+                <Trash2 className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-lg font-extrabold text-red-500">{t("settings.dangerZone")}</h3>
+                <p className="mt-1 text-sm leading-5 text-[var(--splity-muted)]">{t("settings.dangerBody")}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-3 sm:justify-end">
+              <button
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-red-400 bg-white px-5 text-sm font-bold text-red-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+                title={t("settings.deleteUnavailable")}
+                type="button"
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("settings.deleteAccount")}
+              </button>
+              <form action={signOut}>
+                <PendingActionButton
+                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-zinc-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-zinc-800"
+                  pendingLabel={t("settings.signingOut")}
+                  pendingToastKey="settings.signingOut"
+                  type="submit"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("settings.logOut")}
+                </PendingActionButton>
+              </form>
+            </div>
+          </section>
         </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }
@@ -243,59 +277,42 @@ export function SettingsClient({
   username,
 }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState<TabId>("account");
-  const active = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const { t } = useTranslation();
-  const profileFormId = "settings-profile-form";
 
   return (
-    <div className="grid gap-8">
-      <header className="pt-1">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[var(--splity-gold-strong)] before:mr-2 before:content-['•']">
-          {t("settings.title")}
-        </p>
-        <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[var(--splity-ink)] sm:text-5xl">
-          {t("settings.headingPrefix")}{" "}
-          <span className="font-[var(--splity-serif)] text-[1.08em] italic text-[var(--splity-navy)]">
-            {t("settings.headingAccent")}
-          </span>
-        </h1>
-      </header>
+    <div className="grid gap-6">
+      <SettingsTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <SettingsNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className="splity-page-enter grid gap-6" key={activeTab} role="tabpanel">
+        {activeTab === "account" ? (
+          <>
+            <ProfileForm name={name} username={username} />
 
-        <section className="min-h-[560px] rounded-[24px] bg-white p-5 shadow-[0_16px_45px_rgba(12,21,56,0.08)] ring-1 ring-[var(--splity-line)] sm:p-8">
-          <div className="mb-6">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.26em] text-[var(--splity-gold-strong)]">
-              {t(active.kickerKey)}
-            </p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-[var(--splity-ink)] sm:text-3xl">
-              {t(active.titleKey)}
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--splity-muted)]">{t(active.bodyKey)}</p>
-          </div>
+            <SectionCard
+              body={t("settings.loginSecurityBody")}
+              icon={<LockKeyhole className="h-5 w-5" />}
+              title={t("settings.loginSecurityTitle")}
+            >
+              <div className="divide-y divide-[var(--splity-line)]">
+                <EmailSection email={email} isVerified={isEmailVerified} />
+                <ChangePasswordForm />
+              </div>
+            </SectionCard>
+          </>
+        ) : null}
 
-          {activeTab === "account" ? (
-            <div className="grid gap-4">
-              <ProfileForm formId={profileFormId} name={name} username={username} />
-              <EmailSection email={email} isVerified={isEmailVerified} />
-              <ChangePasswordForm />
-            </div>
-          ) : null}
+        {activeTab === "payment" ? (
+          <PaymentProfileForm
+            accountName={accountName}
+            accountNumber={accountNumber}
+            notes={notes}
+            payeeName={payeeName}
+            paymentMethod={paymentMethod}
+            paymentQrDataUrl={paymentQrDataUrl}
+          />
+        ) : null}
 
-          {activeTab === "payment" ? (
-            <PaymentProfileForm
-              accountName={accountName}
-              accountNumber={accountNumber}
-              notes={notes}
-              payeeName={payeeName}
-              paymentMethod={paymentMethod}
-              paymentQrDataUrl={paymentQrDataUrl}
-            />
-          ) : null}
-
-          {activeTab === "general" ? <GeneralPanel /> : null}
-        </section>
+        {activeTab === "general" ? <GeneralPanel /> : null}
       </div>
     </div>
   );

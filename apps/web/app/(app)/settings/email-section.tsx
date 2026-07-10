@@ -1,10 +1,10 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { PendingActionButton } from "@/components/ui/pending-action-button";
 import { useTranslation } from "@/lib/i18n";
 import { resendVerificationAction, type SettingsActionState } from "./actions";
@@ -53,28 +53,29 @@ export function EmailSection({ email, isVerified }: EmailSectionProps) {
   }, [cooldown]);
 
   return (
-    <section className="grid gap-3 rounded-xl border border-[var(--splity-line)] bg-[#fffefa] px-4 py-4">
-      <div className="grid min-h-[42px] gap-3 sm:grid-cols-[minmax(150px,0.18fr)_1fr_auto] sm:items-center">
+    <section>
+      <div className="grid min-h-[76px] gap-3 px-5 py-4 sm:grid-cols-[minmax(180px,0.28fr)_1fr_auto] sm:items-center sm:px-7">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-[var(--splity-gold-strong)]">
+          <p className="text-sm font-extrabold text-[var(--splity-ink)]">
             {t("settings.emailAddress")}
           </p>
           <p className="mt-1 text-xs text-[var(--splity-muted)]">{t("settings.emailAddressHint")}</p>
         </div>
-        <p className="min-w-0 break-all text-sm font-bold text-[var(--splity-ink)]">{email}</p>
+        <p className="min-w-0 break-all text-sm font-extrabold text-[var(--splity-ink)]">{email}</p>
         <span
           className={[
-            "inline-flex h-7 items-center rounded-full px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] before:mr-2 before:content-['•']",
+            "inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[11px] font-extrabold",
             isVerified
-              ? "bg-emerald-50 text-emerald-700 before:text-emerald-500"
-              : "bg-amber-50 text-amber-800 before:text-amber-500",
+              ? "bg-emerald-50 text-[#087f6f]"
+              : "bg-amber-50 text-amber-800",
           ].join(" ")}
         >
+          {isVerified ? <Check className="h-3.5 w-3.5" /> : null}
           {isVerified ? t("settings.emailVerified") : t("settings.emailPending")}
         </span>
       </div>
       {!isVerified ? (
-        <form action={formAction} className="grid gap-3 border-t border-dashed border-[var(--splity-line)] pt-3">
+        <form action={formAction} className="grid gap-3 border-t border-dashed border-[var(--splity-line)] px-5 py-4 sm:px-7">
           <Alert tone="error">{state.error}</Alert>
           <Alert tone="success">{state.success}</Alert>
           <div>

@@ -41,8 +41,8 @@ export function MultiSelect({
     [options, value]
   );
   const buttonClassName = compact
-    ? "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-sm text-zinc-950 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10"
-    : "inline-flex h-11 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-base text-zinc-950 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-950 focus:ring-2 focus:ring-zinc-950/10";
+    ? "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-sm text-zinc-950 shadow-sm outline-none transition hover:border-[#087f6f] hover:bg-emerald-50 focus:border-[#087f6f] focus:ring-2 focus:ring-[rgba(8,127,111,0.12)]"
+    : "inline-flex h-11 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 bg-white px-3 text-left text-base text-zinc-950 shadow-sm outline-none transition hover:border-[#087f6f] hover:bg-emerald-50 focus:border-[#087f6f] focus:ring-2 focus:ring-[rgba(8,127,111,0.12)]";
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -148,7 +148,7 @@ export function MultiSelect({
               return (
                 <button
                   aria-selected={isSelected}
-                  className="flex h-9 w-full items-center justify-between gap-2 rounded-sm px-2.5 text-left outline-none transition hover:bg-zinc-100 focus:bg-zinc-100"
+                  className="flex h-9 w-full items-center justify-between gap-2 rounded-sm px-2.5 text-left outline-none transition hover:bg-emerald-50 hover:text-[#087f6f] focus:bg-emerald-50 focus:text-[#087f6f]"
                   key={option.value}
                   onPointerDown={(event) => {
                     event.preventDefault();
@@ -158,7 +158,7 @@ export function MultiSelect({
                   type="button"
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
-                  {isSelected ? <CheckIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-zinc-950" /> : null}
+                  {isSelected ? <CheckIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-[#087f6f]" /> : null}
                 </button>
               );
             })}

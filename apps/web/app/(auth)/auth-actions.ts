@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getAuthCallbackUrl } from "@/lib/auth/site-url";
+import { serverT } from "@/lib/i18n/server";
 
 export type AuthActionState = {
   error: string | null;
@@ -15,6 +16,11 @@ export type PasswordActionState = {
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/;
+
+function redirectPath(value: FormDataEntryValue | null) {
+  const path = String(value ?? "");
+  return path.startsWith("/") && !path.startsWith("//") ? path : "/groups";
+}
 
 function normalizeUsername(value: FormDataEntryValue | null) {
   return String(value ?? "")
@@ -63,8 +69,8 @@ export async function signIn(
 
   return {
     error: null,
-    success: "Login success, redirecting to dashboard...",
-    redirectTo: "/dashboard",
+    success: await serverT("auth.loginSuccess"),
+    redirectTo: redirectPath(formData.get("redirectTo")),
   };
 }
 
@@ -124,8 +130,8 @@ export async function signUp(
 
   return {
     error: null,
-    success: "Register success, redirecting to dashboard...",
-    redirectTo: "/dashboard",
+    success: await serverT("auth.registerSuccess"),
+    redirectTo: redirectPath(formData.get("redirectTo")),
   };
 }
 

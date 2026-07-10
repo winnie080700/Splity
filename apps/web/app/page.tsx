@@ -5,7 +5,7 @@ import { getUser } from "@/lib/auth/server";
 
 export default async function Home() {
   const user = await getUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/groups");
 
   return <LandingPage />;
 }

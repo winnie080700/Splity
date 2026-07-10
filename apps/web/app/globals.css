@@ -69,10 +69,63 @@ html {
   }
 }
 
+@keyframes splity-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splity-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .splity-modal-backdrop {
   animation: splity-modal-backdrop-in 180ms ease-out both;
 }
 
 .splity-modal-panel {
   animation: splity-modal-panel-in 180ms ease-out both;
+}
+
+.splity-page-enter {
+  animation: splity-page-enter 220ms ease-out both;
+}
+
+.splity-popover-in {
+  animation: splity-popover-in 160ms ease-out both;
+}
+
+.splity-scrollbar-none {
+  scrollbar-width: none;
+}
+
+.splity-scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .splity-modal-backdrop,
+  .splity-modal-panel,
+  .splity-page-enter,
+  .splity-popover-in {
+    animation: none;
+  }
 }

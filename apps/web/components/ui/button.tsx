@@ -6,11 +6,11 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variants = {
   primary:
-    "bg-zinc-950 text-white shadow-sm hover:bg-zinc-800 focus-visible:outline-zinc-950",
+    "bg-[#087f6f] text-white shadow-sm hover:bg-[#066c60] focus-visible:outline-[#087f6f]",
   secondary:
-    "border border-zinc-300 bg-white text-zinc-950 hover:bg-zinc-50 focus-visible:outline-zinc-950",
+    "border border-zinc-300 bg-white text-zinc-950 hover:border-[#087f6f] hover:bg-emerald-50 hover:text-[#087f6f] focus-visible:outline-[#087f6f]",
   ghost:
-    "text-zinc-700 hover:bg-zinc-100 focus-visible:outline-zinc-950",
+    "text-zinc-700 hover:bg-emerald-50 hover:text-[#087f6f] focus-visible:outline-[#087f6f]",
 };
 
 function buttonClassName(variant: ButtonProps["variant"] = "primary") {

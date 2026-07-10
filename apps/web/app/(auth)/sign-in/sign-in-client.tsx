@@ -23,6 +23,7 @@ type AuthMode = "login" | "register";
 type SignInClientProps = {
   callbackError: string | null;
   initialMode: AuthMode;
+  redirectTo: string;
 };
 type AuthCopy = {
   backHome: string;
@@ -249,7 +250,7 @@ function useAuthCopy(): AuthCopy {
   };
 }
 
-export function SignInClient({ callbackError, initialMode }: SignInClientProps) {
+export function SignInClient({ callbackError, initialMode, redirectTo }: SignInClientProps) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [isResetOpen, setIsResetOpen] = useState(false);
@@ -364,6 +365,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
 
           {isRegister ? (
             <form action={signUpAction} className="grid gap-3">
+              <input name="redirectTo" type="hidden" value={redirectTo} />
               <Alert tone="error">{signUpState.error}</Alert>
               <AuthField
                 autoComplete="name"
@@ -412,7 +414,7 @@ export function SignInClient({ callbackError, initialMode }: SignInClientProps) 
             </form>
           ) : (
             <form action={signInAction} className="grid gap-3">
-              <input name="redirectTo" type="hidden" value="./dashboard" />
+              <input name="redirectTo" type="hidden" value={redirectTo} />
               <Alert tone="error">{signInState.error ?? callbackError}</Alert>
               <AuthField
                 autoCapitalize="none"
