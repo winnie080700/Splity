@@ -306,6 +306,69 @@ export type Database = {
           },
         ]
       }
+      group_activity_logs: {
+        Row: {
+          actor_user_id: string | null
+          created_at_utc: string
+          event_type: string
+          group_id: string
+          id: string
+          summary_data: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at_utc?: string
+          event_type: string
+          group_id: string
+          id?: string
+          summary_data?: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at_utc?: string
+          event_type?: string
+          group_id?: string
+          id?: string
+          summary_data?: Json
+        }
+        Relationships: []
+      }
+      group_invite_links: {
+        Row: {
+          code: string
+          created_at_utc: string
+          created_by_user_id: string
+          expires_at_utc: string
+          group_id: string
+          id: string
+          max_uses: number
+          revoked_at_utc: string | null
+          used_count: number
+        }
+        Insert: {
+          code: string
+          created_at_utc?: string
+          created_by_user_id: string
+          expires_at_utc?: string
+          group_id: string
+          id?: string
+          max_uses?: number
+          revoked_at_utc?: string | null
+          used_count?: number
+        }
+        Update: {
+          code?: string
+          created_at_utc?: string
+          created_by_user_id?: string
+          expires_at_utc?: string
+          group_id?: string
+          id?: string
+          max_uses?: number
+          revoked_at_utc?: string | null
+          used_count?: number
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           created_at_utc: string
@@ -347,45 +410,6 @@ export type Database = {
             columns: ["invited_user_id"]
             isOneToOne: false
             referencedRelation: "app_users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payment_contributions: {
-        Row: {
-          amount: number
-          bill_id: string
-          created_at_utc: string
-          id: string
-          participant_id: string
-        }
-        Insert: {
-          amount: number
-          bill_id: string
-          created_at_utc?: string
-          id?: string
-          participant_id: string
-        }
-        Update: {
-          amount?: number
-          bill_id?: string
-          created_at_utc?: string
-          id?: string
-          participant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_contributions_bill_id_fkey"
-            columns: ["bill_id"]
-            isOneToOne: false
-            referencedRelation: "bills"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_contributions_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
         ]
@@ -527,6 +551,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_group_invite_link: {
+        Args: { p_code: string }
+        Returns: string
+      }
       accept_invitation: {
         Args: { p_participant_id: string }
         Returns: undefined

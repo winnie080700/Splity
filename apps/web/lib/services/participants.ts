@@ -3,6 +3,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { GROUP_STATUS, type InvitationStatus } from "@/lib/domain/status";
 import { getGroup } from "@/lib/services/groups";
 import { normalizeUsername, searchUserByUsername } from "@/lib/services/users";
+import { requireGroupOrganizer } from "@/lib/services/group-permissions";
 
 export type Participant = Database["public"]["Tables"]["participants"]["Row"];
 
@@ -19,6 +20,7 @@ export class InvitedParticipantEditError extends Error {
 }
 
 async function requireEditableGroup(groupId: string) {
+  await requireGroupOrganizer(groupId);
   const group = await getGroup(groupId);
   if (!group) throw new Error("Group not found.");
   if (group.status !== GROUP_STATUS.unresolved) throw new GroupLockedError();

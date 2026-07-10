@@ -14,9 +14,9 @@ export type SettlementParticipantRow = {
 
 export type SettlementBillRow = {
   id: string;
+  primary_payer_participant_id: string;
   transaction_date_utc: string;
   bill_shares?: { participant_id: string; total_share_amount: Decimal.Value }[] | null;
-  payment_contributions?: { participant_id: string; amount: Decimal.Value }[] | null;
 };
 
 export type SettlementDateWindow = {
@@ -65,12 +65,13 @@ export function buildSnapshotFromRows(
       );
     }
 
-    for (const contribution of bill.payment_contributions ?? []) {
-      if (!running.has(contribution.participant_id)) continue;
-      // SettlementsService.cs:187
+    if (running.has(bill.primary_payer_participant_id)) {
+      const billTotal = roundToCurrency(
+        (bill.bill_shares ?? []).reduce((sum, share) => sum.plus(share.total_share_amount), decimal(0))
+      );
       running.set(
-        contribution.participant_id,
-        roundToCurrency((running.get(contribution.participant_id) ?? decimal(0)).plus(contribution.amount))
+        bill.primary_payer_participant_id,
+        roundToCurrency((running.get(bill.primary_payer_participant_id) ?? decimal(0)).plus(billTotal))
       );
     }
   }

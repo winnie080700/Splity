@@ -1,3 +1,4 @@
+import { getUser } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 
 export type Invitation = {
@@ -26,6 +27,16 @@ type InvitationRow = {
   created_at_utc: string;
 };
 
+type SentInvitationRow = {
+  id: string;
+  group_id: string;
+  name: string;
+  username: string | null;
+  invitation_status: number;
+  created_at_utc: string;
+  groups: { name: string } | { name: string }[] | null;
+};
+
 function toInvitation(row: InvitationRow): Invitation {
   return {
     participantId: row.participant_id,
@@ -44,41 +55,30 @@ export async function listMyInvitations() {
   return ((data ?? []) as InvitationRow[]).map(toInvitation);
 }
 
+function groupName(row: SentInvitationRow) {
+  return Array.isArray(row.groups) ? (row.groups[0]?.name ?? "") : (row.groups?.name ?? "");
+}
+
 export async function listSentInvitations(): Promise<SentInvitation[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
-  if (userError || !user) throw new Error("Not authenticated.");
+  if (!user) throw new Error("Not authenticated.");
 
-  const { data: groups, error: groupsError } = await supabase
-    .from("groups")
-    .select("id, name")
-    .eq("created_by_user_id", user.id);
-
-  if (groupsError) throw groupsError;
-  if (!groups?.length) return [];
-
-  const groupNameById = new Map(groups.map((group) => [group.id, group.name]));
   const { data, error } = await supabase
     .from("participants")
-    .select("id, group_id, name, username, invited_user_id, invitation_status, created_at_utc")
-    .in(
-      "group_id",
-      groups.map((group) => group.id)
-    )
+    .select("id, group_id, name, username, invitation_status, created_at_utc, groups!inner(name)")
+    .eq("groups.created_by_user_id", user.id)
     .not("invited_user_id", "is", null)
     .neq("invited_user_id", user.id)
     .order("created_at_utc", { ascending: false });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  return ((data ?? []) as SentInvitationRow[]).map((row) => ({
     createdAtUtc: row.created_at_utc,
     groupId: row.group_id,
-    groupName: groupNameById.get(row.group_id) ?? "",
+    groupName: groupName(row),
     inviteeName: row.name,
     inviteeUsername: row.username,
     participantId: row.id,

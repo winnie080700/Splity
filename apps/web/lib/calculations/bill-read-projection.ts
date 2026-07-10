@@ -29,14 +29,6 @@ type BillShareRow = {
   total_share_amount: number | string;
 };
 
-type PaymentContributionRow = {
-  id: string;
-  bill_id: string;
-  participant_id: string;
-  amount: number | string;
-  created_at_utc: string;
-};
-
 export type BillProjectionRow = {
   id: string;
   group_id: string;
@@ -51,7 +43,6 @@ export type BillProjectionRow = {
   bill_items?: BillItemRow[] | null;
   bill_fees?: BillFeeRow[] | null;
   bill_shares?: BillShareRow[] | null;
-  payment_contributions?: PaymentContributionRow[] | null;
 };
 
 export type BillDetail = {
@@ -85,10 +76,6 @@ export type BillDetail = {
     preFeeAmount: string;
     feeAmount: string;
     totalShareAmount: string;
-  }[];
-  contributions: {
-    participantId: string;
-    amount: string;
   }[];
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -143,7 +130,6 @@ export function projectBillToDetail(row: BillProjectionRow): BillDetail {
   const items = [...(row.bill_items ?? [])].sort((left, right) => left.description.localeCompare(right.description));
   const fees = row.bill_fees ?? [];
   const shares = row.bill_shares ?? [];
-  const contributions = row.payment_contributions ?? [];
 
   const subtotal = roundToCurrency(items.reduce((sum, item) => sum.plus(item.amount), decimal(0)));
   const appliedFees = fees.map((fee) => toAppliedFee(subtotal, fee));
@@ -184,12 +170,6 @@ export function projectBillToDetail(row: BillProjectionRow): BillDetail {
         preFeeAmount: moneyString(share.pre_fee_amount),
         feeAmount: moneyString(share.fee_amount),
         totalShareAmount: moneyString(share.total_share_amount),
-      }))
-      .sort((left, right) => left.participantId.localeCompare(right.participantId)),
-    contributions: contributions
-      .map((contribution) => ({
-        participantId: contribution.participant_id,
-        amount: moneyString(contribution.amount),
       }))
       .sort((left, right) => left.participantId.localeCompare(right.participantId)),
     createdAtUtc: row.created_at_utc,

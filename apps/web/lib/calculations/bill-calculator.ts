@@ -140,11 +140,6 @@ export function calculateBillShares(input: BillCalculationInput): BillComputatio
       };
     });
 
-  const contributionMap = buildContributionMap(input, grandTotal);
-  const contributions = [...contributionMap.entries()]
-    .sort(([left], [right]) => compareParticipantId(left, right))
-    .map(([participantId, amount]) => ({ participantId, amount: toMoneyString(amount) }));
-
   return {
     subtotalAmount: toMoneyString(subtotal),
     totalFeeAmount: toMoneyString(totalFee),
@@ -156,7 +151,6 @@ export function calculateBillShares(input: BillCalculationInput): BillComputatio
       appliedAmount: toMoneyString(fee.appliedAmount),
     })),
     shares,
-    contributions,
   };
 }
 
@@ -180,51 +174,6 @@ function calculateAppliedFees(subtotal: Decimal, fees: BillCalculationFeeInput[]
       appliedAmount,
     };
   });
-}
-
-function buildContributionMap(input: BillCalculationInput, grandTotal: Decimal) {
-  const contributionMap: DecimalByParticipant = new Map(
-    input.participantSplits.map((split) => [split.participantId, money(0)])
-  );
-
-  for (const contribution of input.extraContributions) {
-    if (!contributionMap.has(contribution.participantId)) {
-      throw new BillValidationError("Contribution participant must be part of bill participants.");
-    }
-
-    if (money(contribution.amount).lt(0)) {
-      throw new BillValidationError("Contribution amount must be zero or greater.");
-    }
-
-    // BillCalculator.cs:179
-    contributionMap.set(
-      contribution.participantId,
-      (contributionMap.get(contribution.participantId) ?? money(0)).plus(roundToCurrency(contribution.amount))
-    );
-  }
-
-  // BillCalculator.cs:183
-  const extraTotal = roundToCurrency([...contributionMap.values()].reduce((sum, amount) => sum.plus(amount), money(0)));
-  if (extraTotal.gt(grandTotal)) {
-    throw new BillValidationError("Contribution total cannot exceed bill grand total.");
-  }
-
-  // BillCalculator.cs:189
-  const remaining = roundToCurrency(grandTotal.minus(extraTotal));
-  contributionMap.set(
-    input.primaryPayerParticipantId,
-    (contributionMap.get(input.primaryPayerParticipantId) ?? money(0)).plus(remaining)
-  );
-  // BillCalculator.cs:191
-  contributionMap.set(input.primaryPayerParticipantId, roundToCurrency(contributionMap.get(input.primaryPayerParticipantId) ?? 0));
-
-  // BillCalculator.cs:193
-  const contributionTotal = roundToCurrency([...contributionMap.values()].reduce((sum, amount) => sum.plus(amount), money(0)));
-  if (!contributionTotal.eq(grandTotal)) {
-    throw new BillValidationError("Contribution total must equal bill grand total.");
-  }
-
-  return contributionMap;
 }
 
 function allocateByWeight(totalAmount: Decimal.Value, weights: DecimalByParticipant): DecimalByParticipant {

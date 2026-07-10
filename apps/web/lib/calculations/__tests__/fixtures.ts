@@ -30,9 +30,6 @@ function share(
   return { participantId, weight, preFeeAmount, feeAmount, totalShareAmount };
 }
 
-function contribution(participantId: string, amount: string) {
-  return { participantId, amount };
-}
 
 export const FIXTURES: Fixture[] = [
   {
@@ -44,7 +41,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Groceries", amount: "100.00", responsibleParticipantIds: [p1, p2, p3] }],
       fees: [{ name: "SST", feeType: FEE_TYPE.percentage, value: "6.00" }],
       primaryPayerParticipantId: p1,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "100.00",
@@ -56,7 +52,6 @@ export const FIXTURES: Fixture[] = [
         share(p2, "1.0000", "33.33", "2.00", "35.33"),
         share(p3, "1.0000", "33.33", "2.00", "35.33"),
       ],
-      contributions: [contribution(p1, "106.00"), contribution(p2, "0.00"), contribution(p3, "0.00")],
     },
   },
   {
@@ -68,7 +63,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Groceries", amount: "100.00", responsibleParticipantIds: [p1, p2, p3] }],
       fees: [{ name: "Discount", feeType: FEE_TYPE.fixed, value: "-7.00" }],
       primaryPayerParticipantId: p1,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "100.00",
@@ -80,19 +74,17 @@ export const FIXTURES: Fixture[] = [
         share(p2, "1.0000", "33.33", "-2.33", "31.00"),
         share(p3, "1.0000", "33.33", "-2.33", "31.00"),
       ],
-      contributions: [contribution(p1, "93.00"), contribution(p2, "0.00"), contribution(p3, "0.00")],
     },
   },
   {
-    id: "F02-weighted-fixed-contribution",
-    label: "Weighted split with fixed fee and prepayment",
+    id: "F02-weighted-fixed-fee",
+    label: "Weighted split with fixed fee",
     source: "csharp-test",
     input: {
       participantSplits: [split(p1, "2"), split(p2)],
       items: [{ description: "Dinner", amount: "90.00", responsibleParticipantIds: [p1, p2] }],
       fees: [{ name: "Service", feeType: FEE_TYPE.fixed, value: "9.00" }],
       primaryPayerParticipantId: p1,
-      extraContributions: [contribution(p2, "20.00")],
     },
     expected: {
       subtotalAmount: "90.00",
@@ -100,7 +92,6 @@ export const FIXTURES: Fixture[] = [
       grandTotalAmount: "99.00",
       appliedFees: [{ name: "Service", feeType: FEE_TYPE.fixed, value: "9.00", appliedAmount: "9.00" }],
       shares: [share(p1, "2.0000", "60.00", "6.00", "66.00"), share(p2, "1.0000", "30.00", "3.00", "33.00")],
-      contributions: [contribution(p1, "79.00"), contribution(p2, "20.00")],
     },
   },
   {
@@ -112,7 +103,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Shared meal", amount: "100.00", responsibleParticipantIds: [p1, p2, p3, p4, p5, p6, p7] }],
       fees: [],
       primaryPayerParticipantId: p1,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "100.00",
@@ -128,15 +118,6 @@ export const FIXTURES: Fixture[] = [
         share(p6, "1.0000", "14.28", "0.00", "14.28"),
         share(p7, "1.0000", "14.28", "0.00", "14.28"),
       ],
-      contributions: [
-        contribution(p1, "100.00"),
-        contribution(p2, "0.00"),
-        contribution(p3, "0.00"),
-        contribution(p4, "0.00"),
-        contribution(p5, "0.00"),
-        contribution(p6, "0.00"),
-        contribution(p7, "0.00"),
-      ],
     },
   },
   {
@@ -148,7 +129,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Taxi", amount: "48.50", responsibleParticipantIds: [p1, p4] }],
       fees: [],
       primaryPayerParticipantId: p4,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "48.50",
@@ -161,7 +141,6 @@ export const FIXTURES: Fixture[] = [
         share(p3, "1.0000", "0.00", "0.00", "0.00"),
         share(p4, "4.0000", "32.33", "0.00", "32.33"),
       ],
-      contributions: [contribution(p1, "0.00"), contribution(p2, "0.00"), contribution(p3, "0.00"), contribution(p4, "48.50")],
     },
   },
   {
@@ -177,7 +156,6 @@ export const FIXTURES: Fixture[] = [
         { name: "Parking", feeType: FEE_TYPE.fixed, value: "3.50" },
       ],
       primaryPayerParticipantId: p3,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "123.45",
@@ -193,7 +171,6 @@ export const FIXTURES: Fixture[] = [
         share(p2, "1.0000", "30.86", "5.81", "36.67"),
         share(p3, "2.0000", "61.73", "11.63", "73.36"),
       ],
-      contributions: [contribution(p1, "0.00"), contribution(p2, "0.00"), contribution(p3, "146.71")],
     },
   },
   {
@@ -205,7 +182,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Coffee", amount: "12.34", responsibleParticipantIds: [p1] }],
       fees: [{ name: "SST", feeType: FEE_TYPE.percentage, value: "6.00" }],
       primaryPayerParticipantId: p1,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "12.34",
@@ -213,7 +189,6 @@ export const FIXTURES: Fixture[] = [
       grandTotalAmount: "13.08",
       appliedFees: [{ name: "SST", feeType: FEE_TYPE.percentage, value: "6.00", appliedAmount: "0.74" }],
       shares: [share(p1, "1.0000", "12.34", "0.74", "13.08")],
-      contributions: [contribution(p1, "13.08")],
     },
   },
   {
@@ -225,7 +200,6 @@ export const FIXTURES: Fixture[] = [
       items: [{ description: "Hotel", amount: "9999.99", responsibleParticipantIds: [p1, p2] }],
       fees: [{ name: "Tax", feeType: FEE_TYPE.percentage, value: "8.25" }],
       primaryPayerParticipantId: p2,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "9999.99",
@@ -233,19 +207,17 @@ export const FIXTURES: Fixture[] = [
       grandTotalAmount: "10824.99",
       appliedFees: [{ name: "Tax", feeType: FEE_TYPE.percentage, value: "8.25", appliedAmount: "825.00" }],
       shares: [share(p1, "1.0000", "100.00", "8.25", "108.25"), share(p2, "99.0000", "9899.99", "816.75", "10716.74")],
-      contributions: [contribution(p1, "0.00"), contribution(p2, "10824.99")],
     },
   },
   {
-    id: "F08-multiple-contributors",
-    label: "Multiple extra contributors",
+    id: "F08-primary-payer-with-shared-supplies",
+    label: "Primary payer with shared supplies",
     source: "csharp-runtime",
     input: {
       participantSplits: [split(p1), split(p2), split(p3)],
       items: [{ description: "Supplies", amount: "75.00", responsibleParticipantIds: [p1, p2, p3] }],
       fees: [],
       primaryPayerParticipantId: p3,
-      extraContributions: [contribution(p1, "30.00"), contribution(p2, "20.00")],
     },
     expected: {
       subtotalAmount: "75.00",
@@ -257,19 +229,17 @@ export const FIXTURES: Fixture[] = [
         share(p2, "1.0000", "25.00", "0.00", "25.00"),
         share(p3, "1.0000", "25.00", "0.00", "25.00"),
       ],
-      contributions: [contribution(p1, "30.00"), contribution(p2, "20.00"), contribution(p3, "25.00")],
     },
   },
   {
-    id: "F09-contributions-equal-total",
-    label: "Extra contributions equal grand total",
+    id: "F09-ticket-split",
+    label: "Ticket split",
     source: "csharp-runtime",
     input: {
       participantSplits: [split(p1), split(p2)],
       items: [{ description: "Tickets", amount: "50.00", responsibleParticipantIds: [p1, p2] }],
       fees: [],
       primaryPayerParticipantId: p1,
-      extraContributions: [contribution(p1, "25.00"), contribution(p2, "25.00")],
     },
     expected: {
       subtotalAmount: "50.00",
@@ -277,7 +247,6 @@ export const FIXTURES: Fixture[] = [
       grandTotalAmount: "50.00",
       appliedFees: [],
       shares: [share(p1, "1.0000", "25.00", "0.00", "25.00"), share(p2, "1.0000", "25.00", "0.00", "25.00")],
-      contributions: [contribution(p1, "25.00"), contribution(p2, "25.00")],
     },
   },
   {
@@ -293,7 +262,6 @@ export const FIXTURES: Fixture[] = [
       ],
       fees: [{ name: "Service", feeType: FEE_TYPE.percentage, value: "10.00" }],
       primaryPayerParticipantId: p2,
-      extraContributions: [],
     },
     expected: {
       subtotalAmount: "97.09",
@@ -305,21 +273,28 @@ export const FIXTURES: Fixture[] = [
         share(p2, "2.0000", "28.44", "2.84", "31.28"),
         share(p3, "3.0000", "54.65", "5.47", "60.12"),
       ],
-      contributions: [contribution(p1, "0.00"), contribution(p2, "106.80"), contribution(p3, "0.00")],
     },
   },
 ];
 
 export const INVALID_FIXTURES = [
   {
+    id: "E00-no-items",
+    input: { ...FIXTURES[0].input, items: [] },
+    message: "At least one bill item is required.",
+  },
+  {
+    id: "E00-zero-item-amount",
+    input: {
+      ...FIXTURES[0].input,
+      items: [{ description: "Free item", amount: "0.00", responsibleParticipantIds: [p1] }],
+    },
+    message: "Bill item amount must be greater than zero.",
+  },
+  {
     id: "E01-negative-percentage-fee",
     input: { ...FIXTURES[0].input, fees: [{ name: "Bad fee", feeType: FEE_TYPE.percentage, value: "-1.00" }] },
     message: "Percentage fee value must be zero or greater.",
-  },
-  {
-    id: "E02-contribution-exceeds-total",
-    input: { ...FIXTURES[0].input, extraContributions: [contribution(p2, "200.00")] },
-    message: "Contribution total cannot exceed bill grand total.",
   },
   {
     id: "E03-zero-weight",

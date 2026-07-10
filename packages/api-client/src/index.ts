@@ -89,7 +89,6 @@ export type UserLookupDto = {
 export type BillItemInput = { description: string; amount: number; responsibleParticipantIds: string[] };
 export type BillFeeInput = { name: string; feeType: FeeType; value: number };
 export type BillParticipantInput = { participantId: string; weight?: number | null };
-export type BillContributionInput = { participantId: string; amount: number };
 
 export type CreateBillRequest = {
   storeName: string;
@@ -100,7 +99,6 @@ export type CreateBillRequest = {
   items: BillItemInput[];
   fees: BillFeeInput[];
   participants: BillParticipantInput[];
-  extraContributions: BillContributionInput[];
 };
 
 export type BillSummaryDto = {
@@ -143,12 +141,6 @@ export type BillFeeDto = {
   appliedAmount: number;
 };
 
-export type BillContributionDto = {
-  participantId: string;
-  participantName: string;
-  amount: number;
-};
-
 export type BillDetailDto = {
   id: string;
   groupId: string;
@@ -163,7 +155,6 @@ export type BillDetailDto = {
   items: BillItemDto[];
   fees: BillFeeDto[];
   shares: BillShareDto[];
-  contributions: BillContributionDto[];
 };
 
 export type SettlementTransferDto = {

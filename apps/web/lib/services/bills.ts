@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { GROUP_STATUS } from "@/lib/domain/status";
-import { getGroup } from "@/lib/services/groups";
 import { listParticipants } from "@/lib/services/participants";
 import {
   projectBillToDetail,
@@ -18,6 +17,7 @@ import {
   type SplitMode,
 } from "@/lib/calculations/types";
 import { calculateBillShares } from "@/lib/calculations/bill-calculator";
+import { requireBillEditor } from "@/lib/services/group-permissions";
 
 class GroupLockedError extends Error {
   constructor() {
@@ -36,7 +36,6 @@ export type BillWriteInput = {
   participantSplits: { participantId: string; weight: string }[];
   items: BillCalculationItemInput[];
   fees: { name: string; feeType: FeeType; value: string }[];
-  extraContributions: { participantId: string; amount: string }[];
 };
 
 export const billSelect = `
@@ -74,21 +73,13 @@ export const billSelect = `
     pre_fee_amount,
     fee_amount,
     total_share_amount
-  ),
-  payment_contributions (
-    id,
-    bill_id,
-    participant_id,
-    amount,
-    created_at_utc
   )
 `;
 
 async function requireEditableGroup(groupId: string) {
-  const group = await getGroup(groupId);
-  if (!group) throw new Error("Group not found.");
-  if (group.status !== GROUP_STATUS.unresolved) throw new GroupLockedError();
-  return group;
+  const permissions = await requireBillEditor(groupId);
+  if (permissions.group.status !== GROUP_STATUS.unresolved) throw new GroupLockedError();
+  return permissions.group;
 }
 
 function normalizeInput(input: BillWriteInput): BillCalculationInput {
@@ -100,7 +91,6 @@ function normalizeInput(input: BillWriteInput): BillCalculationInput {
     items: input.items,
     fees: input.fees,
     primaryPayerParticipantId: input.primaryPayerParticipantId,
-    extraContributions: input.extraContributions,
   };
 }
 
@@ -134,11 +124,6 @@ function buildRpcPayload(input: BillWriteInput): Json {
       pre_fee_amount: share.preFeeAmount,
       fee_amount: share.feeAmount,
       total_share_amount: share.totalShareAmount,
-    })),
-    payment_contributions: result.contributions.map((contribution) => ({
-      id: crypto.randomUUID(),
-      participant_id: contribution.participantId,
-      amount: contribution.amount,
     })),
     responsibilities: input.items.flatMap((item, index) =>
       item.responsibleParticipantIds.map((participantId) => ({

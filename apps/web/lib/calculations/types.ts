@@ -29,17 +29,11 @@ export type BillCalculationFeeInput = {
   value: string;
 };
 
-type BillCalculationContributionInput = {
-  participantId: string;
-  amount: string;
-};
-
 export type BillCalculationInput = {
   participantSplits: ParticipantSplitInput[];
   items: BillCalculationItemInput[];
   fees: BillCalculationFeeInput[];
   primaryPayerParticipantId: string;
-  extraContributions: BillCalculationContributionInput[];
 };
 
 type CalculatedShare = {
@@ -48,11 +42,6 @@ type CalculatedShare = {
   preFeeAmount: string;
   feeAmount: string;
   totalShareAmount: string;
-};
-
-type CalculatedContribution = {
-  participantId: string;
-  amount: string;
 };
 
 export type CalculatedFee = {
@@ -68,5 +57,4 @@ export type BillComputationResult = {
   grandTotalAmount: string;
   appliedFees: CalculatedFee[];
   shares: CalculatedShare[];
-  contributions: CalculatedContribution[];
 };

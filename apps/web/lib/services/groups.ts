@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { GROUP_STATUS, type GroupStatus } from "@/lib/domain/status";
 import { normalizeUsername } from "@/lib/services/users";
+import { getUser } from "@/lib/auth/server";
 export {
   GROUP_STATUS,
   isGroupStatus,
@@ -130,6 +131,9 @@ export async function createGroup(input: { name: string }) {
 }
 
 export async function updateGroup(groupId: string, input: { name: string }) {
+  const user = await getUser();
+  const group = await getGroup(groupId);
+  if (!user || !group || group.created_by_user_id !== user.id) throw new Error("Forbidden");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("groups")
@@ -143,6 +147,9 @@ export async function updateGroup(groupId: string, input: { name: string }) {
 }
 
 export async function updateGroupStatus(groupId: string, status: GroupStatus) {
+  const user = await getUser();
+  const group = await getGroup(groupId);
+  if (!user || !group || group.created_by_user_id !== user.id) throw new Error("Forbidden");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("groups")
@@ -156,6 +163,9 @@ export async function updateGroupStatus(groupId: string, status: GroupStatus) {
 }
 
 export async function deleteGroup(groupId: string) {
+  const user = await getUser();
+  const group = await getGroup(groupId);
+  if (!user || !group || group.created_by_user_id !== user.id) throw new Error("Forbidden");
   const supabase = await createClient();
   const { error } = await supabase.from("groups").delete().eq("id", groupId);
   if (error) throw error;

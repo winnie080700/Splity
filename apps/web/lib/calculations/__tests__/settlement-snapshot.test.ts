@@ -8,13 +8,13 @@ describe("buildSnapshotFromRows", () => {
     const snapshot = buildSnapshotFromRows(PARTICIPANTS, [
       {
         id: "bill-1",
+        primary_payer_participant_id: p1,
         transaction_date_utc: "2026-05-15T00:00:00.000Z",
         bill_shares: [
           { participant_id: p1, total_share_amount: "30.00" },
           { participant_id: p2, total_share_amount: "30.00" },
           { participant_id: p3, total_share_amount: "30.00" },
         ],
-        payment_contributions: [{ participant_id: p1, amount: "90.00" }],
       },
     ]);
 
@@ -33,15 +33,15 @@ describe("buildSnapshotFromRows", () => {
     const bills = [
       {
         id: "bill-1",
+        primary_payer_participant_id: p2,
         transaction_date_utc: "2026-05-15T00:00:00.000Z",
         bill_shares: [{ participant_id: p1, total_share_amount: "10.00" }],
-        payment_contributions: [{ participant_id: p2, amount: "10.00" }],
       },
       {
         id: "bill-2",
+        primary_payer_participant_id: p3,
         transaction_date_utc: "2026-05-16T00:00:00.000Z",
         bill_shares: [{ participant_id: p2, total_share_amount: "8.00" }],
-        payment_contributions: [{ participant_id: p3, amount: "8.00" }],
       },
     ];
 
@@ -92,9 +92,9 @@ describe("buildTransferKey", () => {
     const snapshot = buildSnapshotFromRows(PARTICIPANTS, [
       {
         id: "bill-1",
+        primary_payer_participant_id: p2,
         transaction_date_utc: "2026-05-15T00:00:00.000Z",
         bill_shares: [{ participant_id: p1, total_share_amount: "20.00" }],
-        payment_contributions: [{ participant_id: p2, amount: "20.00" }],
       },
     ]);
 

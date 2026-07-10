@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type AppUser = Database["public"]["Tables"]["app_users"]["Row"];
 
-export async function getUser() {
+export const getUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,7 +15,7 @@ export async function getUser() {
 
   if (error || !user) return null;
   return user;
-}
+});
 
 export async function requireUser() {
   const user = await getUser();
