@@ -260,6 +260,7 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
                         <span className="flex min-w-0 flex-wrap items-center gap-2">
                           <span className="truncate text-sm font-bold text-slate-900">{identity.name}</span>
                           <RoleBadge roleKey={identity.roleKey} />
+                          {identity.completed ? <CompletedBadge /> : null}
                         </span>
                         <span className={[
                           "mt-1 block text-xs font-semibold sm:mt-0 sm:text-sm",
@@ -476,6 +477,16 @@ function RoleBadge({ roleKey }: { roleKey: MessageKey }) {
   return (
     <span className={`inline-flex h-6 items-center rounded-md border px-2 text-[11px] font-bold ${classes}`}>
       {t(roleKey)}
+    </span>
+  );
+}
+
+function CompletedBadge() {
+  const { t } = useTranslation();
+
+  return (
+    <span className="inline-flex h-6 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-700">
+      {t("share.completed")}
     </span>
   );
 }
