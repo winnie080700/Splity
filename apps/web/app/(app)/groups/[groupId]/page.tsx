@@ -41,6 +41,7 @@ import { buildParticipantSettlementCards } from "./settlement-participant-data";
 import { buildSettlementReceiverInfos } from "./settlement-receiver-info";
 import { ShareSettlementModal } from "./share-settlement-modal";
 import { type GroupPageProps, statusMeta } from "./type";
+import { transferActivitySummary } from "./activity-summary";
 
 const tabs = [
   ["bills", "groupDetail.tabBills"],
@@ -98,6 +99,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const canWriteBills = status === GROUP_STATUS.unresolved;
   const canManageParticipants = organizer && status === GROUP_STATUS.unresolved;
   const participantById = new Map(participants.map((participant) => [participant.id, participant]));
+  const participantNames = new Map(participants.map((participant) => [participant.id, participant.name]));
   const currencyCode = allBills[0]?.currencyCode ?? "MYR";
   const total = groupTotal(allBills);
   const fees = groupFees(allBills);
@@ -323,7 +325,14 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
               const summary = typeof item.summary_data === "object" && item.summary_data && !Array.isArray(item.summary_data) ? item.summary_data as Record<string, unknown> : {};
               const name = String(summary.storeName ?? summary.participantName ?? "");
               const eventKey = `groupDetail.activity.${item.event_type}` as MessageKey;
-              return <div className="flex items-center gap-4 px-4 py-4" key={item.id}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-teal-700 font-bold text-white">{String(summary.actorName ?? "S").slice(0, 1).toUpperCase()}</span><p className="min-w-0 flex-1 text-sm"><strong>{String(summary.actorName ?? systemName)}</strong> <T k={eventKey} values={{ name }} /></p><time className="shrink-0 text-xs text-[var(--splity-muted)]">{formatDate(item.created_at_utc)}</time></div>;
+              const transferSummary = item.event_type === "transfer_status_updated"
+                ? transferActivitySummary(
+                    summary,
+                    participantNames
+                  )
+                : null;
+              const displayName = transferSummary?.name || String(summary.actorName ?? systemName);
+              return <div className="flex items-center gap-4 px-4 py-4" key={item.id}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-teal-700 font-bold text-white">{displayName.slice(0, 1).toUpperCase()}</span><p className="min-w-0 flex-1 text-sm">{transferSummary ? <T k={transferSummary.messageKey} values={{ name: transferSummary.name || systemName }} /> : <><strong>{displayName}</strong> <T k={eventKey} values={{ name }} /></>}</p><time className="shrink-0 text-xs text-[var(--splity-muted)]">{formatDate(item.created_at_utc)}</time></div>;
             }) : <p className="p-8 text-center text-sm text-[var(--splity-muted)]"><T k="groupDetail.activityEmpty" /></p>}
           </div>
         </section>

@@ -672,6 +672,8 @@ export const zh: Partial<Record<MessageKey, string>> = {
   "groupDetail.activity.participant_updated": "更新了 {name}",
   "groupDetail.activity.group_status_updated": "更新了群组状态",
   "groupDetail.activity.transfer_status_updated": "更新了一笔转账",
+  "groupDetail.activity.transfer_marked_paid": "{name} 的转账已标记为付款",
+  "groupDetail.activity.transfer_marked_received": "{name} 的转账已标记为收款",
   "groupDetail.activity.system": "Splity",
   "export.previewTitle": "导出预览",
   "export.previewBody": "下载或复制前请先检查图片。",

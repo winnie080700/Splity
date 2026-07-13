@@ -670,6 +670,8 @@ export const en = {
   "groupDetail.activity.participant_updated": "updated {name}",
   "groupDetail.activity.group_status_updated": "updated the group status",
   "groupDetail.activity.transfer_status_updated": "updated a transfer",
+  "groupDetail.activity.transfer_marked_paid": "{name}'s transfer marked as paid",
+  "groupDetail.activity.transfer_marked_received": "{name}'s transfer marked as received",
   "groupDetail.activity.system": "Splity",
   "export.previewTitle": "Export preview",
   "export.previewBody": "Review the image before downloading or copying it.",
