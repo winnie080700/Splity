@@ -99,12 +99,12 @@ export function CreateGroupSetupScreen({ ownerParticipant }: { ownerParticipant:
   return (
     <div
       className={[
-        "mx-auto grid min-h-[calc(100vh-120px)] w-full grid-rows-[auto_1fr_auto] gap-5",
+        "mx-auto grid min-h-[calc(100vh-88px)] w-full grid-rows-[auto_1fr_auto] gap-3 sm:min-h-[calc(100vh-120px)] sm:gap-5",
         "max-w-5xl",
       ].join(" ")}
     >
       <SetupHeader stepIndex={stepIndex} />
-      <main className="grid content-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start">
+      <main className="grid content-start gap-3 sm:gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start">
         <div>
           {step === "name" ? (
             <NameStep groupName={groupName} onContinue={() => setStep("participants")} setGroupName={setGroupName} />

@@ -593,15 +593,15 @@ export default function FaqPage() {
   }, [activeCategory, query]);
 
   return (
-    <main className="min-h-screen bg-[#efede7] px-3 py-7 text-[var(--splity-ink)] sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#efede7] px-3 py-4 text-[var(--splity-ink)] sm:px-6 sm:py-7 lg:px-8">
       <header className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <BackToHome />
       </header>
 
       <section
-        className="mt-8 overflow-hidden rounded-[26px] bg-[var(--splity-navy)] px-6 py-12 text-white sm:px-10 lg:px-12"
+        className="mt-5 overflow-hidden rounded-[22px] bg-[var(--splity-navy)] px-5 py-7 text-white sm:mt-8 sm:rounded-[26px] sm:px-10 sm:py-12 lg:px-12"
         id="help">
-        <div className="relative min-h-[250px]">
+        <div className="relative min-h-[210px] sm:min-h-[250px]">
           <div className="absolute -right-10 -top-16 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,rgba(233,177,66,0.22),transparent_68%)]" />
           <div className="absolute bottom-0 right-3 hidden text-[240px] leading-none text-white/16 lg:block">
             ?
@@ -610,17 +610,17 @@ export default function FaqPage() {
             <p className=" text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold)]">
               • Help & FAQ
             </p>
-            <h1 className="mt-5 splity-display text-[clamp(2.6rem,5vw,4rem)] leading-tight">
+            <h1 className="mt-3 splity-display text-[clamp(2.15rem,11vw,4rem)] leading-tight sm:mt-5">
               How can we{" "}
               <span className="italic text-[var(--splity-gold)]">
                 help?
               </span>
             </h1>
-            <p className="mt-4 max-w-[460px] text-[16px] leading-7 text-white/78">
+            <p className="mt-3 max-w-[460px] text-sm leading-6 text-white/78 sm:mt-4 sm:text-[16px] sm:leading-7">
               Search the knowledge base, dig through common questions, or send
               us a note. We usually reply within a day.
             </p>
-            <label className="mt-8 flex max-w-[560px] items-center gap-3 rounded-xl border border-white/18 bg-white/10 px-4 py-3 text-white/65">
+            <label className="mt-5 flex max-w-[560px] items-center gap-3 rounded-xl border border-white/18 bg-white/10 px-3 py-2.5 text-white/65 sm:mt-8 sm:px-4 sm:py-3">
               <SearchIcon />
               <input
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/55"
@@ -637,15 +637,15 @@ export default function FaqPage() {
         </div>
       </section>
 
-      <section className="mt-10" id="faq">
+      <section className="mt-7 sm:mt-10" id="faq">
         <p className=" text-[12px] uppercase tracking-[0.18em] text-[var(--splity-gold-strong)]">
           • Frequently asked
         </p>
-        <div className="mt-4 grid gap-6 lg:grid-cols-[220px_1fr]">
-          <aside className="h-fit rounded-2xl border border-[var(--splity-line)] bg-white p-3 shadow-[0_10px_28px_rgba(12,21,56,0.04)]">
+        <div className="mt-3 grid gap-4 sm:mt-4 sm:gap-6 lg:grid-cols-[220px_1fr]">
+          <aside className="splity-scrollbar-none flex h-fit gap-2 overflow-x-auto rounded-2xl border border-[var(--splity-line)] bg-white p-2 shadow-[0_10px_28px_rgba(12,21,56,0.04)] lg:block lg:p-3">
             {categories.map((category) => (
               <button
-                className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                className={`flex w-auto shrink-0 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors lg:mb-0 lg:w-full lg:px-4 lg:py-3 lg:text-sm ${
                   activeCategory === category.label
                     ? "bg-[var(--splity-navy)] text-white"
                     : "text-[var(--splity-ink)] hover:bg-[#fbfaf5]"
@@ -685,7 +685,7 @@ export default function FaqPage() {
       </section>
 
       <section
-        className="mt-10 rounded-[18px] border border-[var(--splity-line)] bg-white px-6 py-9 shadow-[0_10px_28px_rgba(12,21,56,0.04)] sm:px-8"
+        className="mt-7 rounded-[18px] border border-[var(--splity-line)] bg-white px-4 py-6 shadow-[0_10px_28px_rgba(12,21,56,0.04)] sm:mt-10 sm:px-8 sm:py-9"
         id="contact">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
@@ -718,7 +718,7 @@ export default function FaqPage() {
         </div>
       </section>
 
-      <footer className="mt-12 flex flex-col gap-3 pb-3 text-xs uppercase tracking-[0.12em] text-[var(--splity-muted)] sm:flex-row sm:items-center sm:justify-between">
+      <footer className="mt-8 flex flex-col gap-2 pb-2 text-[11px] uppercase tracking-[0.12em] text-[var(--splity-muted)] sm:mt-12 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
         <span>+ Splity · 2026</span>
         <span>Made with care by Winnie</span>
       </footer>

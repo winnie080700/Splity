@@ -7,15 +7,15 @@
 
 export const LEGAL_TYPOGRAPHY = {
   /** Top-level section wrapper. Adds breathing room between numbered sections. */
-  section: "mt-12 first:mt-10",
+  section: "mt-8 first:mt-7 sm:mt-12 sm:first:mt-10",
   /** Numbered section heading, e.g. "1. Information We Collect". */
-  h2: "text-2xl font-semibold tracking-tight text-[var(--splity-ink)]",
+  h2: "text-xl font-semibold tracking-tight text-[var(--splity-ink)] sm:text-2xl",
   /** Subsection heading, e.g. "1.1 Account Information". */
-  h3: "mt-8 text-lg font-semibold text-[var(--splity-ink)]",
+  h3: "mt-6 text-base font-semibold text-[var(--splity-ink)] sm:mt-8 sm:text-lg",
   /** Body paragraph. */
-  p: "mt-4 text-base leading-relaxed text-[var(--splity-ink)]",
+  p: "mt-3 text-sm leading-6 text-[var(--splity-ink)] sm:mt-4 sm:text-base sm:leading-relaxed",
   /** Unordered list. */
-  ul: "mt-4 flex list-disc flex-col gap-2 pl-6 text-base leading-relaxed text-[var(--splity-ink)]",
+  ul: "mt-3 flex list-disc flex-col gap-1.5 pl-5 text-sm leading-6 text-[var(--splity-ink)] sm:mt-4 sm:gap-2 sm:pl-6 sm:text-base sm:leading-relaxed",
   /** Muted helper text, e.g. "Last updated …". */
   muted: "text-[var(--splity-muted)]",
   /** Inline link (mailto, external, etc). */

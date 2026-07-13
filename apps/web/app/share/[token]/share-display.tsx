@@ -216,19 +216,19 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-3 sm:gap-5">
       <StepHeader currentStep={currentStep} onStepChange={setCurrentStep} />
 
       {currentStep === 1 ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(280px,1fr)]">
-          <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:p-7">
+        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(280px,1fr)]">
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:rounded-3xl sm:p-7">
             <SectionHeading
               body={t("share.chooseIdentityBody")}
               icon={<UserRound className="h-6 w-6" />}
               title={t("share.chooseIdentity")}
             />
 
-            <label className="relative mt-6 block">
+            <label className="relative mt-4 block sm:mt-6">
               <span className="sr-only">{t("share.searchParticipant")}</span>
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
@@ -285,7 +285,7 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
               )}
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-4 flex justify-end sm:mt-6">
               <PrimaryButton
                 disabled={!selectedIdentity}
                 label={t("share.continueToBills")}
@@ -298,8 +298,8 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
       ) : null}
 
       {currentStep === 2 && selectedIdentity ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(300px,1fr)]">
-          <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:p-7">
+        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(300px,1fr)]">
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:rounded-3xl sm:p-7">
             <SectionHeading
               body={formatMessage(t, "share.checkBillsBody", { name: selectedIdentity.name })}
               icon={<ReceiptText className="h-6 w-6" />}
@@ -309,8 +309,8 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
             <IdentityStrip currencyCode={currencyCode} identity={selectedIdentity} />
 
             {selectedBills.length ? (
-              <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-                <div className="hidden grid-cols-[minmax(180px,2fr)_1fr_1.2fr_1fr_1fr] gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 md:grid">
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 sm:mt-5">
+                <div className="grid min-w-[720px] grid-cols-[minmax(180px,2fr)_1fr_1.2fr_1fr_1fr] gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                   <span>{t("share.billColumn")}</span>
                   <span>{t("bills.date")}</span>
                   <span>{t("bills.paidByShort")}</span>
@@ -324,18 +324,15 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
                   return (
                     <details className="group border-b border-slate-100 last:border-b-0" key={bill.id}>
                       <summary className="cursor-pointer list-none px-4 py-4 outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600">
-                        <div className="grid grid-cols-2 items-center gap-x-4 gap-y-3 md:grid-cols-[minmax(180px,2fr)_1fr_1.2fr_1fr_1fr]">
-                          <div className="col-span-2 flex min-w-0 items-center gap-3 md:col-span-1">
+                        <div className="grid min-w-[720px] grid-cols-[minmax(180px,2fr)_1fr_1.2fr_1fr_1fr] items-center gap-4">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-700">
                               <ReceiptText className="h-4 w-4" />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-bold text-slate-900">{bill.store_name}</span>
-                              <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 md:hidden">
-                                {t("share.viewBillDetails")} <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                              </span>
                             </span>
-                            <ChevronDown className="hidden h-4 w-4 text-slate-400 transition-transform group-open:rotate-180 md:block" />
+                            <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" />
                           </div>
                           <TableValue label={t("bills.date")} value={formatDate(bill.transaction_date_utc, t("share.anyTime"))} />
                           <TableValue label={t("bills.paidByShort")} value={bill.payer_name} />
@@ -389,8 +386,8 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
       ) : null}
 
       {currentStep === 3 && selectedIdentity ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(300px,1fr)]">
-          <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:p-7">
+        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,2.2fr)_minmax(300px,1fr)]">
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:rounded-3xl sm:p-7">
             <SectionHeading
               body={t("share.confirmPaymentBody")}
               icon={<ShieldCheck className="h-6 w-6" />}
@@ -440,15 +437,15 @@ export function ShareDisplay({ generatedAt, share }: ShareDisplayProps) {
 
 function SectionHeading({ body, icon, title }: { body: string; icon: ReactNode; title: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm">
+    <div className="flex items-start gap-2.5 sm:gap-3">
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm sm:h-11 sm:w-11">
         {icon}
       </span>
       <div>
-        <h2 className="splity-display text-xl font-extrabold tracking-tight text-slate-950 sm:text-2xl">
+        <h2 className="splity-display text-lg font-extrabold tracking-tight text-slate-950 sm:text-2xl">
           {title}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{body}</p>
+        <p className="mt-0.5 max-w-2xl text-xs leading-5 text-slate-600 sm:mt-1 sm:text-sm sm:leading-6">{body}</p>
       </div>
     </div>
   );
@@ -507,18 +504,18 @@ function StepHeader({ currentStep, onStepChange }: { currentStep: Step; onStepCh
   const steps = ["share.step.identity", "share.step.bills", "share.step.confirm"] as const;
 
   return (
-    <nav aria-label={t("share.progressLabel")} className="rounded-2xl border border-slate-200/80 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6">
-      <ol className="grid gap-2 sm:grid-cols-3">
+    <nav aria-label={t("share.progressLabel")} className="rounded-2xl border border-slate-200/80 bg-white px-2 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6 sm:py-3">
+      <ol className="splity-scrollbar-none flex gap-1 overflow-x-auto sm:grid sm:grid-cols-3 sm:gap-2">
         {steps.map((step, index) => {
           const stepNumber = (index + 1) as Step;
           const current = stepNumber === currentStep;
           const complete = stepNumber < currentStep;
           return (
-            <li className="flex items-center" key={step}>
+            <li className="flex min-w-max items-center sm:min-w-0" key={step}>
               <button
                 aria-current={current ? "step" : undefined}
                 className={[
-                  "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-teal-600",
+                  "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 sm:gap-3 sm:px-3 sm:text-sm",
                   current
                     ? "bg-teal-50 text-teal-800"
                     : complete
@@ -555,7 +552,7 @@ function StepHeader({ currentStep, onStepChange }: { currentStep: Step; onStepCh
 function SecurityCard() {
   const { t } = useTranslation();
   return (
-    <aside className="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-5 shadow-[0_12px_36px_rgba(15,118,110,0.06)] sm:p-6">
+    <aside className="rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-4 shadow-[0_12px_36px_rgba(15,118,110,0.06)] sm:rounded-3xl sm:p-6">
       <div className="flex items-start gap-4">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-teal-300 bg-white text-teal-700">
           <ShieldCheck className="h-6 w-6" />
@@ -589,8 +586,7 @@ function IdentityStrip({ currencyCode, identity }: { currencyCode: string; ident
 
 function TableValue({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
-      <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 md:hidden">{label}</span>
+    <div aria-label={label} className="min-w-0">
       <span className="mt-0.5 block truncate text-sm font-semibold text-slate-700">{value}</span>
     </div>
   );

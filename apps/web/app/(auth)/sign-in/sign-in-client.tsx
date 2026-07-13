@@ -286,7 +286,7 @@ export function SignInClient({ callbackError, initialMode, redirectTo }: SignInC
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(1000px_520px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(850px_480px_at_100%_12%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] text-[var(--splity-ink)] lg:h-dvh">
-      <nav className="flex shrink-0 items-center justify-between px-5 py-4 sm:px-10 lg:px-8 lg:py-3">
+      <nav className="flex shrink-0 items-center justify-between px-3 py-3 sm:px-10 sm:py-4 lg:px-8 lg:py-3">
         <Link href="/" aria-label={text.backHome}>
           <BrandMark />
         </Link>
@@ -301,15 +301,15 @@ export function SignInClient({ callbackError, initialMode, redirectTo }: SignInC
         </div>
       </nav>
 
-      <main className="mx-auto grid w-full max-w-[1220px] flex-1 items-center gap-8 px-5 pb-8 pt-3 sm:px-10 lg:min-h-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(410px,460px)] lg:gap-10 lg:px-8 lg:pb-4 lg:pt-1">
-        <section className="max-w-[520px] lg:pr-4">
+      <main className="mx-auto grid w-full max-w-[1220px] flex-1 items-center gap-5 px-3 pb-5 pt-1 sm:gap-8 sm:px-10 sm:pb-8 sm:pt-3 lg:min-h-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(410px,460px)] lg:gap-10 lg:px-8 lg:pb-4 lg:pt-1">
+        <section className="max-w-[520px] max-sm:!hidden sm:block lg:pr-4">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--splity-line)] bg-white py-1.5 pl-2 pr-3.5 text-xs font-semibold uppercase tracking-[0.06em] lg:mb-3">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--splity-gold)] splity-display text-[11px] text-[var(--splity-navy)]">
               <SparklesIcon aria-hidden="true" className="h-3 w-3" />
             </span>
             {text.free}
           </div>
-          <h1 className="splity-display text-[clamp(2.9rem,5.2vw,4.35rem)] leading-[0.94] tracking-tight text-[var(--splity-ink)]">
+          <h1 className="splity-display text-[clamp(2.35rem,11vw,4.35rem)] leading-[0.94] tracking-tight text-[var(--splity-ink)]">
             {text.heroA}
             <br />
             {text.heroB}
@@ -318,13 +318,13 @@ export function SignInClient({ callbackError, initialMode, redirectTo }: SignInC
               {text.heroC}
             </span>
           </h1>
-          <p className="mt-5 max-w-[450px] text-[15px] leading-6 text-[var(--splity-muted)] lg:mt-4">
+          <p className="mt-3 max-w-[450px] text-sm leading-5 text-[var(--splity-muted)] sm:mt-5 sm:text-[15px] sm:leading-6 lg:mt-4">
             {text.heroBody}
           </p>
           <ReceiptPreview text={text} />
         </section>
 
-        <section className="relative w-full max-w-[460px] justify-self-end rounded-[24px] border border-[var(--splity-line)] bg-white px-6 pb-6 pt-7 shadow-[0_0_0_1px_rgba(12,21,56,0.02),0_24px_50px_rgba(12,21,56,0.09),0_48px_90px_rgba(12,21,56,0.05)] sm:px-8 lg:max-h-[calc(100dvh-7rem)] lg:overflow-hidden">
+        <section className="relative w-full max-w-[460px] justify-self-end rounded-[20px] border border-[var(--splity-line)] bg-white px-4 pb-5 pt-5 shadow-[0_0_0_1px_rgba(12,21,56,0.02),0_24px_50px_rgba(12,21,56,0.09),0_48px_90px_rgba(12,21,56,0.05)] sm:rounded-[24px] sm:px-8 sm:pb-6 sm:pt-7 lg:max-h-[calc(100dvh-7rem)] lg:overflow-hidden">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
             {text.account}
           </p>

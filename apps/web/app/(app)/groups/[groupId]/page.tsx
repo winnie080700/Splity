@@ -133,8 +133,8 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
       : { markedPaid: "", pending: "", received: "" };
 
   return (
-    <div className="mx-auto grid w-full max-w-[1640px] gap-5">
-      <nav className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--splity-muted)]">
+    <div className="mx-auto grid w-full max-w-[1640px] gap-3 sm:gap-5">
+      <nav className="flex min-w-0 items-center gap-2 text-xs font-semibold text-[var(--splity-muted)] sm:text-sm">
         <Link className="transition hover:text-teal-700" href="/groups">
           <T k="dashboard.groupsTitle" />
         </Link>
@@ -142,15 +142,15 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
         <span className="truncate text-[var(--splity-ink)]">{group.name}</span>
       </nav>
 
-      <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_8px_28px_rgba(12,21,56,0.07)] sm:p-7">
-        <div className="grid gap-5 lg:flex lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-700">
-              <Users className="h-7 w-7" />
+      <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_8px_28px_rgba(12,21,56,0.07)] sm:rounded-3xl sm:p-7">
+        <div className="grid gap-3 sm:gap-5 lg:flex lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-700 sm:h-14 sm:w-14">
+              <Users className="h-5 w-5 sm:h-7 sm:w-7" />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <h1 className="splity-display truncate text-3xl font-extrabold tracking-tight sm:text-4xl">
+                <h1 className="splity-display truncate text-2xl font-extrabold tracking-tight sm:text-4xl">
                   {group.name}
                 </h1>
                 <span className="inline-flex shrink-0 items-center gap-3">
@@ -170,18 +170,18 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
           ) : null}
         </div>
 
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-7 sm:gap-3 xl:grid-cols-4">
           <MetricCard icon={<Users className="h-4 w-4" />} label={<T k="groups.participants" />} value={participants.length} />
           <MetricCard icon={<ReceiptText className="h-4 w-4" />} label={<T k="groups.bills" />} value={allBills.length} />
           <MetricCard accent icon={<WalletCards className="h-4 w-4" />} label={<T k="groupDetail.groupTotal" />} value={money(total, currencyCode)} />
           <MetricCard icon={<ArrowRight className="h-4 w-4" />} label={<T k="groupDetail.transfersPending" />} value={transfersPending} />
         </div>
 
-        <div aria-label={await serverT("groupDetail.tabsLabel")} className="splity-scrollbar-none mt-6 flex gap-1 overflow-x-auto border-b border-[var(--splity-line)]" role="tablist">
+        <div aria-label={await serverT("groupDetail.tabsLabel")} className="splity-scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-[var(--splity-line)] sm:mt-6" role="tablist">
           {tabs.map(([value, label]) => (
             <Link
               aria-selected={tab === value}
-              className={`shrink-0 border-b-2 px-5 py-3 text-sm font-bold transition ${
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-xs font-bold transition sm:px-5 sm:py-3 sm:text-sm ${
                 tab === value ? "border-teal-700 text-teal-700" : "border-transparent text-[var(--splity-muted)] hover:text-[var(--splity-ink)]"
               }`}
               href={`${groupHref}?tab=${value}`}
@@ -195,7 +195,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
       </section>
 
       {tab === "bills" ? (
-        <section className="splity-page-enter rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-[0_8px_28px_rgba(12,21,56,0.06)] sm:p-7">
+        <section className="splity-page-enter rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-[0_8px_28px_rgba(12,21,56,0.06)] sm:rounded-3xl sm:p-7">
           <BillsLiveTable
             actions={
               <BillExportButton
@@ -250,11 +250,11 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
 
       {tab === "settlement" ? (
         <div className="splity-page-enter grid gap-5">
-          <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm sm:p-7">
-            <h2 className="splity-display text-2xl font-bold"><T k="groupDetail.balanceSummary" /></h2>
+          <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-7">
+            <h2 className="splity-display text-xl font-bold sm:text-2xl"><T k="groupDetail.balanceSummary" /></h2>
             <SettlementParticipantCards cards={settlementCards} />
           </section>
-          <section className="rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm sm:p-7">
+          <section className="rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><h2 className="splity-display text-2xl font-bold"><T k="groupDetail.transferPlan" /></h2><p className="mt-1 text-sm text-[var(--splity-muted)]"><T k="groupDetail.transferPlanBody" /></p></div>
               <div className="flex flex-wrap gap-2">
@@ -300,7 +300,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
       ) : null}
 
       {tab === "activity" ? (
-        <section className="splity-page-enter rounded-3xl border border-[var(--splity-line)] bg-white p-5 shadow-sm sm:p-7">
+        <section className="splity-page-enter rounded-2xl border border-[var(--splity-line)] bg-white p-4 shadow-sm sm:rounded-3xl sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="splity-display text-2xl font-bold"><T k="groupDetail.activity" /></h2>
             <span className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-800"><T k="groupDetail.activityCount" values={{ count: filteredActivity.length }} /></span>

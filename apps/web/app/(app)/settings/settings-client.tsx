@@ -203,7 +203,7 @@ function GeneralPanel() {
   const { t } = useTranslation();
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4 sm:gap-6">
       <SectionCard
         body={t("settings.generalPanelBody")}
         icon={<Settings className="h-5 w-5" />}
@@ -283,7 +283,7 @@ export function SettingsClient({
     <div className="grid gap-6">
       <SettingsTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="splity-page-enter grid gap-6" key={activeTab} role="tabpanel">
+      <div className="splity-page-enter grid gap-4 sm:gap-6" key={activeTab} role="tabpanel">
         {activeTab === "account" ? (
           <>
             <ProfileForm name={name} username={username} />

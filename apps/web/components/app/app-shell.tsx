@@ -80,7 +80,7 @@ export function AppShell({
     <GroupsSearchProvider>
       <main className="min-h-screen bg-[var(--splity-bg)] text-[var(--splity-ink)]">
         <header className="sticky top-0 z-40 border-b border-[var(--splity-line)] bg-white/95 shadow-[0_1px_10px_rgba(12,21,56,0.04)] backdrop-blur">
-          <div className="mx-auto flex h-[72px] w-full max-w-[1640px] items-center gap-3 px-4 sm:gap-5 sm:px-6 lg:px-10">
+          <div className="mx-auto flex h-16 w-full max-w-[1640px] items-center gap-2 px-3 sm:h-[72px] sm:gap-5 sm:px-6 lg:px-10">
             <Link
               aria-label={t("common.appName")}
               className="shrink-0 transition-opacity hover:opacity-75"
@@ -91,7 +91,7 @@ export function AppShell({
             </Link>
 
             <span className="hidden h-7 w-px bg-[var(--splity-line-strong)] sm:block" />
-            <h1 className="splity-display min-w-0 shrink truncate text-xl font-bold tracking-tight sm:text-2xl">
+            <h1 className="splity-display min-w-0 shrink truncate text-lg font-bold tracking-tight sm:text-2xl">
               {t(titleKey(pathname))}
             </h1>
 
@@ -109,7 +109,7 @@ export function AppShell({
                   aria-label={t("app.profileMenu")}
                   className="flex cursor-pointer list-none items-center gap-2 rounded-xl p-1 transition hover:bg-[var(--splity-bg)] [&::-webkit-details-marker]:hidden"
                 >
-                  <span className="splity-display inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#075e54] text-sm font-bold text-white">
+                  <span className="splity-display inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#075e54] text-xs font-bold text-white sm:h-10 sm:w-10 sm:text-sm">
                     {initial(userName || userEmail)}
                   </span>
                   <ChevronDown className="hidden h-4 w-4 text-[var(--splity-muted)] transition-transform group-open:rotate-180 sm:block" />
@@ -145,14 +145,14 @@ export function AppShell({
           </div>
 
           {pathname === "/groups" ? (
-            <div className="border-t border-[var(--splity-line)] px-4 py-2 md:hidden">
+            <div className="border-t border-[var(--splity-line)] px-3 py-1.5 md:hidden">
               <LiveGroupSearch />
             </div>
           ) : null}
         </header>
 
         <section
-          className="splity-page-enter mx-auto min-h-[calc(100vh-72px)] w-full max-w-[1640px] px-4 py-5 sm:px-6 sm:py-7 lg:px-10"
+          className="splity-page-enter mx-auto min-h-[calc(100vh-64px)] w-full max-w-[1640px] px-3 py-3 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-7 lg:px-10"
           key={pathname}
         >
           {children}

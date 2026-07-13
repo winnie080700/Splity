@@ -31,16 +31,16 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
   const isSettling = settlement.groupStatus === GROUP_STATUS.settling;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4 sm:gap-6">
       <div>
         <Link className="text-sm font-semibold text-zinc-600 underline" href={`/groups/${groupId}`}>
           <T k="groups.backToGroup" />
         </Link>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 pb-5">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 pb-3 sm:gap-4 sm:pb-5">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             <T k="settlements.title" />
           </h1>
           <p className="mt-2 text-sm text-zinc-500">{group.name}</p>
@@ -50,7 +50,7 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
         </Badge>
       </header>
 
-      <form className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <form className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-5">
         <Input defaultValue={dateInputValue(settlement.fromDateUtc)} label={<T k="settlements.from" />} name="from" type="date" />
         <Input defaultValue={dateInputValue(settlement.toDateUtc)} label={<T k="settlements.to" />} name="to" type="date" />
         <button className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800">
@@ -58,7 +58,7 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
         </button>
       </form>
 
-      <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+      <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:gap-4 sm:p-5">
         <div>
           <h2 className="text-lg font-semibold">
             <T k="settlements.netBalances" />
@@ -79,7 +79,7 @@ export default async function SettlementsPage({ params, searchParams }: Settleme
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+      <section className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:gap-4 sm:p-5">
         <div>
           <h2 className="text-lg font-semibold">
             <T k="settlements.transfers" />

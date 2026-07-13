@@ -8,21 +8,21 @@ const { section: SECTION_SPACING, h2: H2, h3: H3, p: P, ul: UL, muted: MUTED, li
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[var(--splity-bg)] px-4 py-10 text-[var(--splity-ink)] sm:px-8">
+    <main className="min-h-screen bg-[var(--splity-bg)] px-3 py-5 text-[var(--splity-ink)] sm:px-8 sm:py-10">
       <article className="mx-auto max-w-3xl">
         <BackToHome />
 
-        <header className="mt-10 border-b border-[var(--splity-line)] pb-8">
+        <header className="mt-5 border-b border-[var(--splity-line)] pb-5 sm:mt-10 sm:pb-8">
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--splity-muted)]">
             Legal
           </p>
-          <h1 className="mt-3 splity-display text-4xl sm:text-5xl">
+          <h1 className="mt-2 splity-display text-3xl sm:mt-3 sm:text-5xl">
             Privacy Policy
           </h1>
           <p className={`mt-4 text-sm ${MUTED}`}>Last updated: 21 May 2026</p>
         </header>
 
-        <div className="mt-10 flex flex-col gap-2">
+        <div className="mt-6 flex flex-col gap-2 sm:mt-10">
           <p className={P}>
             This Privacy Policy explains how Splity (&quot;Splity&quot;, &quot;we&quot;, &quot;us&quot;, or
             &quot;our&quot;) collects, uses, stores, and shares information when you use our mobile

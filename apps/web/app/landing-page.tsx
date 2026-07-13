@@ -325,14 +325,14 @@ function SectionHeading({
   centered?: boolean;
 }) {
   return (
-    <div className={centered ? "mx-auto mb-12 max-w-[720px] text-center" : "mb-12 grid gap-8 md:grid-cols-2 md:items-end md:gap-[60px]"}>
+    <div className={centered ? "mx-auto mb-7 max-w-[720px] text-center sm:mb-12" : "mb-7 grid gap-4 sm:mb-12 md:grid-cols-2 md:items-end md:gap-[60px]"}>
       <div>
         <p className="text-[11.5px] font-bold uppercase text-[var(--splity-navy)]">{kicker}</p>
-        <h2 className="mt-3 splity-display text-[clamp(2.5rem,5.5vw,4.75rem)] leading-[0.98]">
+        <h2 className="mt-2 splity-display text-[clamp(2rem,10vw,4.75rem)] leading-[0.98] sm:mt-3">
           {titleA} <span className="italic text-[var(--splity-navy)]">{titleB}</span>
         </h2>
       </div>
-      <p className={`text-[15px] leading-7 text-[var(--splity-muted)] sm:text-[17px] ${centered ? "mx-auto mt-4 max-w-[600px]" : "max-w-[600px]"}`}>
+      <p className={`text-sm leading-6 text-[var(--splity-muted)] sm:text-[17px] sm:leading-7 ${centered ? "mx-auto mt-3 max-w-[600px] sm:mt-4" : "max-w-[600px]"}`}>
         {body}
       </p>
     </div>
@@ -344,7 +344,7 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const FeatureIcon = [ListChecksIcon, HandCoinsIcon, Share2Icon, BadgeCheckIcon, ReceiptTextIcon][index] ?? ListChecksIcon;
 
   return (
-    <article className={`relative flex min-h-[230px] flex-col gap-2.5 overflow-hidden rounded-[22px] border border-[var(--splity-line)] bg-white p-6 ${index === 0 ? "md:row-span-2" : ""}`}>
+    <article className={`relative flex min-h-[210px] flex-col gap-2.5 overflow-hidden rounded-[18px] border border-[var(--splity-line)] bg-white p-4 sm:min-h-[230px] sm:rounded-[22px] sm:p-6 ${index === 0 ? "md:row-span-2" : ""}`}>
       <span className="absolute right-5 top-5 text-[11px] text-[var(--splity-muted)]">0{title}</span>
       <div className="grid h-[38px] w-[38px] place-items-center rounded-xl bg-[#faefce] text-[var(--splity-gold-strong)]">
         <FeatureIcon aria-hidden="true" className="h-5 w-5" />
@@ -618,7 +618,7 @@ export function LandingPage() {
         </div>
       </nav>
 
-      <header className="relative overflow-hidden pb-10 pt-14 sm:pt-20">
+      <header className="relative overflow-hidden pb-6 pt-8 sm:pb-10 sm:pt-20">
         <div className="mx-auto max-w-[1240px] px-4 text-center sm:px-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--splity-line)] bg-white px-3.5 py-1.5 text-[12.5px] font-semibold uppercase">
             <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[var(--splity-gold)] text-xs font-extrabold text-[var(--splity-navy)]">
@@ -627,16 +627,16 @@ export function LandingPage() {
             {text.free}
           </div>
 
-          <h1 className="mt-7  text-[clamp(3.4rem,7.4vw,7.2rem)] font-bold leading-[0.96]">
+          <h1 className="mt-5 text-[clamp(2.55rem,12vw,7.2rem)] font-bold leading-[0.96] sm:mt-7">
             <span className="inline-block">{text.heroA}</span>
             <br />
             <span className="inline-block font-normal italic text-[var(--splity-navy)]">{text.heroB}</span>{" "}
             <span className="inline-block">{text.heroC}</span>
           </h1>
 
-          <p className="mx-auto mt-8 max-w-[620px] text-[17px] leading-7 text-[var(--splity-muted)] sm:text-lg">{text.heroBody}</p>
+          <p className="mx-auto mt-5 max-w-[620px] text-sm leading-6 text-[var(--splity-muted)] sm:mt-8 sm:text-lg sm:leading-7">{text.heroBody}</p>
 
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-9 sm:flex-row">
             <Link className="inline-flex items-center gap-2 rounded-full bg-[var(--splity-navy)] px-5 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(27,42,107,0.22)] hover:-translate-y-0.5" href="/sign-in?mode=register">
               {text.primary}
               <ArrowRightIcon />
@@ -655,15 +655,15 @@ export function LandingPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-8">
+        <div className="hidden px-4 sm:block sm:px-8">
           <DashboardPreview language={locale} />
         </div>
       </header>
 
-      <section className="scroll-mt-24 py-24 sm:py-28" id="why">
+      <section className="scroll-mt-24 py-12 sm:py-28" id="why">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading kicker={text.byline} titleA={text.calcA} titleB={text.calcB} body={text.calcBody} />
-          <div className="grid gap-4 md:grid-cols-[1.4fr_1fr_1fr]">
+          <div className="splity-scrollbar-none flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:snap-none md:grid-cols-[1.4fr_1fr_1fr] md:gap-4 md:overflow-visible md:pb-0 [&>article]:w-[82vw] [&>article]:max-w-[320px] [&>article]:shrink-0 [&>article]:snap-start md:[&>article]:w-auto md:[&>article]:max-w-none md:[&>article]:shrink">
             {text.features.map((feature, index) => (
               <FeatureCard feature={feature} index={index} key={feature.title} />
             ))}
@@ -671,12 +671,12 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="scroll-mt-24 py-20" id="cases">
+      <section className="scroll-mt-24 py-12 sm:py-20" id="cases">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading centered kicker={text.casesKicker} titleA={text.casesTitleA} titleB={text.casesTitleB} body={text.casesBody} />
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="splity-scrollbar-none flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-3.5 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>article]:w-[76vw] [&>article]:max-w-[290px] [&>article]:shrink-0 [&>article]:snap-start sm:[&>article]:w-auto sm:[&>article]:max-w-none sm:[&>article]:shrink">
             {text.useCases.map((useCase: UseCase) => (
-              <article className="flex min-h-[220px] flex-col gap-3.5 rounded-[22px] border border-[var(--splity-line)] bg-white p-5" key={useCase.title}>
+              <article className="flex min-h-[180px] flex-col gap-3 rounded-[18px] border border-[var(--splity-line)] bg-white p-4 sm:min-h-[220px] sm:gap-3.5 sm:rounded-[22px] sm:p-5" key={useCase.title}>
                 <span className={`grid h-9 w-9 place-items-center rounded-[11px] text-sm font-bold ${useCase.tone}`}>{useCase.title.slice(0, 1)}</span>
                 <h3 className="text-[19px] font-semibold">{useCase.title}</h3>
                 <p className="text-[13.5px] leading-6 text-[var(--splity-muted)]">{useCase.body}</p>
@@ -687,13 +687,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="scroll-mt-24 py-24 sm:py-28" id="how">
+      <section className="scroll-mt-24 py-12 sm:py-28" id="how">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <SectionHeading kicker={text.stepsKicker} titleA={text.stepsTitleA} titleB={text.stepsTitleB} body={text.stepsBody} />
-          <div className="relative grid gap-3 lg:grid-cols-5">
+          <div className="splity-scrollbar-none relative flex snap-x gap-3 overflow-x-auto pb-2 lg:grid lg:snap-none lg:grid-cols-5 lg:overflow-visible lg:pb-0 [&>article]:w-[76vw] [&>article]:max-w-[290px] [&>article]:shrink-0 [&>article]:snap-start lg:[&>article]:w-auto lg:[&>article]:max-w-none lg:[&>article]:shrink">
             <div className="absolute left-[8%] right-[8%] top-[92px] hidden h-px bg-[repeating-linear-gradient(to_right,var(--splity-line-strong)_0_8px,transparent_8px_16px)] lg:block" />
             {text.steps.map((step: Step, index) => (
-              <article className="relative z-10 flex min-h-[320px] flex-col gap-3.5 rounded-[18px] border border-[var(--splity-line)] bg-white p-[18px]" key={step.title}>
+              <article className="relative z-10 flex min-h-[240px] flex-col gap-3 rounded-[18px] border border-[var(--splity-line)] bg-white p-4 sm:min-h-[320px] sm:gap-3.5 sm:p-[18px]" key={step.title}>
                 <span className="grid h-[34px] w-[34px] place-items-center rounded-full border border-[var(--splity-line-strong)] text-[13px]">0{index + 1}</span>
                 <h3 className=" text-[17px] font-semibold">{step.title}</h3>
                 <p className="flex-1 text-[12.5px] leading-5 text-[var(--splity-muted)]">{step.body}</p>
@@ -704,9 +704,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="scroll-mt-24 py-20" id="contact">
+      <section className="scroll-mt-24 py-12 sm:py-20" id="contact">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
-          <div className="relative overflow-hidden rounded-[32px] bg-[var(--splity-navy)] px-7 py-14 text-white sm:px-14 sm:py-20">
+          <div className="relative overflow-hidden rounded-[24px] bg-[var(--splity-navy)] px-5 py-9 text-white sm:rounded-[32px] sm:px-14 sm:py-20">
             <div className="absolute -right-32 -top-32 h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,rgba(233,177,66,0.6),transparent_70%)]" />
               <div>
                 <p className="text-[11.5px] font-bold uppercase text-[var(--splity-gold)]">{text.finalKicker}</p>
@@ -728,7 +728,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-[var(--splity-line)] py-10 sm:py-14">
+      <footer className="border-t border-[var(--splity-line)] py-7 sm:py-14">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
           <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between">
             <div className="max-w-[340px]">

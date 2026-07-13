@@ -32,13 +32,13 @@ export default function ResetPasswordPage() {
   }, [router, state.error, state.success]);
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-[radial-gradient(900px_480px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(760px_420px_at_100%_10%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] px-4 py-8 text-[var(--splity-ink)]">
-      <section className="w-full max-w-[480px] rounded-[28px] border border-[var(--splity-line)] bg-white px-6 py-7 shadow-[0_0_0_1px_rgba(12,21,56,0.02),0_28px_60px_rgba(12,21,56,0.10),0_56px_100px_rgba(12,21,56,0.06)] sm:px-8">
+    <main className="grid min-h-dvh place-items-center bg-[radial-gradient(900px_480px_at_6%_0%,#fbe9c7_0%,transparent_55%),radial-gradient(760px_420px_at_100%_10%,#e0e6ff_0%,transparent_50%),var(--splity-bg)] px-3 py-4 text-[var(--splity-ink)] sm:px-4 sm:py-8">
+      <section className="w-full max-w-[480px] rounded-[22px] border border-[var(--splity-line)] bg-white px-4 py-5 shadow-[0_0_0_1px_rgba(12,21,56,0.02),0_28px_60px_rgba(12,21,56,0.10),0_56px_100px_rgba(12,21,56,0.06)] sm:rounded-[28px] sm:px-8 sm:py-7">
         <Link href="/" aria-label="Splity home">
           <BrandMark />
         </Link>
 
-        <div className="mt-8 grid gap-3">
+        <div className="mt-5 grid gap-2.5 sm:mt-8 sm:gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#faefce] text-[var(--splity-navy)]">
             <LockIcon />
           </div>
@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--splity-muted)]">
               {t("auth.accountRecovery")}
             </p>
-            <h1 className="mt-1 splity-display text-[clamp(2.4rem,6vw,3.15rem)] leading-[1.02] tracking-tight">
+            <h1 className="mt-1 splity-display text-[clamp(2rem,10vw,3.15rem)] leading-[1.02] tracking-tight">
               {t("auth.setNewPasswordTitle")}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--splity-muted)]">
@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
           </div>
         </div>
 
-        <form action={formAction} className="mt-6 grid gap-4">
+        <form action={formAction} className="mt-4 grid gap-3 sm:mt-6 sm:gap-4">
           <Alert tone="error">{state.error}</Alert>
           <AuthField
             autoComplete="new-password"

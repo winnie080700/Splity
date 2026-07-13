@@ -147,13 +147,13 @@ export default async function InvitationsPage({ searchParams }: InvitationsPageP
   };
 
   return (
-    <div className="grid gap-5">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="grid gap-3 sm:gap-5">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <h1 className="splity-display text-3xl font-bold tracking-tight text-[var(--splity-ink)]">
+          <h1 className="splity-display text-2xl font-bold tracking-tight text-[var(--splity-ink)] sm:text-3xl">
             <T k="nav.invitations" />
           </h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--splity-muted)]">
+          <p className="mt-1 text-xs leading-5 text-[var(--splity-muted)] sm:mt-2 sm:text-sm sm:leading-6">
             <T k="invitations.pageBody" />
           </p>
         </div>
@@ -162,13 +162,13 @@ export default async function InvitationsPage({ searchParams }: InvitationsPageP
       </header>
 
       <nav
-        className="splity-scrollbar-none flex gap-7 overflow-x-auto border-b border-[var(--splity-line)]"
+        className="splity-scrollbar-none flex gap-5 overflow-x-auto border-b border-[var(--splity-line)] sm:gap-7"
       >
         {tabs.map((item) => (
           <Link
             aria-current={tab === item.key ? "page" : undefined}
             className={[
-              "flex h-11 shrink-0 items-center gap-2 border-b-2 px-1 text-sm font-bold transition",
+              "flex h-10 shrink-0 items-center gap-2 border-b-2 px-1 text-xs font-bold transition sm:h-11 sm:text-sm",
               tab === item.key
                 ? "border-[#087f6f] text-[#087f6f]"
                 : "border-transparent text-[var(--splity-muted)] hover:text-[var(--splity-ink)]",
